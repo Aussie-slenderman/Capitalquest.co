@@ -47,7 +47,7 @@ export default function RegisterScreen() {
         form.displayName.trim(),
         form.country,
       );
-      router.replace('/(auth)/tutorial');
+      router.replace('/(auth)/setup');
     } catch (e: unknown) {
       const msg = (e as { message?: string }).message || 'Registration failed. Please try again.';
       setError(msg);
