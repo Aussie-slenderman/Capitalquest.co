@@ -1,0 +1,158 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1"/>
+<title>Create Your Avatar — CapitalQuest</title>
+<style>
+*{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent}
+html,body{height:100%;background:#0A0E1A;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;color:#F1F5F9;overflow-x:hidden}
+body{display:flex;flex-direction:column;align-items:center;padding:0 16px 80px;overflow-y:auto}
+h1{font-size:24px;font-weight:800;text-align:center;margin-top:52px;margin-bottom:6px}
+.sub{font-size:15px;color:#94A3B8;text-align:center;margin-bottom:28px}
+.preview-card{background:#111827;border:1px solid #1A2235;border-radius:18px;padding:28px 40px;display:flex;flex-direction:column;align-items:center;margin-bottom:28px;width:100%;max-width:420px}
+.avatar-wrap{width:96px;height:144px;position:relative;display:flex;flex-direction:column;align-items:center}
+.av-hair{position:absolute;z-index:2;border-radius:50% 50% 0 0}
+.av-head{width:86px;height:86px;border-radius:50%;display:flex;flex-direction:column;align-items:center;justify-content:center;margin-top:20px;z-index:1;box-shadow:0 4px 12px rgba(0,0,0,0.3)}
+.av-eyes{display:flex;gap:16px;margin-bottom:8px}
+.av-eye{width:14px;height:14px;border-radius:50%}
+.av-smile-wrap{overflow:hidden;width:32px;height:16px}
+.av-smile{width:32px;height:32px;border-radius:50%;border:3px solid #5C3317;background:transparent;margin-top:-16px}
+.av-neck{width:22px;height:12px}
+.av-body{width:80px;height:42px;border-radius:14px}
+.preview-name{margin-top:14px;font-size:16px;font-weight:600;color:#F1F5F9}
+.section{width:100%;max-width:420px;margin-bottom:20px}
+.section-label{font-size:13px;font-weight:600;color:#94A3B8;margin-bottom:10px}
+.swatches{display:flex;flex-wrap:wrap;gap:10px}
+.swatch{width:42px;height:42px;border-radius:50%;border:3px solid transparent;cursor:pointer;transition:transform 0.12s,border-color 0.12s;flex-shrink:0}
+.swatch.active{border-color:#00B3E6;transform:scale(1.18)}
+.chips{display:flex;flex-wrap:wrap;gap:8px}
+.chip{padding:8px 16px;border-radius:999px;border:1.5px solid #1A2235;background:#111827;cursor:pointer;font-size:13px;color:#94A3B8;transition:border-color 0.12s,background 0.12s,color 0.12s}
+.chip.active{border-color:#00B3E6;background:rgba(0,179,230,0.12);color:#00B3E6;font-weight:600}
+.btn{display:block;width:100%;max-width:420px;padding:17px;border-radius:13px;border:none;background:linear-gradient(90deg,#00B3E6,#0096C7);color:#fff;font-size:17px;font-weight:700;cursor:pointer;margin-top:12px;transition:opacity 0.15s}
+.btn:active{opacity:0.85}
+</style>
+</head>
+<body>
+<h1>Create Your Avatar</h1>
+<p class="sub">Customise how you look to other players</p>
+
+<div class="preview-card">
+  <div class="avatar-wrap" id="avatarWrap">
+    <div class="av-hair" id="avHair"></div>
+    <div class="av-head" id="avHead">
+      <div class="av-eyes">
+        <div class="av-eye" id="avEyeL"></div>
+        <div class="av-eye" id="avEyeR"></div>
+      </div>
+      <div class="av-smile-wrap"><div class="av-smile"></div></div>
+    </div>
+    <div class="av-neck" id="avNeck"></div>
+    <div class="av-body" id="avBody"></div>
+  </div>
+  <div class="preview-name" id="previewName">Player</div>
+</div>
+
+<div class="section">
+  <div class="section-label">Skin Tone</div>
+  <div class="swatches" id="skinSwatches"></div>
+</div>
+<div class="section">
+  <div class="section-label">Hair Style</div>
+  <div class="chips" id="hairChips"></div>
+</div>
+<div class="section">
+  <div class="section-label">Hair Colour</div>
+  <div class="swatches" id="hairSwatches"></div>
+</div>
+<div class="section">
+  <div class="section-label">Eye Colour</div>
+  <div class="swatches" id="eyeSwatches"></div>
+</div>
+<div class="section">
+  <div class="section-label">Outfit Colour</div>
+  <div class="swatches" id="outfitSwatches"></div>
+</div>
+
+<button class="btn" onclick="finish()">Let's Go →</button>
+
+<script>
+const SKIN  = ['#FDDBB4','#F1C27D','#E0AC69','#C68642','#8D5524'];
+const HAIR_C= ['#1A1A1A','#8B4513','#FFD700','#FF6B6B','#4FC3F7','#E8E8E8'];
+const EYE_C = ['#2C3E50','#16A085','#8E44AD','#E67E22','#2980B9'];
+const OUT_C = ['#E74C3C','#3498DB','#2ECC71','#F39C12','#9B59B6','#1ABC9C'];
+const HAIR_L= ['Round','Spiky','Long','Curly','Bun','Buzz'];
+
+let cfg = {skin:0, hair:0, hairColor:0, eye:0, outfit:0};
+
+// Hair style positioning
+function hairStyle(s){
+  const styles=[
+    {top:-22,left:-3,w:92,h:46,r:'50% 50% 0 0'},
+    {top:-26,left:-3,w:92,h:32,r:'8px 8px 0 0'},
+    {top:-18,left:-11,w:108,h:58,r:'50%'},
+    {top:-24,left:-7,w:100,h:52,r:'50%'},
+    {top:-30,left:13,w:60,h:40,r:'50%'},
+    {top:-12,left:-3,w:92,h:16,r:'4px'},
+  ];
+  return styles[s]||styles[0];
+}
+
+function updateAvatar(){
+  const h=document.getElementById('avHair');
+  const hs=hairStyle(cfg.hair);
+  h.style.cssText=`position:absolute;z-index:2;background:${HAIR_C[cfg.hairColor]};top:${hs.top}px;left:${hs.left}px;width:${hs.w}px;height:${hs.h}px;border-radius:${hs.r}`;
+  document.getElementById('avHead').style.background=SKIN[cfg.skin];
+  document.getElementById('avNeck').style.background=SKIN[cfg.skin];
+  document.getElementById('avBody').style.background=OUT_C[cfg.outfit];
+  document.getElementById('avEyeL').style.background=EYE_C[cfg.eye];
+  document.getElementById('avEyeR').style.background=EYE_C[cfg.eye];
+}
+
+function makeSwatches(id, arr, key){
+  const el=document.getElementById(id);
+  el.innerHTML='';
+  arr.forEach((c,i)=>{
+    const d=document.createElement('div');
+    d.className='swatch'+(cfg[key]===i?' active':'');
+    d.style.background=c;
+    d.onclick=()=>{cfg[key]=i;document.querySelectorAll('#'+id+' .swatch').forEach((x,j)=>x.className='swatch'+(j===i?' active':''));updateAvatar()};
+    el.appendChild(d);
+  });
+}
+
+function makeChips(id, arr, key){
+  const el=document.getElementById(id);
+  el.innerHTML='';
+  arr.forEach((lbl,i)=>{
+    const d=document.createElement('div');
+    d.className='chip'+(cfg[key]===i?' active':'');
+    d.textContent=lbl;
+    d.onclick=()=>{cfg[key]=i;document.querySelectorAll('#'+id+' .chip').forEach((x,j)=>x.className='chip'+(j===i?' active':''));updateAvatar()};
+    el.appendChild(d);
+  });
+}
+
+// Get username from localStorage
+try{
+  const db=JSON.parse(localStorage.getItem('capitalquest_mock_db')||'{}');
+  const users=db.users||{};
+  const uid=localStorage.getItem('capitalquest_current_user');
+  if(uid&&users[uid])document.getElementById('previewName').textContent=users[uid].username||'Player';
+}catch(e){}
+
+makeSwatches('skinSwatches',SKIN,'skin');
+makeChips('hairChips',HAIR_L,'hair');
+makeSwatches('hairSwatches',HAIR_C,'hairColor');
+makeSwatches('eyeSwatches',EYE_C,'eye');
+makeSwatches('outfitSwatches',OUT_C,'outfit');
+updateAvatar();
+
+function finish(){
+  const avatarConfig={skinTone:cfg.skin,hairStyle:cfg.hair,hairColor:cfg.hairColor,eyeColor:cfg.eye,outfitColor:cfg.outfit};
+  localStorage.setItem('pendingAvatarConfig',JSON.stringify(avatarConfig));
+  window.location.href='/(auth)/setup';
+}
+</script>
+</body>
+</html>
