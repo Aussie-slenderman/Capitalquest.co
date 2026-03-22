@@ -15,6 +15,7 @@ import {
   addTransaction,
   updateLeaderboardEntry,
   updateUser,
+  savePortfolioSnapshot,
   IS_MOCK_FIREBASE,
 } from './firebase';
 import { getQuote } from './stockApi';
@@ -197,6 +198,10 @@ export async function placeOrder(params: PlaceOrderParams): Promise<OrderResult>
       };
       await addTransaction(userId, transaction);
     } catch { /* non-critical */ }
+
+    // Save daily portfolio snapshot for weekly email charts
+    savePortfolioSnapshot(userId, totalValue, newCash, gainLoss, gainLossPercent)
+      .catch(() => { /* non-critical */ });
 
     // Award XP
     try {

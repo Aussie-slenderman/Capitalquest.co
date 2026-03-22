@@ -1,0 +1,13 @@
+{
+  "name": "capitalquest-scripts",
+  "version": "1.0.0",
+  "description": "Server-side scripts for CapitalQuest",
+  "main": "send-weekly-emails.js",
+  "scripts": {
+    "send-emails": "node send-weekly-emails.js"
+  },
+  "dependencies": {
+    "firebase-admin": "^12.0.0",
+    "resend": "^3.0.0"
+  }
+}

@@ -186,6 +186,30 @@ export async function updatePortfolio(userId: string, data: Partial<Record<strin
   return updateDoc(doc(db, 'portfolios', userId), data);
 }
 
+// ─── Portfolio History Snapshot ───────────────────────────────────────────────
+// Called after every trade. Stores today's portfolio value so the weekly
+// email script can build a 7-day line chart.
+
+export async function savePortfolioSnapshot(
+  userId: string,
+  totalValue: number,
+  cashBalance: number,
+  totalGainLoss: number,
+  totalGainLossPercent: number,
+): Promise<void> {
+  if (IS_MOCK_FIREBASE) return;
+  const today = new Date().toISOString().slice(0, 10); // 'YYYY-MM-DD'
+  try {
+    await setDoc(
+      doc(db, 'portfolioHistory', userId, 'snapshots', today),
+      { totalValue, cashBalance, totalGainLoss, totalGainLossPercent, date: today, updatedAt: Date.now() },
+      { merge: true },
+    );
+  } catch {
+    // Non-critical — don't block the trade
+  }
+}
+
 // ─── Transaction Helpers ──────────────────────────────────────────────────────
 
 export async function addTransaction(
