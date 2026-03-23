@@ -531,59 +531,8 @@ async function finish(){
     catch(e){localStorage.setItem('pendingAvatarConfig',JSON.stringify(avatarConfig));}
     window.location.href='/';
   }else{
-    // New registration flow: do ALL setup here, skip the broken React setup screen
     localStorage.setItem('pendingAvatarConfig',JSON.stringify(avatarConfig));
-
-    // Wait for auth to be ready
-    await new Promise(resolve=>{
-      if(currentUser){resolve();return;}
-      const unsub=auth.onAuthStateChanged(u=>{if(u){currentUser=u;unsub();resolve();}});
-      setTimeout(resolve,5000); // safety timeout
-    });
-
-    if(currentUser){
-      const uid=currentUser.uid;
-      const startingBalance=10000;
-      try{
-        // Write portfolio document
-        await db.collection('portfolios').doc(uid).set({
-          userId:uid,
-          cashBalance:startingBalance,
-          startingBalance:startingBalance,
-          totalValue:startingBalance,
-          investedValue:0,
-          totalGainLoss:0,
-          holdings:{},
-          createdAt:firebase.firestore.FieldValue.serverTimestamp()
-        });
-      }catch(e){}
-      try{
-        // Mark onboarding complete + save avatar
-        await db.collection('users').doc(uid).set({
-          startingBalance:startingBalance,
-          onboardingComplete:true,
-          welcomeShown:false,
-          avatarConfig:avatarConfig,
-          updatedAt:firebase.firestore.FieldValue.serverTimestamp()
-        },{merge:true});
-      }catch(e){}
-      try{
-        // Write leaderboard entry
-        await db.collection('leaderboard').doc(uid).set({
-          userId:uid,
-          username:currentUser.displayName||'Player',
-          displayName:currentUser.displayName||'Player',
-          level:1,country:'',
-          avatarConfig:avatarConfig,
-          startingBalance:startingBalance,
-          currentValue:startingBalance,
-          gainDollars:0,
-          updatedAt:firebase.firestore.FieldValue.serverTimestamp()
-        },{merge:true});
-      }catch(e){}
-    }
-
-    window.location.href='/dashboard';
+    window.location.href='/setup';
   }
 }
 

@@ -2,23 +2,15 @@ rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
 
-    // Users: any authenticated user can read profiles; only owner can write
+    // Users can read/write their own profile
     match /users/{userId} {
       allow read: if request.auth != null;
       allow write: if request.auth.uid == userId;
-
-      // Notifications subcollection: owner reads; any auth user can create (for friend requests etc.)
-      match /notifications/{notifId} {
-        allow read, delete: if request.auth.uid == userId;
-        allow create: if request.auth != null;
-      }
     }
 
-    // Portfolios: any authenticated user can READ (needed for leaderboard queries)
-    // Only the owner can write their own portfolio
+    // Portfolios: owner only
     match /portfolios/{userId} {
-      allow read: if request.auth != null;
-      allow write: if request.auth.uid == userId;
+      allow read, write: if request.auth.uid == userId;
     }
 
     // Transactions: owner only
