@@ -730,9 +730,8 @@ input::-webkit-search-cancel-button,input::-webkit-search-decoration,input::-web
   } catch(e) {}
   firebase.auth().onAuthStateChanged(function(user) {
     if (user) {
-      // Logged in — hide HTML overlay and let React route to dashboard
-      var el = document.getElementById('cq-welcome');
-      if (el) el.style.display = 'none';
+      // Logged in — go straight to dashboard, don't rely on React routing
+      window.location.replace('/dashboard');
     }
     // Not logged in — keep overlay visible so user can tap the buttons
   });
