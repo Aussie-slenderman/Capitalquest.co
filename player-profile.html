@@ -1,0 +1,340 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1"/>
+<title>Player Profile — CapitalQuest</title>
+<script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-auth-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore-compat.js"></script>
+<style>
+*{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent}
+html,body{background:#0A0E1A;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;color:#F1F5F9;height:100%;overflow-x:hidden}
+.page{display:flex;flex-direction:column;align-items:center;padding:0 16px 40px;min-height:100vh;padding-top:env(safe-area-inset-top,0px)}
+
+/* Header */
+.topbar{width:100%;max-width:440px;display:flex;align-items:center;justify-content:space-between;padding:16px 0 12px}
+.back-btn{background:none;border:none;color:#94A3B8;font-size:24px;cursor:pointer;padding:4px 8px;border-radius:8px;transition:background 0.15s}
+.back-btn:active{background:#111827}
+.topbar-title{font-size:17px;font-weight:700;color:#F1F5F9}
+.add-btn{background:linear-gradient(90deg,#00B3E6,#0096C7);border:none;color:#fff;font-size:14px;font-weight:700;padding:9px 20px;border-radius:12px;cursor:pointer;transition:opacity 0.15s;min-width:72px}
+.add-btn:active{opacity:0.8}
+.add-btn:disabled{background:#1A2235;color:#475569;cursor:not-allowed}
+.add-btn.added{background:#00C853}
+.add-btn.pending{background:#475569}
+
+/* Skeleton / loading */
+.loading-wrap{display:flex;flex-direction:column;align-items:center;padding:60px 0;gap:12px}
+.loading-spinner{width:36px;height:36px;border:3px solid #1A2235;border-top-color:#00B3E6;border-radius:50%;animation:spin 0.8s linear infinite}
+@keyframes spin{to{transform:rotate(360deg)}}
+.loading-text{color:#475569;font-size:14px}
+
+/* Profile card */
+.profile-card{background:#111827;border:1px solid #1A2235;border-radius:20px;padding:28px 24px;width:100%;max-width:440px;display:flex;flex-direction:column;align-items:center;gap:10px;margin-bottom:14px}
+.avatar-circle{width:88px;height:88px;border-radius:50%;border:2.5px solid #00B3E6;display:flex;align-items:center;justify-content:center;margin-bottom:4px}
+.avatar-emoji{font-size:48px;line-height:1}
+.avatar-initials{font-size:30px;font-weight:700;color:#F1F5F9}
+.player-name{font-size:22px;font-weight:800;color:#F1F5F9;text-align:center}
+.player-username{font-size:14px;color:#475569;margin-top:-6px}
+.level-badge{background:#1A2235;border-radius:20px;padding:5px 14px;font-size:13px;font-weight:700;color:#00B3E6;margin-top:4px}
+.country-tag{font-size:13px;color:#94A3B8}
+
+/* Stats grid */
+.stats-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px;width:100%;max-width:440px;margin-bottom:14px}
+.stat-card{background:#111827;border:1px solid #1A2235;border-radius:14px;padding:16px;display:flex;flex-direction:column;gap:4px}
+.stat-label{font-size:11px;font-weight:600;color:#475569;text-transform:uppercase;letter-spacing:0.05em}
+.stat-value{font-size:20px;font-weight:800;color:#F1F5F9}
+.stat-value.gain{color:#00C853}
+.stat-value.loss{color:#FF3D57}
+
+/* Info row */
+.info-card{background:#111827;border:1px solid #1A2235;border-radius:14px;padding:16px 18px;width:100%;max-width:440px;margin-bottom:8px}
+.info-row{display:flex;justify-content:space-between;align-items:center;padding:10px 0;border-bottom:1px solid #1A2235}
+.info-row:last-child{border-bottom:none}
+.info-key{font-size:13px;color:#94A3B8}
+.info-val{font-size:14px;font-weight:600;color:#F1F5F9}
+
+/* Toast */
+.toast{position:fixed;bottom:40px;left:50%;transform:translateX(-50%);background:#1A2235;border:1px solid #00B3E6;border-radius:14px;padding:14px 24px;font-size:14px;font-weight:600;color:#F1F5F9;opacity:0;transition:opacity 0.3s;pointer-events:none;white-space:nowrap;z-index:9999}
+.toast.show{opacity:1}
+
+/* Error */
+.error-wrap{display:flex;flex-direction:column;align-items:center;padding:60px 20px;gap:16px;text-align:center}
+.error-icon{font-size:48px}
+.error-text{color:#94A3B8;font-size:15px}
+</style>
+</head>
+<body>
+<div class="page" id="page">
+  <!-- Top bar -->
+  <div class="topbar">
+    <button class="back-btn" onclick="close()">✕</button>
+    <span class="topbar-title">Player Profile</span>
+    <button class="add-btn" id="addBtn" onclick="addFriend()" style="visibility:hidden">Add</button>
+  </div>
+
+  <!-- Loading state -->
+  <div class="loading-wrap" id="loadingWrap">
+    <div class="loading-spinner"></div>
+    <div class="loading-text">Loading profile…</div>
+  </div>
+
+  <!-- Error state -->
+  <div class="error-wrap" id="errorWrap" style="display:none">
+    <div class="error-icon">🔍</div>
+    <div class="error-text">Could not load this player's profile.<br>They may not have completed setup yet.</div>
+  </div>
+
+  <!-- Profile content (hidden until loaded) -->
+  <div id="profileContent" style="display:none;width:100%;max-width:440px">
+    <div class="profile-card">
+      <div class="avatar-circle" id="avatarCircle">
+        <span id="avatarInner" class="avatar-initials"></span>
+      </div>
+      <div class="player-name" id="playerName"></div>
+      <div class="player-username" id="playerUsername"></div>
+      <div class="level-badge" id="levelBadge"></div>
+      <div class="country-tag" id="countryTag"></div>
+    </div>
+
+    <div class="stats-grid">
+      <div class="stat-card">
+        <div class="stat-label">Total Gain / Loss</div>
+        <div class="stat-value" id="statGain"></div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-label">Portfolio Value</div>
+        <div class="stat-value" id="statValue"></div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-label">Starting Balance</div>
+        <div class="stat-value" id="statStart"></div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-label">Leaderboard Rank</div>
+        <div class="stat-value" id="statRank"></div>
+      </div>
+    </div>
+
+    <div class="info-card">
+      <div class="info-row"><span class="info-key">Username</span><span class="info-val" id="infoUser"></span></div>
+      <div class="info-row"><span class="info-key">Level</span><span class="info-val" id="infoLevel"></span></div>
+      <div class="info-row"><span class="info-key">Country</span><span class="info-val" id="infoCountry"></span></div>
+    </div>
+  </div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+// ── Firebase ─────────────────────────────────────────────────────────────────
+firebase.initializeApp({apiKey:'AIzaSyCP1AcnDTU2umjR3cGycRxQ5mwOFq4Xjgg',authDomain:'capitalquest-4d20b.firebaseapp.com',projectId:'capitalquest-4d20b',storageBucket:'capitalquest-4d20b.firebasestorage.app',messagingSenderId:'407589569541',appId:'1:407589569541:web:3b8a543f03ad9f110ec86c'});
+const auth=firebase.auth(), db=firebase.firestore();
+
+// ── Params ───────────────────────────────────────────────────────────────────
+const params=new URLSearchParams(window.location.search);
+const targetUid=params.get('uid');
+const isEmbed=params.get('embed')==='1';
+
+// ── State ────────────────────────────────────────────────────────────────────
+let currentUser=null;
+let targetData=null;
+let alreadyFriends=false;
+
+// ── Helpers ──────────────────────────────────────────────────────────────────
+function fmt(n){
+  if(n===undefined||n===null)return '—';
+  const abs=Math.abs(n);
+  const str=abs>=1e6?(abs/1e6).toFixed(2)+'M':abs>=1e3?(abs/1e3).toFixed(1)+'K':abs.toFixed(2);
+  return (n<0?'-':'')+'$'+str;
+}
+function getInitials(name){
+  return (name||'?').split(' ').map(w=>w[0]).join('').toUpperCase().slice(0,2)||'??';
+}
+function getLevelColor(lvl){
+  const colors=['#60A5FA','#34D399','#FBBF24','#F87171','#A78BFA','#FB923C','#F472B6','#22D3EE','#4ADE80','#E879F9'];
+  return colors[((lvl||1)-1)%colors.length];
+}
+function showToast(msg,dur=2800){
+  const t=document.getElementById('toast');
+  t.textContent=msg;
+  t.classList.add('show');
+  setTimeout(()=>t.classList.remove('show'),dur);
+}
+function close(){
+  if(isEmbed){window.parent.postMessage({type:'profileClosed'},'*');}
+  else{window.history.back();}
+}
+
+// ── Render profile ───────────────────────────────────────────────────────────
+function renderProfile(data){
+  targetData=data;
+  const {displayName,username,level,country,gainDollars,currentValue,startingBalance,rank,avatarConfig}=data;
+
+  // Avatar
+  const circle=document.getElementById('avatarCircle');
+  const inner=document.getElementById('avatarInner');
+  const lvlColor=getLevelColor(level);
+  circle.style.borderColor=lvlColor;
+  if(avatarConfig?.animal){
+    inner.className='avatar-emoji';
+    inner.textContent=avatarConfig.animal;
+    circle.style.background=avatarConfig.bgColor||'#1A2235';
+  }else{
+    inner.className='avatar-initials';
+    inner.textContent=getInitials(displayName||username||'');
+    inner.style.color=lvlColor;
+    circle.style.background='#1A2235';
+  }
+
+  document.getElementById('playerName').textContent=displayName||username||'Player';
+  document.getElementById('playerUsername').textContent='@'+(username||'');
+  document.getElementById('levelBadge').textContent='Level '+(level||1);
+  document.getElementById('levelBadge').style.color=lvlColor;
+  document.getElementById('countryTag').textContent=country?'📍 '+country:'';
+
+  // Stats
+  const gain=gainDollars??0;
+  const gainEl=document.getElementById('statGain');
+  gainEl.textContent=(gain>=0?'+':'')+fmt(gain);
+  gainEl.className='stat-value '+(gain>=0?'gain':'loss');
+  document.getElementById('statValue').textContent=fmt(currentValue);
+  document.getElementById('statStart').textContent=fmt(startingBalance);
+  document.getElementById('statRank').textContent=rank?'#'+rank:'—';
+
+  // Info
+  document.getElementById('infoUser').textContent='@'+(username||'');
+  document.getElementById('infoLevel').textContent=(level||1)+' / 50';
+  document.getElementById('infoCountry').textContent=country||'Unknown';
+
+  // Show content
+  document.getElementById('loadingWrap').style.display='none';
+  document.getElementById('profileContent').style.display='';
+}
+
+// ── Add friend ───────────────────────────────────────────────────────────────
+async function addFriend(){
+  if(!currentUser){showToast('Please log in first');return;}
+  if(!targetUid){return;}
+  const btn=document.getElementById('addBtn');
+  btn.disabled=true;
+  btn.textContent='Adding…';
+  try{
+    const batch=db.batch();
+    // Add target to current user's friends
+    batch.update(db.collection('users').doc(currentUser.uid),{
+      friendIds:firebase.firestore.FieldValue.arrayUnion(targetUid)
+    });
+    // Add current user to target's friends
+    batch.update(db.collection('users').doc(targetUid),{
+      friendIds:firebase.firestore.FieldValue.arrayUnion(currentUser.uid)
+    });
+    // Write a friend request notification for target user
+    const notifRef=db.collection('users').doc(targetUid).collection('notifications').doc();
+    batch.set(notifRef,{
+      id:notifRef.id,
+      type:'friend_request',
+      fromUserId:currentUser.uid,
+      fromUsername:currentUser.displayName||'A player',
+      title:'New friend added',
+      body:(currentUser.displayName||'A player')+' added you as a friend',
+      createdAt:firebase.firestore.FieldValue.serverTimestamp(),
+      read:false
+    });
+    await batch.commit();
+    btn.textContent='Added ✓';
+    btn.className='add-btn added';
+    showToast('Friend added! 🎉');
+    alreadyFriends=true;
+  }catch(err){
+    btn.disabled=false;
+    btn.textContent='Add';
+    showToast('Could not add friend. Try again.');
+  }
+}
+
+// ── Load profile ─────────────────────────────────────────────────────────────
+async function loadProfile(){
+  if(!targetUid){
+    document.getElementById('loadingWrap').style.display='none';
+    document.getElementById('errorWrap').style.display='';
+    return;
+  }
+
+  // Try leaderboard collection first (has pre-built stats)
+  let data=null;
+  try{
+    const lbSnap=await db.collection('leaderboard').doc(targetUid).get();
+    if(lbSnap.exists){data={...lbSnap.data()};}
+  }catch(e){}
+
+  // Fallback: build from users + portfolios
+  if(!data){
+    try{
+      const[uSnap,pSnap]=await Promise.all([
+        db.collection('users').doc(targetUid).get(),
+        db.collection('portfolios').doc(targetUid).get()
+      ]);
+      if(uSnap.exists){
+        const u=uSnap.data();
+        const p=pSnap.exists?pSnap.data():{};
+        data={
+          userId:targetUid,
+          username:u.username,
+          displayName:u.displayName||u.username,
+          level:u.level||1,
+          country:u.country||'',
+          avatarConfig:u.avatarConfig||null,
+          startingBalance:p.startingBalance||0,
+          currentValue:p.totalValue||0,
+          gainDollars:p.totalGainLoss||0
+        };
+      }
+    }catch(e){}
+  }
+
+  if(!data){
+    document.getElementById('loadingWrap').style.display='none';
+    document.getElementById('errorWrap').style.display='';
+    return;
+  }
+
+  // If avatarConfig not in leaderboard doc, fetch from users
+  if(!data.avatarConfig){
+    try{
+      const uSnap=await db.collection('users').doc(targetUid).get();
+      if(uSnap.exists){data.avatarConfig=uSnap.data().avatarConfig||null;}
+    }catch(e){}
+  }
+
+  renderProfile(data);
+
+  // Setup Add button once auth resolves
+  auth.onAuthStateChanged(async u=>{
+    currentUser=u;
+    if(!u||u.uid===targetUid){return;} // Don't show Add for own profile
+    const btn=document.getElementById('addBtn');
+    btn.style.visibility='visible';
+    // Check if already friends
+    try{
+      const meSnap=await db.collection('users').doc(u.uid).get();
+      const myFriends=meSnap.data()?.friendIds||[];
+      if(myFriends.includes(targetUid)){
+        alreadyFriends=true;
+        btn.textContent='Friends';
+        btn.className='add-btn added';
+        btn.disabled=true;
+      }
+    }catch(e){}
+  });
+}
+
+loadProfile();
+
+// Listen for parent close messages
+window.addEventListener('message',ev=>{
+  if(ev.data?.type==='close')close();
+});
+</script>
+</body>
+</html>
