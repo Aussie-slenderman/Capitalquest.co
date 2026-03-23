@@ -14,94 +14,26 @@ import { Colors, LightColors, FontSize, FontWeight, Spacing, Radius } from '../.
 import { formatCurrency, formatPercent, formatAccountNumber } from '../../src/utils/formatters';
 import type { AvatarConfig } from '../../src/types';
 
-// ─── Avatar rendering constants ──────────────────────────────────────────────
-const SKIN_TONES = ['#FDDBB4', '#F1C27D', '#E0AC69', '#C68642', '#8D5524'];
-const HAIR_STYLE_LABELS = ['Spiky', 'Long', 'Buzz'];
-const HAIR_COLORS = ['#1A1A1A', '#8B4513', '#FFD700', '#FF6B6B', '#4FC3F7', '#E8E8E8'];
-const EYE_COLORS = ['#2C3E50', '#16A085', '#8E44AD', '#E67E22', '#2980B9'];
-const OUTFIT_COLORS = ['#E74C3C', '#3498DB', '#2ECC71', '#F39C12', '#9B59B6', '#1ABC9C'];
+// ─── Animal avatar constants ──────────────────────────────────────────────────
+const ANIMALS = [
+  '🐶', '🐱', '🦁', '🐯', '🐻', '🐼',
+  '🦊', '🐺', '🐨', '🦘', '🐸', '🐧',
+  '🦅', '🦉', '🦄', '🐉', '🦈', '🐙',
+  '🐘', '🦒', '🦓', '🦔', '🦦', '🦋',
+];
 
 function AvatarPreview({ config, size = 'md' }: { config: AvatarConfig; size?: 'sm' | 'md' | 'lg' }) {
-  const skin = SKIN_TONES[config.skinTone] ?? SKIN_TONES[0];
-  const hair = HAIR_COLORS[config.hairColor] ?? HAIR_COLORS[0];
-  const eye = EYE_COLORS[config.eyeColor] ?? EYE_COLORS[0];
-  const outfit = OUTFIT_COLORS[config.outfitColor] ?? OUTFIT_COLORS[0];
-
-  const scale = size === 'lg' ? 1.4 : size === 'sm' ? 0.7 : 1;
-  const s = (n: number) => n * scale;
-
-  // Spiky spike data — same as in avatar.tsx but scaled via s()
-  const SPIKE_D = [
-    { aboveTop: 38, left: 6 },
-    { aboveTop: 28, left: 20 },
-    { aboveTop: 44, left: 34 },
-    { aboveTop: 30, left: 48 },
-    { aboveTop: 36, left: 62 },
-  ];
-
-  // All hair at zIndex:0; head (zIndex:1) arcs naturally over the top half.
-  const hairShape = () => {
-    switch (config.hairStyle) {
-      case 1: // Long
-        return { top: s(4), left: -s(4), width: s(88), height: s(126),
-          borderTopLeftRadius: s(44), borderTopRightRadius: s(44),
-          borderBottomLeftRadius: 0, borderBottomRightRadius: 0 };
-      case 2: // Buzz — thin arc, top-half only
-        return { top: s(12), left: 0, width: s(80), height: s(42),
-          borderTopLeftRadius: s(40), borderTopRightRadius: s(40),
-          borderBottomLeftRadius: 0, borderBottomRightRadius: 0 };
-      default:
-        return { top: 0, left: 0, width: 0, height: 0 };
-    }
-  };
-
+  const dim = size === 'lg' ? 80 : size === 'sm' ? 40 : 60;
+  const fontSize = size === 'lg' ? 44 : size === 'sm' ? 22 : 32;
+  const animal = config?.animal ?? '🐶';
   return (
-    <View style={{ alignItems: 'center', width: s(80), height: s(130), overflow: 'visible' as any }}>
-      {/* Hair */}
-      {config.hairStyle === 0 ? (
-        SPIKE_D.map(({ aboveTop, left }, i) => (
-          <View
-            key={i}
-            style={{
-              position: 'absolute', zIndex: 0,
-              top: s(16 - aboveTop),
-              left: s(left),
-              width: s(9),
-              height: s(aboveTop + 46),
-              borderTopLeftRadius: s(5), borderTopRightRadius: s(5),
-              backgroundColor: hair,
-            }}
-          />
-        ))
-      ) : (
-        <View style={[{ position: 'absolute', zIndex: 0 }, hairShape(), { backgroundColor: hair }]} />
-      )}
-      <View style={{
-        width: s(72), height: s(72), borderRadius: s(36),
-        alignItems: 'center', justifyContent: 'center',
-        marginTop: s(16), zIndex: 1, backgroundColor: skin,
-        shadowColor: '#000', shadowOpacity: 0.2, shadowRadius: 4, shadowOffset: { width: 0, height: 2 },
-      }}>
-        <View style={{ flexDirection: 'row', gap: s(12), marginBottom: s(6) }}>
-          <View style={{ width: s(15), height: s(15), borderRadius: s(8), backgroundColor: 'white', alignItems: 'center', justifyContent: 'center' }}>
-            <View style={{ width: s(9), height: s(9), borderRadius: s(5), backgroundColor: eye }} />
-          </View>
-          <View style={{ width: s(15), height: s(15), borderRadius: s(8), backgroundColor: 'white', alignItems: 'center', justifyContent: 'center' }}>
-            <View style={{ width: s(9), height: s(9), borderRadius: s(5), backgroundColor: eye }} />
-          </View>
-        </View>
-        <View style={{ overflow: 'hidden', width: s(28), height: s(14) }}>
-          <View style={{
-            width: s(28), height: s(28), borderRadius: s(14),
-            borderWidth: 3, borderColor: '#5C3317',
-            backgroundColor: 'transparent', marginTop: -s(14),
-          }} />
-        </View>
-      </View>
-      <View style={{ width: s(18), height: s(10), zIndex: 0, backgroundColor: skin }} />
-      <View style={{ width: s(68), height: s(36), borderRadius: s(12), backgroundColor: outfit, alignItems: 'center', justifyContent: 'flex-start', paddingTop: s(4) }}>
-        <View style={{ width: 0, height: 0, borderLeftWidth: s(10), borderRightWidth: s(10), borderTopWidth: s(8), borderLeftColor: 'transparent', borderRightColor: 'transparent', borderTopColor: outfit }} />
-      </View>
+    <View style={{
+      width: dim, height: dim, borderRadius: dim / 2,
+      backgroundColor: Colors.bg.tertiary,
+      alignItems: 'center', justifyContent: 'center',
+      borderWidth: 2, borderColor: Colors.brand.primary,
+    }}>
+      <Text style={{ fontSize }}>{animal}</Text>
     </View>
   );
 }
@@ -136,14 +68,14 @@ export default function ProfileScreen() {
   const [deleteVisible, setDeleteVisible] = useState(false);
   const [activeProfileTab, setActiveProfileTab] = useState<'profile' | 'wardrobe'>('profile');
   const [localConfig, setLocalConfig] = useState<AvatarConfig>(
-    user?.avatarConfig ?? { skinTone: 0, hairStyle: 0, hairColor: 0, eyeColor: 0, outfitColor: 0 }
+    user?.avatarConfig ?? { animal: '🐶' }
   );
   const [savingAvatar, setSavingAvatar] = useState(false);
 
   if (!user) return null;
 
-  const updateConfig = (key: keyof AvatarConfig, value: number) =>
-    setLocalConfig(prev => ({ ...prev, [key]: value }));
+  const selectAnimal = (emoji: string) =>
+    setLocalConfig({ animal: emoji });
 
   const handleSaveAvatar = async () => {
     setSavingAvatar(true);
@@ -274,96 +206,23 @@ export default function ProfileScreen() {
             <AvatarPreview config={localConfig} size="lg" />
           </View>
 
-          {/* Skin Tone */}
+          {/* Animal Grid */}
           <View style={[styles.wardrobeSection, { backgroundColor: C.bg.secondary, borderColor: C.border.default }]}>
-            <Text style={[styles.wardrobeSectionTitle, { color: C.text.primary }]}>Skin Tone</Text>
-            <View style={styles.swatchRow}>
-              {SKIN_TONES.map((color, i) => (
+            <Text style={[styles.wardrobeSectionTitle, { color: C.text.primary }]}>Choose Your Animal</Text>
+            <View style={styles.animalGrid}>
+              {ANIMALS.map((emoji) => (
                 <TouchableOpacity
-                  key={i}
-                  onPress={() => updateConfig('skinTone', i)}
+                  key={emoji}
+                  onPress={() => selectAnimal(emoji)}
                   style={[
-                    styles.colorSwatch,
-                    { backgroundColor: color },
-                    localConfig.skinTone === i && { borderColor: tabColor, borderWidth: 3 },
-                  ]}
-                />
-              ))}
-            </View>
-          </View>
-
-          {/* Hair Style */}
-          <View style={[styles.wardrobeSection, { backgroundColor: C.bg.secondary, borderColor: C.border.default }]}>
-            <Text style={[styles.wardrobeSectionTitle, { color: C.text.primary }]}>Hair Style</Text>
-            <View style={styles.chipRow}>
-              {HAIR_STYLE_LABELS.map((label, i) => (
-                <TouchableOpacity
-                  key={i}
-                  onPress={() => updateConfig('hairStyle', i)}
-                  style={[
-                    styles.chip,
+                    styles.animalTile,
                     { backgroundColor: C.bg.tertiary, borderColor: C.border.default },
-                    localConfig.hairStyle === i && { backgroundColor: `${tabColor}22`, borderColor: tabColor },
+                    localConfig.animal === emoji && { backgroundColor: `${tabColor}22`, borderColor: tabColor },
                   ]}
+                  activeOpacity={0.75}
                 >
-                  <Text style={[styles.chipText, { color: localConfig.hairStyle === i ? tabColor : C.text.secondary }]}>
-                    {label}
-                  </Text>
+                  <Text style={styles.animalTileEmoji}>{emoji}</Text>
                 </TouchableOpacity>
-              ))}
-            </View>
-          </View>
-
-          {/* Hair Colour */}
-          <View style={[styles.wardrobeSection, { backgroundColor: C.bg.secondary, borderColor: C.border.default }]}>
-            <Text style={[styles.wardrobeSectionTitle, { color: C.text.primary }]}>Hair Colour</Text>
-            <View style={styles.swatchRow}>
-              {HAIR_COLORS.map((color, i) => (
-                <TouchableOpacity
-                  key={i}
-                  onPress={() => updateConfig('hairColor', i)}
-                  style={[
-                    styles.colorSwatch,
-                    { backgroundColor: color },
-                    localConfig.hairColor === i && { borderColor: tabColor, borderWidth: 3 },
-                  ]}
-                />
-              ))}
-            </View>
-          </View>
-
-          {/* Eye Colour */}
-          <View style={[styles.wardrobeSection, { backgroundColor: C.bg.secondary, borderColor: C.border.default }]}>
-            <Text style={[styles.wardrobeSectionTitle, { color: C.text.primary }]}>Eye Colour</Text>
-            <View style={styles.swatchRow}>
-              {EYE_COLORS.map((color, i) => (
-                <TouchableOpacity
-                  key={i}
-                  onPress={() => updateConfig('eyeColor', i)}
-                  style={[
-                    styles.colorSwatch,
-                    { backgroundColor: color },
-                    localConfig.eyeColor === i && { borderColor: tabColor, borderWidth: 3 },
-                  ]}
-                />
-              ))}
-            </View>
-          </View>
-
-          {/* Outfit Colour */}
-          <View style={[styles.wardrobeSection, { backgroundColor: C.bg.secondary, borderColor: C.border.default }]}>
-            <Text style={[styles.wardrobeSectionTitle, { color: C.text.primary }]}>Outfit Colour</Text>
-            <View style={styles.swatchRow}>
-              {OUTFIT_COLORS.map((color, i) => (
-                <TouchableOpacity
-                  key={i}
-                  onPress={() => updateConfig('outfitColor', i)}
-                  style={[
-                    styles.colorSwatch,
-                    { backgroundColor: color },
-                    localConfig.outfitColor === i && { borderColor: tabColor, borderWidth: 3 },
-                  ]}
-                />
               ))}
             </View>
           </View>
@@ -1001,6 +860,23 @@ const styles = StyleSheet.create({
   chipText: {
     fontSize: FontSize.sm,
     fontWeight: FontWeight.medium,
+  },
+  animalGrid: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 10,
+    justifyContent: 'center',
+  },
+  animalTile: {
+    width: 54,
+    height: 54,
+    borderRadius: Radius.lg,
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderWidth: 2,
+  },
+  animalTileEmoji: {
+    fontSize: 28,
   },
   saveAvatarBtn: {
     borderRadius: Radius.lg,

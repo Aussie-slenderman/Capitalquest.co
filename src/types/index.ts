@@ -121,11 +121,7 @@ export interface Transaction {
 // ─── User & Auth Types ───────────────────────────────────────────────────────
 
 export interface AvatarConfig {
-  skinTone: number;   // 0-4
-  hairStyle: number;  // 0-5
-  hairColor: number;  // 0-5
-  eyeColor: number;   // 0-4
-  outfitColor: number; // 0-5
+  animal: string; // emoji e.g. '🐶'
 }
 
 export interface User {
