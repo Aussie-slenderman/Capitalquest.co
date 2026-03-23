@@ -285,6 +285,69 @@ const ANIMALS_DATA=[
   ['🫎','moose elk antler forest'],
   ['🫏','donkey mule farm grey'],
   ['🐕\u200D\u{1F9BA}','service dog helper vest'],
+  // Extra — bears & big mammals
+  ['🐻\u200D❄️','polar bear arctic white snow ice'],
+  ['🦬','bison american buffalo plains herd'],
+  // Extra — bugs & crawlies
+  ['🪱','worm earthworm crawl soil'],
+  ['🪰','fly housefly insect wings'],
+  ['🦋','butterfly colourful wings flutter meadow'],
+  // Extra — ocean & aquatic
+  ['🦭','seal pup flipper arctic ocean'],
+  ['🐡','pufferfish blowfish spiky poison'],
+  ['🦈','shark fin predator ocean great white'],
+  ['🐠','clownfish tropical reef colour'],
+  ['🦐','shrimp prawn pink ocean'],
+  ['🦑','squid tentacle ink ocean'],
+  ['🐙','octopus eight arms ink smart'],
+  ['🦀','crab claw pinch beach'],
+  ['🦞','lobster red claw boil'],
+  ['🐢','sea turtle shell slow ocean'],
+  ['🪸','coral reef colourful ocean'],
+  ['🪼','jellyfish sting drift ocean'],
+  // Extra — birds
+  ['🦤','dodo extinct flightless bird'],
+  ['🦅','bald eagle raptor soar freedom'],
+  ['🦆','duck quack pond dabble'],
+  ['🦉','barn owl nocturnal hoot wise'],
+  ['🦜','macaw parrot tropical colour rainbow'],
+  ['🦚','peacock tail display plumage blue green'],
+  ['🦩','flamingo pink wading long leg'],
+  ['🦢','swan white elegant lake grace'],
+  ['🕊','dove peace white bird symbol'],
+  ['🐦\u200D\u{1F525}','phoenix fire mythical rebirth flame'],
+  // Extra — reptiles & amphibians
+  ['🐸','frog toad green pond jump croak'],
+  ['🦎','gecko lizard scales tail'],
+  ['🐊','crocodile gator swamp teeth'],
+  ['🐢','tortoise turtle slow shell ancient'],
+  ['🐍','cobra python boa snake venom'],
+  // Extra — exotic & rare
+  ['🦄','unicorn horn magic rainbow mythical'],
+  ['🐉','dragon fire mythical serpent east'],
+  ['🦁','lion mane king pride roar africa'],
+  ['🐯','bengal tiger stripe fierce jungle'],
+  ['🐆','cheetah leopard spot fast sprint'],
+  ['🦊','arctic fox tundra cunning red'],
+  ['🐺','grey wolf pack howl wild'],
+  ['🐘','african elephant trunk ivory big'],
+  ['🦒','giraffe long neck tall savanna spot'],
+  ['🦓','plains zebra stripe black white africa'],
+  ['🦏','white rhino horn savanna endangered'],
+  ['🦛','common hippo water mouth heavy'],
+  ['🦘','red kangaroo jump joey marsupial'],
+  ['🐨','koala sleepy eucalyptus grey soft'],
+  ['🦝','raccoon bandit night clever curious'],
+  ['🦡','honey badger dig fierce nocturnal'],
+  ['🦦','sea otter float kelp swim smart'],
+  ['🦔','hedgehog spine prickle roll cute'],
+  ['🦫','beaver dam lodge flat tail'],
+  ['🦙','alpaca llama wool soft peru highland'],
+  ['🦬','bison stampede shaggy hump plains'],
+  ['🦥','sloth hang slow lazy tree rainforest'],
+  ['🦨','striped skunk spray smell defend'],
+  ['🦧','sumatran orangutan ape red primate'],
+  ['🦍','mountain gorilla silverback ape'],
 ];
 
 // Page 1 set (first 60)
@@ -305,13 +368,15 @@ const PAGE2_GROUPS=[
   {label:'Horses',          emojis:['🐴','🐎']},
   {label:'Cattle & Farm',   emojis:['🐮','🐂','🐃','🐄','🐷','🐖','🐏','🐐']},
   {label:'Giants & Ancient',emojis:['🐫','🦣','🦕','🦖']},
+  {label:'Polar & Arctic',  emojis:['🐻\u200D❄️','🦭','🐧']},
   {label:'Rodents',         emojis:['🐭','🐁','🐀','🐹','🐰','🐇']},
-  {label:'More Mammals',    emojis:['🦥','🦨','🐲','🐩','🦮','🐕','🐈','🐈\u200D\u2B1B']},
+  {label:'More Mammals',    emojis:['🦥','🦨','🐲','🐩','🦮','🐕','🐈','🐈\u200D\u2B1B','🐕\u200D\u{1F9BA}']},
   {label:'More Birds',      emojis:['🐔','🐣','🐤','🐥','🐦','🕊','🦆','🦢','🪶','🐦\u200D\u{1F525}','🐦\u200D\u2B1B']},
   {label:'More Ocean',      emojis:['🐋','🐟','🦞','🦪','🐚','🪸','🪼']},
-  {label:'Reptiles',        emojis:['🐍']},
-  {label:'More Bugs',       emojis:['🐌','🪲','🪳','🦟','🐜','🦠']},
-  {label:'Forest & Plains', emojis:['🫎','🫏']},
+  {label:'Reptiles',        emojis:['🐍','🐢','🦎','🐊']},
+  {label:'More Bugs',       emojis:['🐌','🪲','🪳','🦟','🐜','🦠','🪱','🪰']},
+  {label:'Forest & Plains', emojis:['🫎','🫏','🦌','🐗','🦡','🦝']},
+  {label:'Mythical',        emojis:['🦄','🐉','🐲','🐦\u200D\u{1F525}']},
 ];
 
 // BG colours
@@ -457,7 +522,7 @@ async function finish(){
   const avatarConfig={animal:selected,bgColor};
   if(isEmbed){
     if(currentUser){
-      try{await db.collection('users').doc(currentUser.uid).update({avatarConfig});}
+      try{await db.collection('users').doc(currentUser.uid).update({avatarConfig,welcomeShown:true});}
       catch(e){localStorage.setItem('pendingAvatarConfig',JSON.stringify(avatarConfig));}
     }
     window.parent.postMessage({type:'avatarSaved',config:avatarConfig},'*');
