@@ -26,6 +26,7 @@ import {
   increment,
   Timestamp,
   writeBatch,
+  documentId,
 } from 'firebase/firestore';
 import {
   getDatabase,
@@ -248,23 +249,55 @@ export async function getTransactions(userId: string, limitCount = 50) {
 // ─── Leaderboard ──────────────────────────────────────────────────────────────
 
 export async function getLeaderboard(type: 'global' | 'local', country?: string, limitCount = 100) {
-  let q;
-  if (type === 'local' && country) {
-    q = query(
-      collection(db, 'leaderboard'),
-      where('country', '==', country),
-      orderBy('gainDollars', 'desc'),
-      limit(limitCount)
-    );
-  } else {
-    q = query(
-      collection(db, 'leaderboard'),
-      orderBy('gainDollars', 'desc'),
-      limit(limitCount)
-    );
+  // Query portfolios directly — every onboarded user has one, so ALL players
+  // appear in the rankings regardless of whether they have traded yet.
+  const portfolioSnap = await getDocs(collection(db, 'portfolios'));
+  if (portfolioSnap.empty) return [];
+
+  // Sort in memory: most gained first, then slice to limit
+  const portfolios = portfolioSnap.docs
+    .map(d => d.data())
+    .sort((a, b) => ((b.totalGainLoss as number) ?? 0) - ((a.totalGainLoss as number) ?? 0))
+    .slice(0, limitCount);
+
+  // Fetch user display data in batches of 30 (Firestore 'in' limit)
+  const userMap: Record<string, Record<string, unknown>> = {};
+  const userIds = portfolios.map(p => p.userId as string).filter(Boolean);
+  for (let i = 0; i < userIds.length; i += 30) {
+    const batch = userIds.slice(i, i + 30);
+    try {
+      const usersSnap = await getDocs(
+        query(collection(db, 'users'), where(documentId(), 'in', batch))
+      );
+      usersSnap.docs.forEach(d => { userMap[d.id] = d.data(); });
+    } catch { /* partial failure — continue with what we have */ }
   }
-  const snap = await getDocs(q);
-  return snap.docs.map((d, i) => ({ rank: i + 1, id: d.id, ...d.data() }));
+
+  // Build ranked entries
+  let entries = portfolios.map((p, i) => {
+    const u = userMap[p.userId as string] ?? {};
+    return {
+      rank: i + 1,
+      id: p.userId as string,
+      userId: p.userId as string,
+      username: (u.username as string) ?? 'Player',
+      displayName: (u.displayName as string) ?? (u.username as string) ?? 'Player',
+      level: (u.level as number) ?? 1,
+      country: (u.country as string) ?? '',
+      startingBalance: (p.startingBalance as number) ?? 0,
+      currentValue: (p.totalValue as number) ?? 0,
+      gainDollars: (p.totalGainLoss as number) ?? 0,
+    };
+  });
+
+  // For local leaderboard, filter by country and re-rank
+  if (type === 'local' && country) {
+    entries = entries
+      .filter(e => e.country === country)
+      .map((e, i) => ({ ...e, rank: i + 1 }));
+  }
+
+  return entries;
 }
 
 export async function updateLeaderboardEntry(userId: string, data: Record<string, unknown>) {
