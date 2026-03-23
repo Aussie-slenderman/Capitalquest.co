@@ -4,194 +4,293 @@
 <meta charset="utf-8"/>
 <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1"/>
 <title>Choose Your Animal — CapitalQuest</title>
-<!-- Firebase compat SDK (auth + firestore) -->
 <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-auth-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore-compat.js"></script>
 <style>
 *{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent}
 html,body{height:100%;background:#0A0E1A;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;color:#F1F5F9;overflow-x:hidden}
-body{display:flex;flex-direction:column;align-items:center;padding:0 16px 80px;overflow-y:auto}
+
+/* ── Page wrapper ── */
+.page{display:none;flex-direction:column;align-items:center;padding:0 16px 100px;overflow-y:auto;min-height:100vh}
+.page.active{display:flex}
+
 h1{font-size:24px;font-weight:800;text-align:center;margin-top:52px;margin-bottom:6px}
 .sub{font-size:15px;color:#94A3B8;text-align:center;margin-bottom:28px}
+
+/* ── Preview card ── */
 .preview-card{background:#111827;border:1px solid #1A2235;border-radius:18px;padding:28px 40px;display:flex;flex-direction:column;align-items:center;margin-bottom:24px;width:100%;max-width:420px}
 .animal-circle{width:96px;height:96px;border-radius:50%;border:2px solid #00B3E6;display:flex;align-items:center;justify-content:center;transition:background 0.2s}
 .animal-circle span{font-size:52px;line-height:1}
 .preview-name{margin-top:14px;font-size:16px;font-weight:600;color:#F1F5F9}
+
+/* ── Sections ── */
 .section{width:100%;max-width:420px;background:#111827;border:1px solid #1A2235;border-radius:14px;padding:16px;margin-bottom:14px}
 .section-label{font-size:13px;font-weight:600;color:#94A3B8;margin-bottom:12px}
+
+/* ── Colour swatches ── */
 .swatches{display:flex;flex-wrap:wrap;gap:10px}
 .swatch{width:40px;height:40px;border-radius:50%;border:2px solid transparent;cursor:pointer;transition:transform 0.12s,border-color 0.12s;flex-shrink:0}
 .swatch.active{border-color:#00B3E6;transform:scale(1.18)}
+
+/* ── Animal grid ── */
 .grid{display:flex;flex-wrap:wrap;gap:10px;justify-content:center}
-.tile{width:58px;height:58px;border-radius:12px;background:#1A2235;border:2px solid transparent;cursor:pointer;display:flex;align-items:center;justify-content:center;font-size:30px;transition:border-color 0.12s,background 0.12s,transform 0.12s}
+.tile{width:58px;height:58px;border-radius:12px;background:#1A2235;border:2px solid transparent;cursor:pointer;display:flex;align-items:center;justify-content:center;font-size:30px;transition:border-color 0.12s,background 0.12s,transform 0.12s;user-select:none}
 .tile.active{border-color:#00B3E6;background:rgba(0,179,230,0.15);transform:scale(1.1)}
-.btn{display:block;width:100%;max-width:420px;padding:17px;border-radius:13px;border:none;background:linear-gradient(90deg,#00B3E6,#0096C7);color:#fff;font-size:17px;font-weight:700;cursor:pointer;margin-top:12px;transition:opacity 0.15s}
+
+/* ── Category headers inside grid ── */
+.cat-label{width:100%;font-size:11px;font-weight:700;color:#475569;text-transform:uppercase;letter-spacing:0.08em;margin-top:8px;margin-bottom:2px;padding-left:2px}
+
+/* ── Buttons ── */
+.btn{display:block;width:100%;max-width:420px;padding:17px;border-radius:13px;border:none;background:linear-gradient(90deg,#00B3E6,#0096C7);color:#fff;font-size:17px;font-weight:700;cursor:pointer;margin-top:4px;transition:opacity 0.15s;text-align:center}
 .btn:active{opacity:0.85}
 .btn:disabled{opacity:0.6;cursor:not-allowed}
+
+/* ── More / Back navigation ── */
+.nav-row{display:flex;width:100%;max-width:420px;margin-top:10px;margin-bottom:4px}
+.nav-btn{display:flex;align-items:center;gap:8px;background:#111827;border:1px solid #1A2235;border-radius:13px;padding:14px 20px;cursor:pointer;font-size:15px;font-weight:600;color:#94A3B8;transition:border-color 0.12s,color 0.12s;flex:1;justify-content:center}
+.nav-btn:hover{border-color:#00B3E6;color:#00B3E6}
+.nav-arrow{font-size:20px}
 </style>
 </head>
 <body>
-<h1>Choose Your Animal</h1>
-<p class="sub">Pick an animal and background to represent you</p>
 
-<div class="preview-card">
-  <div class="animal-circle" id="previewCircle" style="background:#1A2235">
-    <span id="previewEmoji">🐶</span>
+<!-- ═══════════════════════════════════════════════════════════════ PAGE 1 -->
+<div class="page active" id="page1">
+  <h1>Choose Your Animal</h1>
+  <p class="sub" id="sub1">Pick an animal and background to represent you</p>
+
+  <div class="preview-card">
+    <div class="animal-circle" id="previewCircle" style="background:#1A2235">
+      <span id="previewEmoji">🐶</span>
+    </div>
+    <div class="preview-name" id="previewName">Player</div>
   </div>
-  <div class="preview-name" id="previewName">Player</div>
+
+  <div class="section">
+    <div class="section-label">Background Colour</div>
+    <div class="swatches" id="bgSwatches"></div>
+  </div>
+
+  <div class="section">
+    <div class="section-label">Animal</div>
+    <div class="grid" id="grid1"></div>
+  </div>
+
+  <!-- More animals arrow -->
+  <div class="nav-row">
+    <div class="nav-btn" onclick="goPage(2)">
+      <span>More Animals</span>
+      <span class="nav-arrow">→</span>
+    </div>
+  </div>
+
+  <button class="btn" id="doneBtn1" onclick="finish()">Let's Go →</button>
 </div>
 
-<div class="section">
-  <div class="section-label">Background Colour</div>
-  <div class="swatches" id="bgSwatches"></div>
-</div>
+<!-- ═══════════════════════════════════════════════════════════════ PAGE 2 -->
+<div class="page" id="page2">
+  <h1 style="margin-top:28px">More Animals</h1>
+  <p class="sub">Hundreds of extra animals to choose from</p>
 
-<div class="section">
-  <div class="section-label">Animal</div>
-  <div class="grid" id="animalGrid"></div>
-</div>
+  <!-- Mini preview at top -->
+  <div class="preview-card" style="padding:16px 24px;flex-direction:row;gap:16px;justify-content:center">
+    <div class="animal-circle" id="previewCircle2" style="background:#1A2235;width:64px;height:64px">
+      <span id="previewEmoji2" style="font-size:36px">🐶</span>
+    </div>
+    <div style="display:flex;flex-direction:column;justify-content:center">
+      <div style="font-size:13px;color:#94A3B8;margin-bottom:4px">Selected</div>
+      <div id="previewName2" style="font-size:15px;font-weight:600;color:#F1F5F9">Player</div>
+    </div>
+  </div>
 
-<button class="btn" id="doneBtn" onclick="finish()">Let's Go →</button>
+  <div class="section">
+    <div class="section-label">More Animals</div>
+    <div class="grid" id="grid2"></div>
+  </div>
+
+  <!-- Back arrow -->
+  <div class="nav-row">
+    <div class="nav-btn" onclick="goPage(1)">
+      <span class="nav-arrow">←</span>
+      <span>Back to Main</span>
+    </div>
+  </div>
+
+  <button class="btn" id="doneBtn2" onclick="finish()">Save →</button>
+</div>
 
 <script>
-// ── Firebase init ──────────────────────────────────────────────────────────
-const firebaseConfig = {
-  apiKey: 'AIzaSyCP1AcnDTU2umjR3cGycRxQ5mwOFq4Xjgg',
-  authDomain: 'capitalquest-4d20b.firebaseapp.com',
-  projectId: 'capitalquest-4d20b',
-  storageBucket: 'capitalquest-4d20b.firebasestorage.app',
-  messagingSenderId: '407589569541',
-  appId: '1:407589569541:web:3b8a543f03ad9f110ec86c'
-};
+// ── Firebase ───────────────────────────────────────────────────────────────
+const firebaseConfig={apiKey:'AIzaSyCP1AcnDTU2umjR3cGycRxQ5mwOFq4Xjgg',authDomain:'capitalquest-4d20b.firebaseapp.com',projectId:'capitalquest-4d20b',storageBucket:'capitalquest-4d20b.firebasestorage.app',messagingSenderId:'407589569541',appId:'1:407589569541:web:3b8a543f03ad9f110ec86c'};
 firebase.initializeApp(firebaseConfig);
-const auth = firebase.auth();
-const db = firebase.firestore();
+const auth=firebase.auth();
+const db=firebase.firestore();
+let currentUser=null;
+auth.onAuthStateChanged(u=>{currentUser=u;});
 
-let currentUser = null;
-auth.onAuthStateChanged(u => { currentUser = u; });
+// ── Route detection ────────────────────────────────────────────────────────
+const fromProfile=new URLSearchParams(window.location.search).get('from')==='profile';
 
-// ── Constants ──────────────────────────────────────────────────────────────
-const fromProfile = new URLSearchParams(window.location.search).get('from') === 'profile';
-
-const ANIMALS = [
+// ── Animal lists ───────────────────────────────────────────────────────────
+const ANIMALS_1=[
+  // Pets & big cats
   '🐶','🐱','🦁','🐯','🐻','🐼',
+  // Wild canids & marsupials
   '🦊','🐺','🐨','🦘','🦝','🦡',
+  // Birds
   '🐧','🦅','🦉','🦜','🦚','🦩',
+  // Fantasy & reptiles
   '🦄','🐉','🐸','🦎','🐢','🐊',
+  // Ocean
   '🦈','🐙','🐬','🐳','🦑','🦀',
+  // Large land animals
   '🐘','🦒','🦓','🦏','🦛','🐪',
+  // Small creatures
   '🦔','🦦','🦋','🐝','🐞','🦗',
+  // More mammals
   '🦭','🦬','🦫','🦙','🐑','🐗',
+  // More birds & aquatic
   '🦃','🐓','🐠','🐡','🦐','🦇',
+  // Extra
   '🦌','🐿','🦤','🐛','🕷','🦂',
 ];
 
-const BG_COLORS = [
-  '#1A2235','#7C3AED','#0369A1','#15803D',
-  '#B91C1C','#C2410C','#DB2777','#0F766E',
-  '#B45309','#475569',
+const ANIMALS_2_GROUPS=[
+  {label:'Primates',animals:['🐵','🐒','🦍','🦧']},
+  {label:'Wild Cats',animals:['🐅','🐆']},
+  {label:'Horses',animals:['🐴','🐎']},
+  {label:'Cattle & Farm',animals:['🐮','🐂','🐃','🐄','🐷','🐖','🐏','🐐']},
+  {label:'Camel & Giants',animals:['🐫','🦣','🦕','🦖']},
+  {label:'Rodents & Rabbits',animals:['🐭','🐁','🐀','🐹','🐰','🐇']},
+  {label:'Sloths & Skunks',animals:['🦥','🦨','🐲']},
+  {label:'Dogs & Cats',animals:['🐩','🦮','🐕','🐈','🐈\u200D\u2B1B']},
+  {label:'More Birds',animals:['🐔','🐣','🐤','🐥','🐦','🕊','🦆','🦢','🪶']},
+  {label:'More Ocean',animals:['🐋','🐟','🦞','🦪','🐚','🪸']},
+  {label:'Reptiles',animals:['🐍']},
+  {label:'More Bugs',animals:['🐌','🪲','🦟','🐜','🦠']},
+  {label:'Forest & Plains',animals:['🫎','🫏','🐾']},
+  {label:'Sea Extras',animals:['🐡','🐠','🦐','🦑','🐬','🐳','🐋','🦈','🐙']},
+  {label:'Bird Extras',animals:['🦅','🦉','🦜','🦚','🦩','🦃','🐓','🐧','🦇']},
+  {label:'Insect Extras',animals:['🦋','🐝','🐞','🦗','🕷','🦂','🐛','🐜','🪲']},
+  {label:'Mammal Extras',animals:['🦘','🦝','🦡','🦦','🦫','🦬','🦭','🦙','🐑','🐗']},
 ];
 
-let selected = ANIMALS[0];
-let bgColor = BG_COLORS[0];
-
-// ── Pre-fill with existing config ──────────────────────────────────────────
-try {
-  const db2 = JSON.parse(localStorage.getItem('capitalquest_mock_db') || '{}');
-  const uid = localStorage.getItem('capitalquest_current_user');
-  if (uid && db2.users?.[uid]) {
-    const u = db2.users[uid];
-    if (u.username) document.getElementById('previewName').textContent = u.username;
-    if (u.avatarConfig?.animal) selected = u.avatarConfig.animal;
-    if (u.avatarConfig?.bgColor) bgColor = u.avatarConfig.bgColor;
-  }
-} catch(e) {}
-
-// If from profile, also try to get username from auth
-if (fromProfile) {
-  auth.onAuthStateChanged(async u => {
-    if (!u) return;
-    try {
-      const snap = await db.collection('users').doc(u.uid).get();
-      if (snap.exists) {
-        const d = snap.data();
-        if (d.username) document.getElementById('previewName').textContent = d.username;
-        if (d.avatarConfig?.animal) {
-          selected = d.avatarConfig.animal;
-          document.getElementById('previewEmoji').textContent = selected;
-          document.querySelectorAll('.tile').forEach(el => el.classList.toggle('active', el.textContent === selected));
-        }
-        if (d.avatarConfig?.bgColor) {
-          bgColor = d.avatarConfig.bgColor;
-          document.getElementById('previewCircle').style.background = bgColor;
-          document.querySelectorAll('#bgSwatches .swatch').forEach(el => {
-            el.classList.toggle('active', el.dataset.hex === bgColor);
-          });
-        }
-      }
-    } catch(e) {}
-  });
-  document.getElementById('doneBtn').textContent = 'Save Changes';
-  document.querySelector('.sub').textContent = 'Update your animal and background';
+// Flatten page 2, deduplicate vs page 1
+const page1Set=new Set(ANIMALS_1);
+const ANIMALS_2=[];
+const seenP2=new Set();
+for(const g of ANIMALS_2_GROUPS){
+  const filtered=g.animals.filter(a=>!page1Set.has(a)&&!seenP2.has(a));
+  filtered.forEach(a=>seenP2.add(a));
+  if(filtered.length>0)ANIMALS_2.push({label:g.label,animals:filtered});
 }
 
-// ── Build UI ───────────────────────────────────────────────────────────────
-document.getElementById('previewCircle').style.background = bgColor;
-document.getElementById('previewEmoji').textContent = selected;
+// ── State ──────────────────────────────────────────────────────────────────
+const BG_COLORS=['#1A2235','#7C3AED','#0369A1','#15803D','#B91C1C','#C2410C','#DB2777','#0F766E','#B45309','#475569'];
+let selected=ANIMALS_1[0];
+let bgColor=BG_COLORS[0];
 
-// Background swatches
-const bgEl = document.getElementById('bgSwatches');
-BG_COLORS.forEach((hex, i) => {
-  const s = document.createElement('div');
-  s.className = 'swatch' + (hex === bgColor ? ' active' : '');
-  s.style.background = hex;
-  s.dataset.hex = hex;
-  s.onclick = () => {
-    bgColor = hex;
-    document.getElementById('previewCircle').style.background = hex;
-    document.querySelectorAll('#bgSwatches .swatch').forEach(x => x.classList.toggle('active', x.dataset.hex === hex));
-  };
+// ── Load existing config ───────────────────────────────────────────────────
+function applyExistingConfig(cfg,name){
+  if(name)['previewName','previewName2'].forEach(id=>{const el=document.getElementById(id);if(el)el.textContent=name;});
+  if(cfg?.animal){selected=cfg.animal;updatePreviews();}
+  if(cfg?.bgColor){bgColor=cfg.bgColor;updatePreviews();}
+}
+
+try{
+  const mockDb=JSON.parse(localStorage.getItem('capitalquest_mock_db')||'{}');
+  const uid=localStorage.getItem('capitalquest_current_user');
+  if(uid&&mockDb.users?.[uid]){
+    const u=mockDb.users[uid];
+    applyExistingConfig(u.avatarConfig,u.username);
+  }
+}catch(e){}
+
+if(fromProfile){
+  ['doneBtn1','doneBtn2'].forEach(id=>{const el=document.getElementById(id);if(el)el.textContent='Save Changes';});
+  const s=document.getElementById('sub1');if(s)s.textContent='Update your animal and background';
+  auth.onAuthStateChanged(async u=>{
+    if(!u)return;
+    try{
+      const snap=await db.collection('users').doc(u.uid).get();
+      if(snap.exists){const d=snap.data();applyExistingConfig(d.avatarConfig,d.username);}
+    }catch(e){}
+  });
+}
+
+// ── Helpers ────────────────────────────────────────────────────────────────
+function updatePreviews(){
+  ['previewCircle','previewCircle2'].forEach(id=>{const el=document.getElementById(id);if(el)el.style.background=bgColor;});
+  ['previewEmoji','previewEmoji2'].forEach(id=>{const el=document.getElementById(id);if(el)el.textContent=selected;});
+  document.querySelectorAll('.tile').forEach(el=>el.classList.toggle('active',el.dataset.emoji===selected));
+  document.querySelectorAll('.swatch').forEach(el=>el.classList.toggle('active',el.dataset.hex===bgColor));
+}
+
+function selectAnimal(emoji){selected=emoji;updatePreviews();}
+
+// ── Build background swatches ──────────────────────────────────────────────
+const bgEl=document.getElementById('bgSwatches');
+BG_COLORS.forEach(hex=>{
+  const s=document.createElement('div');
+  s.className='swatch'+(hex===bgColor?' active':'');
+  s.style.background=hex;
+  s.dataset.hex=hex;
+  s.onclick=()=>{bgColor=hex;updatePreviews();};
   bgEl.appendChild(s);
 });
 
-// Animal grid
-const grid = document.getElementById('animalGrid');
-ANIMALS.forEach(emoji => {
-  const t = document.createElement('div');
-  t.className = 'tile' + (emoji === selected ? ' active' : '');
-  t.textContent = emoji;
-  t.onclick = () => {
-    selected = emoji;
-    document.getElementById('previewEmoji').textContent = emoji;
-    document.querySelectorAll('.tile').forEach(el => el.classList.toggle('active', el.textContent === emoji));
-  };
-  grid.appendChild(t);
+// ── Build page 1 grid ──────────────────────────────────────────────────────
+const g1=document.getElementById('grid1');
+ANIMALS_1.forEach(emoji=>{
+  const t=document.createElement('div');
+  t.className='tile'+(emoji===selected?' active':'');
+  t.textContent=emoji;
+  t.dataset.emoji=emoji;
+  t.onclick=()=>selectAnimal(emoji);
+  g1.appendChild(t);
 });
 
+// ── Build page 2 grid ──────────────────────────────────────────────────────
+const g2=document.getElementById('grid2');
+ANIMALS_2.forEach(({label,animals})=>{
+  const lbl=document.createElement('div');
+  lbl.className='cat-label';
+  lbl.textContent=label;
+  g2.appendChild(lbl);
+  animals.forEach(emoji=>{
+    const t=document.createElement('div');
+    t.className='tile'+(emoji===selected?' active':'');
+    t.textContent=emoji;
+    t.dataset.emoji=emoji;
+    t.onclick=()=>selectAnimal(emoji);
+    g2.appendChild(t);
+  });
+});
+
+// ── Page navigation ────────────────────────────────────────────────────────
+function goPage(n){
+  document.getElementById('page1').classList.toggle('active',n===1);
+  document.getElementById('page2').classList.toggle('active',n===2);
+  window.scrollTo(0,0);
+}
+
 // ── Save ───────────────────────────────────────────────────────────────────
-async function finish() {
-  const btn = document.getElementById('doneBtn');
-  btn.disabled = true;
-  btn.textContent = 'Saving…';
-
-  const avatarConfig = { animal: selected, bgColor };
-
-  if (fromProfile && currentUser) {
-    // Save directly to Firebase and return to app
-    try {
-      await db.collection('users').doc(currentUser.uid).update({ avatarConfig });
-    } catch(e) {
-      // Fallback: at least save locally so the app picks it up on reload
-      localStorage.setItem('pendingAvatarConfig', JSON.stringify(avatarConfig));
-    }
-    window.location.href = '/';
-  } else {
-    // Onboarding flow: save to localStorage, setup screen applies it
-    localStorage.setItem('pendingAvatarConfig', JSON.stringify(avatarConfig));
-    window.location.href = '/setup';
+async function finish(){
+  ['doneBtn1','doneBtn2'].forEach(id=>{const el=document.getElementById(id);if(el){el.disabled=true;el.textContent='Saving…';}});
+  const avatarConfig={animal:selected,bgColor};
+  if(fromProfile&&currentUser){
+    try{await db.collection('users').doc(currentUser.uid).update({avatarConfig});}
+    catch(e){localStorage.setItem('pendingAvatarConfig',JSON.stringify(avatarConfig));}
+    window.location.href='/';
+  }else{
+    localStorage.setItem('pendingAvatarConfig',JSON.stringify(avatarConfig));
+    window.location.href='/setup';
   }
 }
+
+// Initial render
+updatePreviews();
 </script>
 </body>
 </html>
