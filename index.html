@@ -790,9 +790,8 @@ input::-webkit-search-cancel-button,input::-webkit-search-decoration,input::-web
           // Fully set up — go straight to dashboard
           window.location.replace('/dashboard');
         } else {
-          // New user mid-onboarding — hide overlay, let React Native handle setup
-          var el=document.getElementById('cqw');
-          if(el)el.style.display='none';
+          // New user mid-onboarding — send them to continue setup
+          window.location.replace('/avatar-setup.html');
         }
       }).catch(function(){
         // On error, sign out to be safe — show welcome screen
