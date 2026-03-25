@@ -8,9 +8,11 @@ service cloud.firestore {
       allow write: if request.auth.uid == userId;
     }
 
-    // Portfolios: owner only
+    // Portfolios: any authenticated user can read (needed for leaderboard);
+    // only owner can write
     match /portfolios/{userId} {
-      allow read, write: if request.auth.uid == userId;
+      allow read: if request.auth != null;
+      allow write: if request.auth.uid == userId;
     }
 
     // Transactions: owner only
