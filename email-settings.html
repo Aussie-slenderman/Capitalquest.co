@@ -2,293 +2,201 @@
 <html lang="en">
 <head>
 <meta charset="utf-8"/>
-<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1"/>
-<title>Email Updates — CapitalQuest</title>
+<meta name="viewport" content="width=device-width,initial-scale=1"/>
+<title>Email Reports — CapitalQuest</title>
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+body{background:#0A0E1A;color:#F1F5F9;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;min-height:100vh}
+.header{padding:calc(env(safe-area-inset-top,14px)+14px) 20px 14px;display:flex;align-items:center;gap:14px;background:#111827;border-bottom:1px solid #1A2235}
+.back-btn{background:none;border:none;color:#94A3B8;font-size:22px;cursor:pointer;padding:4px 8px;border-radius:8px;line-height:1}
+.header h1{font-size:20px;font-weight:800}
+.content{padding:24px 20px;max-width:500px;margin:0 auto}
+.card{background:#111827;border:1px solid #1A2235;border-radius:16px;padding:20px;margin-bottom:16px}
+.card-title{font-size:13px;font-weight:700;color:#94A3B8;text-transform:uppercase;letter-spacing:.06em;margin-bottom:14px}
+.status-row{display:flex;align-items:center;gap:10px;margin-bottom:6px}
+.status-dot{width:10px;height:10px;border-radius:50%;flex-shrink:0}
+.status-dot.on{background:#00C853}
+.status-dot.off{background:#475569}
+.status-label{font-size:15px;font-weight:600}
+.status-sub{font-size:13px;color:#475569;margin-bottom:16px}
+.input-label{font-size:13px;font-weight:600;color:#94A3B8;margin-bottom:6px;display:block}
+.eq-input{width:100%;padding:13px 15px;background:#0A0E1A;border:1.5px solid #1A2235;border-radius:12px;font-size:15px;color:#F1F5F9;outline:none;margin-bottom:12px}
+.eq-input:focus{border-color:#00B3E6}
+.hint{font-size:12px;color:#475569;line-height:1.6;padding:10px 12px;background:#0A0E1A;border-radius:10px;border-left:3px solid #00B3E6;margin-bottom:16px}
+.btn-primary{width:100%;padding:14px;background:linear-gradient(90deg,#00B3E6,#0096C7);border:none;border-radius:12px;color:#fff;font-size:15px;font-weight:700;cursor:pointer;margin-bottom:10px}
+.btn-danger{width:100%;padding:12px;background:none;border:1px solid #FF3D5755;border-radius:12px;color:#FF3D57;font-size:14px;font-weight:600;cursor:pointer}
+.err{color:#FF3D57;font-size:13px;margin-bottom:10px;display:none}
+.suc{color:#00C853;font-size:13px;margin-bottom:10px;display:none}
+.step{display:none}.step.active{display:block}
+.code-row{display:flex;gap:8px;justify-content:center;margin-bottom:12px}
+.code-box{width:44px;height:52px;background:#0A0E1A;border:1.5px solid #1A2235;border-radius:10px;font-size:22px;font-weight:700;color:#F1F5F9;text-align:center;outline:none;-moz-appearance:textfield}
+.code-box:focus{border-color:#00B3E6}
+.code-box::-webkit-outer-spin-button,.code-box::-webkit-inner-spin-button{-webkit-appearance:none}
+.spinner{display:inline-block;width:18px;height:18px;border:2px solid #ffffff55;border-top-color:#fff;border-radius:50%;animation:spin .7s linear infinite;vertical-align:middle;margin-right:6px}
+@keyframes spin{to{transform:rotate(360deg)}}
+</style>
+</head>
+<body>
+<div class="header">
+  <button class="back-btn" onclick="history.back()">←</button>
+  <h1>📧 Email Reports</h1>
+</div>
+<div class="content">
+
+  <!-- Step 1: status / enter email -->
+  <div class="step active" id="step1">
+    <div class="card">
+      <div class="card-title">Weekly Report Status</div>
+      <div class="status-row">
+        <div class="status-dot off" id="status-dot"></div>
+        <span class="status-label" id="status-label">Loading…</span>
+      </div>
+      <p class="status-sub" id="status-sub"></p>
+      <label class="input-label" id="email-label">Email address</label>
+      <input class="eq-input" id="eq-email" type="email" placeholder="you@example.com" autocomplete="email"/>
+      <div class="hint">Every Monday you'll receive a portfolio summary with your gains/losses, top performers, and a breakdown of all your holdings.</div>
+      <div class="err" id="err1"></div>
+      <div class="suc" id="suc1"></div>
+      <button class="btn-primary" id="send-btn" onclick="sendCode()">Send Verification Code</button>
+      <button class="btn-danger" id="remove-btn" style="display:none" onclick="removeEmail()">Remove Email &amp; Stop Reports</button>
+    </div>
+  </div>
+
+  <!-- Step 2: enter code -->
+  <div class="step" id="step2">
+    <div class="card">
+      <div class="card-title">Verify Your Email</div>
+      <p style="color:#94A3B8;font-size:14px;margin-bottom:16px" id="sent-to">Enter the 6-digit code we sent.</p>
+      <div class="code-row">
+        <input class="code-box" id="c0" maxlength="1" type="number" inputmode="numeric" oninput="codeInput(this,0)"/>
+        <input class="code-box" id="c1" maxlength="1" type="number" inputmode="numeric" oninput="codeInput(this,1)"/>
+        <input class="code-box" id="c2" maxlength="1" type="number" inputmode="numeric" oninput="codeInput(this,2)"/>
+        <input class="code-box" id="c3" maxlength="1" type="number" inputmode="numeric" oninput="codeInput(this,3)"/>
+        <input class="code-box" id="c4" maxlength="1" type="number" inputmode="numeric" oninput="codeInput(this,4)"/>
+        <input class="code-box" id="c5" maxlength="1" type="number" inputmode="numeric" oninput="codeInput(this,5)"/>
+      </div>
+      <div class="err" id="err2"></div>
+      <button class="btn-primary" onclick="verify()">Verify</button>
+      <button class="btn-danger" onclick="showStep(1)" style="border-color:#1A2235;color:#94A3B8;margin-top:4px">← Back</button>
+    </div>
+  </div>
+
+  <!-- Step 3: success -->
+  <div class="step" id="step3">
+    <div class="card" style="text-align:center;padding:32px 20px">
+      <div style="font-size:52px;margin-bottom:12px">✅</div>
+      <h2 style="font-size:20px;font-weight:800;margin-bottom:8px">You're subscribed!</h2>
+      <p style="color:#94A3B8;font-size:14px;line-height:1.6">Your first weekly report will arrive next Monday. We'll include your portfolio value, weekly gain/loss, and a full breakdown of your holdings.</p>
+      <button class="btn-primary" style="margin-top:24px" onclick="history.back()">Done</button>
+    </div>
+  </div>
+
+</div>
+
 <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-auth-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore-compat.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/@emailjs/browser@4/dist/email.min.js"></script>
-<style>
-*{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent}
-html,body{background:#0A0E1A;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;color:#F1F5F9;min-height:100vh}
-.topbar{display:flex;align-items:center;gap:12px;padding:16px 20px;border-bottom:1px solid #1A2235;background:#0A0E1A;position:sticky;top:0;z-index:10}
-.back-btn{display:flex;align-items:center;gap:6px;background:#111827;border:1px solid #1A2235;border-radius:10px;padding:8px 14px;color:#94A3B8;font-size:14px;font-weight:600;cursor:pointer;text-decoration:none;transition:border-color 0.12s,color 0.12s}
-.back-btn:hover{border-color:#00B3E6;color:#00B3E6}
-.topbar-title{font-size:17px;font-weight:700;color:#F1F5F9}
-.page{max-width:460px;margin:0 auto;padding:24px 20px 80px}
-.card{background:#111827;border:1px solid #1A2235;border-radius:18px;padding:24px;margin-bottom:16px}
-.card-title{font-size:16px;font-weight:700;margin-bottom:6px;color:#F1F5F9}
-.card-sub{font-size:13px;color:#94A3B8;line-height:1.6;margin-bottom:0}
-.status-badge{display:inline-flex;align-items:center;gap:6px;padding:6px 12px;border-radius:20px;font-size:13px;font-weight:600;margin-top:14px}
-.status-badge.verified{background:rgba(0,200,83,0.15);color:#00C853;border:1px solid rgba(0,200,83,0.3)}
-.status-badge.not-set{background:rgba(148,163,184,0.1);color:#94A3B8;border:1px solid #1A2235}
-.current-email{font-size:14px;color:#F1F5F9;font-weight:600;margin-top:8px}
-.divider{border:none;border-top:1px solid #1A2235;margin:20px 0}
-.section-label{font-size:13px;font-weight:600;color:#94A3B8;margin-bottom:10px;display:block}
-.es-input{width:100%;padding:13px 15px;background:#0A0E1A;border:1.5px solid #1A2235;border-radius:12px;font-size:15px;color:#F1F5F9;outline:none;margin-bottom:8px}
-.es-input:focus{border-color:#00B3E6}
-.es-hint{font-size:12px;color:#475569;line-height:1.5;margin-bottom:20px;padding:10px 12px;background:#0A0E1A;border-radius:10px;border-left:3px solid #00B3E6}
-.es-btn-primary{width:100%;padding:14px;background:linear-gradient(90deg,#00B3E6,#0096C7);border:none;border-radius:12px;color:#fff;font-size:15px;font-weight:700;cursor:pointer;margin-bottom:10px;transition:opacity 0.15s}
-.es-btn-primary:hover{opacity:0.9}
-.es-btn-primary:disabled{opacity:0.6;cursor:not-allowed}
-.es-btn-danger{width:100%;padding:12px;background:none;border:1px solid rgba(255,61,87,0.4);border-radius:12px;color:#FF3D57;font-size:14px;font-weight:600;cursor:pointer;transition:border-color 0.12s}
-.es-btn-danger:hover{border-color:#FF3D57}
-.es-err{color:#FF3D57;font-size:13px;margin-bottom:10px;display:none}
-.es-success-msg{color:#00C853;font-size:13px;margin-bottom:10px;display:none}
-.es-step{display:none}
-.es-step.active{display:block}
-.code-row{display:flex;gap:8px;justify-content:center;margin-bottom:8px}
-.code-box{width:44px;height:52px;background:#0A0E1A;border:1.5px solid #1A2235;border-radius:10px;font-size:22px;font-weight:700;color:#F1F5F9;text-align:center;outline:none;-moz-appearance:textfield}
-.code-box:focus{border-color:#00B3E6}
-.code-box::-webkit-outer-spin-button,.code-box::-webkit-inner-spin-button{-webkit-appearance:none}
-.es-btn-back{width:100%;padding:12px;background:none;border:1px solid #1A2235;border-radius:12px;color:#475569;font-size:14px;font-weight:600;cursor:pointer}
-.success-card{text-align:center;padding:20px 0}
-.success-card .tick{font-size:52px;display:block;margin-bottom:12px}
-.success-card h2{font-size:18px;font-weight:800;margin-bottom:8px}
-.success-card p{font-size:14px;color:#94A3B8;line-height:1.6}
-.loading{display:flex;justify-content:center;align-items:center;height:200px;color:#475569;font-size:15px}
-</style>
-</head>
-<body>
-
-<div class="topbar">
-  <a class="back-btn" href="/home">← Back</a>
-  <span class="topbar-title">Email Updates</span>
-</div>
-
-<div class="page">
-
-  <!-- Current status card -->
-  <div class="card" id="status-card">
-    <div class="loading" id="status-loading">Loading…</div>
-    <div id="status-content" style="display:none">
-      <div class="card-title">📧 Weekly Portfolio Updates</div>
-      <div class="card-sub">Every Monday morning we'll send you a summary of your portfolio performance, your top holdings, and a 7-day chart.</div>
-      <div id="verified-status"></div>
-    </div>
-  </div>
-
-  <!-- Form card -->
-  <div class="card" id="form-card" style="display:none">
-
-    <!-- Step 1: Enter email -->
-    <div class="es-step active" id="es-step1">
-      <span class="section-label" id="form-title">Enter your email address</span>
-      <input class="es-input" id="es-email" type="email" placeholder="you@example.com" autocomplete="email"/>
-      <div class="es-hint">We'll send a verification code to confirm it's yours. You can unsubscribe any time from any email we send.</div>
-      <div class="es-err" id="es-err1"></div>
-      <button class="es-btn-primary" id="send-btn" onclick="esSendCode()">Send Verification Code</button>
-    </div>
-
-    <!-- Step 2: Enter code -->
-    <div class="es-step" id="es-step2">
-      <span class="section-label">Enter the 6-digit code</span>
-      <p style="font-size:13px;color:#94A3B8;margin-bottom:14px" id="es-sent-to">We sent a code to your email.</p>
-      <div class="code-row">
-        <input class="code-box" id="c0" maxlength="1" type="number" inputmode="numeric" oninput="esCodeInput(this,0)"/>
-        <input class="code-box" id="c1" maxlength="1" type="number" inputmode="numeric" oninput="esCodeInput(this,1)"/>
-        <input class="code-box" id="c2" maxlength="1" type="number" inputmode="numeric" oninput="esCodeInput(this,2)"/>
-        <input class="code-box" id="c3" maxlength="1" type="number" inputmode="numeric" oninput="esCodeInput(this,3)"/>
-        <input class="code-box" id="c4" maxlength="1" type="number" inputmode="numeric" oninput="esCodeInput(this,4)"/>
-        <input class="code-box" id="c5" maxlength="1" type="number" inputmode="numeric" oninput="esCodeInput(this,5)"/>
-      </div>
-      <div class="es-err" id="es-err2"></div>
-      <button class="es-btn-primary" onclick="esVerify()">Verify Code</button>
-      <button class="es-btn-back" onclick="esBack()">← Back</button>
-    </div>
-
-    <!-- Step 3: Success -->
-    <div class="es-step" id="es-step3">
-      <div class="success-card">
-        <span class="tick">✅</span>
-        <h2>Email verified!</h2>
-        <p>Your notification email has been saved. You'll receive your first weekly update next Monday morning.</p>
-      </div>
-    </div>
-
-  </div>
-
-  <!-- Remove email card (shown when email is set) -->
-  <div class="card" id="remove-card" style="display:none">
-    <div class="card-title" style="margin-bottom:8px;color:#FF3D57">Remove Email</div>
-    <div class="card-sub" style="margin-bottom:16px">Stop receiving weekly portfolio updates.</div>
-    <button class="es-btn-danger" onclick="esRemoveEmail()">Remove notification email</button>
-  </div>
-
-</div>
-
 <script>
-// ── Firebase ─────────────────────────────────────────────────────────────────
-firebase.initializeApp({
-  apiKey:'AIzaSyCP1AcnDTU2umjR3cGycRxQ5mwOFq4Xjgg',
-  authDomain:'capitalquest-4d20b.firebaseapp.com',
-  projectId:'capitalquest-4d20b',
-  storageBucket:'capitalquest-4d20b.firebasestorage.app',
-  messagingSenderId:'407589569541',
-  appId:'1:407589569541:web:3b8a543f03ad9f110ec86c'
-});
-const auth = firebase.auth();
-const db   = firebase.firestore();
+try{firebase.initializeApp({apiKey:'AIzaSyCP1AcnDTU2umjR3cGycRxQ5mwOFq4Xjgg',authDomain:'capitalquest-4d20b.firebaseapp.com',projectId:'capitalquest-4d20b',storageBucket:'capitalquest-4d20b.firebasestorage.app',messagingSenderId:'407589569541',appId:'1:407589569541:web:3b8a543f03ad9f110ec86c'});}catch(e){}
+emailjs.init({publicKey:'lneCy8iqRXbKjHt2A'});
 
-// ── EmailJS config ────────────────────────────────────────────────────────────
-const EJ_PUBLIC_KEY  = 'YOUR_EMAILJS_PUBLIC_KEY';
-const EJ_SERVICE_ID  = 'YOUR_EMAILJS_SERVICE_ID';
-const EJ_TEMPLATE_ID = 'YOUR_EMAILJS_TEMPLATE_ID';
-const CONFIGURED = EJ_PUBLIC_KEY !== 'YOUR_EMAILJS_PUBLIC_KEY';
-if(CONFIGURED) emailjs.init({publicKey: EJ_PUBLIC_KEY});
+const auth=firebase.auth(), db=firebase.firestore();
+const EJ_SERVICE='service_upj3ydy', EJ_OTP_TPL='template_4teeuzl';
+let me=null, _code='', _email='';
 
-let _code  = '';
-let _email = '';
-let _user  = null;
-let _currentNotifEmail = null;
-
-// ── Auth guard ────────────────────────────────────────────────────────────────
-auth.onAuthStateChanged(async u => {
-  if(!u){
-    window.location.href = '/login';
-    return;
-  }
-  _user = u;
-  await loadStatus();
+auth.onAuthStateChanged(async u=>{
+  if(!u){window.location.replace('/login');return;}
+  me=u;
+  loadStatus();
 });
 
 async function loadStatus(){
   try{
-    const snap = await db.collection('users').doc(_user.uid).get();
-    const data = snap.exists ? snap.data() : {};
-    _currentNotifEmail = data.notificationEmail || null;
-    const isVerified   = data.emailVerified === true && _currentNotifEmail;
-
-    document.getElementById('status-loading').style.display = 'none';
-    document.getElementById('status-content').style.display = 'block';
-
-    const statusEl = document.getElementById('verified-status');
-    if(isVerified){
-      statusEl.innerHTML =
-        '<div class="status-badge verified">✅ Subscribed</div>' +
-        '<div class="current-email">' + escHtml(_currentNotifEmail) + '</div>';
-      // Show change + remove options
-      document.getElementById('form-title').textContent = 'Change email address';
-      document.getElementById('es-email').placeholder = _currentNotifEmail;
-      document.getElementById('form-card').style.display = 'block';
-      document.getElementById('remove-card').style.display = 'block';
+    const snap=await db.collection('users').doc(me.uid).get();
+    const d=snap.data()||{};
+    const email=d.notificationEmail||'';
+    const verified=d.emailVerified||false;
+    const dot=document.getElementById('status-dot');
+    const lbl=document.getElementById('status-label');
+    const sub=document.getElementById('status-sub');
+    const inp=document.getElementById('eq-email');
+    const removeBtn=document.getElementById('remove-btn');
+    const sendBtn=document.getElementById('send-btn');
+    const emailLabel=document.getElementById('email-label');
+    if(email&&verified){
+      dot.className='status-dot on';
+      lbl.textContent='Active — reports enabled';
+      sub.textContent='Sending to '+email+' every Monday.';
+      inp.value=email;
+      emailLabel.textContent='Change email address';
+      sendBtn.textContent='Update Email';
+      removeBtn.style.display='block';
     }else{
-      statusEl.innerHTML = '<div class="status-badge not-set">Not subscribed</div>';
-      document.getElementById('form-title').textContent = 'Enter your email address';
-      document.getElementById('form-card').style.display = 'block';
+      dot.className='status-dot off';
+      lbl.textContent='Not set up';
+      sub.textContent='Enter your email below to receive weekly reports.';
+      removeBtn.style.display='none';
     }
-  }catch(e){
-    document.getElementById('status-loading').textContent = 'Failed to load. Please refresh.';
-  }
+  }catch(e){}
 }
 
-function escHtml(s){
-  return s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+function showStep(n){
+  document.querySelectorAll('.step').forEach((s,i)=>{s.classList.toggle('active',i===n-1);});
 }
 
-// ── Send code ─────────────────────────────────────────────────────────────────
-window.esSendCode = async function(){
-  const email = document.getElementById('es-email').value.trim();
-  const err   = document.getElementById('es-err1');
-  err.style.display = 'none';
-  if(!email || !email.includes('@') || !email.includes('.')){
-    err.textContent = 'Please enter a valid email address.';
-    err.style.display = 'block';
-    return;
+async function sendCode(){
+  const email=document.getElementById('eq-email').value.trim();
+  const err=document.getElementById('err1');
+  err.style.display='none';
+  if(!email||!email.includes('@')||!email.includes('.')){
+    err.textContent='Please enter a valid email address.';err.style.display='block';return;
   }
-  _email = email;
-  _code  = String(Math.floor(100000 + Math.random() * 900000));
-
-  const btn = document.getElementById('send-btn');
-  btn.disabled = true;
-  btn.textContent = 'Sending…';
-
+  _email=email;
+  _code=String(Math.floor(100000+Math.random()*900000));
+  const btn=document.getElementById('send-btn');
+  btn.innerHTML='<span class="spinner"></span>Sending…';btn.disabled=true;
   try{
-    await db.collection('users').doc(_user.uid).update({
-      emailVerification: {pendingEmail: _email, code: _code, sentAt: Date.now()}
+    await emailjs.send(EJ_SERVICE,EJ_OTP_TPL,{
+      email:_email,passcode:_code,
+      time:new Date(Date.now()+15*60000).toLocaleTimeString(),
+      to_name:me.displayName||'Player'
     });
-  }catch(e){}
-
-  if(CONFIGURED){
-    try{
-      await emailjs.send(EJ_SERVICE_ID, EJ_TEMPLATE_ID, {
-        to_email: _email,
-        code: _code,
-        username: _user.displayName || 'Player'
-      });
-    }catch(e){
-      err.textContent = 'Could not send email. Please check your EmailJS setup.';
-      err.style.display = 'block';
-      btn.disabled = false;
-      btn.textContent = 'Send Verification Code';
-      return;
-    }
-  }else{
-    console.log('DEV — verification code:', _code);
-    alert('DEV MODE: EmailJS not configured.\nYour code is: ' + _code + '\n\n(Check the browser console too)');
-  }
-
-  document.getElementById('es-sent-to').textContent = 'We sent a 6-digit code to ' + _email;
-  document.getElementById('es-step1').classList.remove('active');
-  document.getElementById('es-step2').classList.add('active');
-  btn.disabled = false;
-  btn.textContent = 'Send Verification Code';
-  setTimeout(() => document.getElementById('c0').focus(), 100);
-};
-
-// ── Code input ────────────────────────────────────────────────────────────────
-window.esCodeInput = function(el, idx){
-  const v = el.value.replace(/\D/g, '');
-  el.value = v.slice(-1);
-  if(el.value && idx < 5) document.getElementById('c' + (idx + 1)).focus();
-};
-
-// ── Verify ────────────────────────────────────────────────────────────────────
-window.esVerify = async function(){
-  const entered = [0,1,2,3,4,5].map(i => document.getElementById('c' + i).value).join('');
-  const err = document.getElementById('es-err2');
-  err.style.display = 'none';
-  if(entered.length < 6){
-    err.textContent = 'Please enter all 6 digits.';
-    err.style.display = 'block';
-    return;
-  }
-  if(entered !== _code){
-    err.textContent = 'Incorrect code. Please try again.';
-    err.style.display = 'block';
-    return;
-  }
-  try{
-    await db.collection('users').doc(_user.uid).update({
-      notificationEmail: _email,
-      emailVerified: true,
-      emailVerification: null
-    });
-  }catch(e){}
-  document.getElementById('es-step2').classList.remove('active');
-  document.getElementById('es-step3').classList.add('active');
-  document.getElementById('remove-card').style.display = 'none';
-};
-
-// ── Back ──────────────────────────────────────────────────────────────────────
-window.esBack = function(){
-  document.getElementById('es-step2').classList.remove('active');
-  document.getElementById('es-step1').classList.add('active');
-};
-
-// ── Remove email ──────────────────────────────────────────────────────────────
-window.esRemoveEmail = async function(){
-  if(!confirm('Stop receiving weekly portfolio emails?')) return;
-  try{
-    await db.collection('users').doc(_user.uid).update({
-      notificationEmail: firebase.firestore.FieldValue.delete(),
-      emailVerified: false
-    });
-    window.location.reload();
+    document.getElementById('sent-to').textContent='We sent a 6-digit code to '+_email;
+    showStep(2);
+    setTimeout(()=>document.getElementById('c0').focus(),100);
   }catch(e){
-    alert('Failed to remove email. Please try again.');
+    err.textContent='Could not send email. Please try again.';err.style.display='block';
   }
-};
+  btn.innerHTML='Send Verification Code';btn.disabled=false;
+}
+
+function codeInput(el,idx){
+  el.value=el.value.slice(-1);
+  if(el.value&&idx<5)document.getElementById('c'+(idx+1)).focus();
+}
+
+async function verify(){
+  const entered=[0,1,2,3,4,5].map(i=>document.getElementById('c'+i).value).join('');
+  const err=document.getElementById('err2');
+  err.style.display='none';
+  if(entered.length<6){err.textContent='Please enter all 6 digits.';err.style.display='block';return;}
+  if(entered!==_code){err.textContent='Incorrect code. Please try again.';err.style.display='block';return;}
+  try{
+    await db.collection('users').doc(me.uid).update({notificationEmail:_email,emailVerified:true,emailVerification:null});
+  }catch(e){}
+  showStep(3);
+}
+
+async function removeEmail(){
+  if(!confirm('Stop receiving weekly reports and remove your email?'))return;
+  try{
+    await db.collection('users').doc(me.uid).update({notificationEmail:null,emailVerified:false});
+    loadStatus();
+    const s=document.getElementById('suc1');s.textContent='Email removed. Reports stopped.';s.style.display='block';
+    setTimeout(()=>s.style.display='none',3000);
+  }catch(e){}
+}
 </script>
 </body>
 </html>

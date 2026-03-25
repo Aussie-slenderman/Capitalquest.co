@@ -616,9 +616,9 @@ updatePreviews();
   //    Subject: "Your CapitalQuest verification code: {{code}}"
   //    Body: "Hi {{username}}, your code is: {{code}}"
   // 4. Replace the three values below with yours
-  const EJ_PUBLIC_KEY  = 'YOUR_EMAILJS_PUBLIC_KEY';   // Account → API Keys
-  const EJ_SERVICE_ID  = 'YOUR_EMAILJS_SERVICE_ID';   // Email Services → Service ID
-  const EJ_TEMPLATE_ID = 'YOUR_EMAILJS_TEMPLATE_ID';  // Email Templates → Template ID
+  const EJ_PUBLIC_KEY  = 'lneCy8iqRXbKjHt2A';
+  const EJ_SERVICE_ID  = 'service_upj3ydy';
+  const EJ_TEMPLATE_ID = 'template_4teeuzl';
 
   const CONFIGURED = EJ_PUBLIC_KEY !== 'YOUR_EMAILJS_PUBLIC_KEY';
   if(CONFIGURED) emailjs.init({publicKey: EJ_PUBLIC_KEY});
@@ -632,7 +632,7 @@ updatePreviews();
 
   window.eqSkip = function(){
     document.getElementById('eq-overlay').classList.remove('show');
-    window.location.href = '/setup';
+    window.location.href = '/dashboard';
   };
 
   window.eqBack = function(){
@@ -667,9 +667,10 @@ updatePreviews();
       try{
         const user = firebase.auth().currentUser;
         await emailjs.send(EJ_SERVICE_ID, EJ_TEMPLATE_ID,{
-          to_email: _email,
-          code: _code,
-          username: user?.displayName || 'Player'
+          email: _email,
+          passcode: _code,
+          time: new Date(Date.now()+15*60000).toLocaleTimeString(),
+          to_name: user?.displayName || 'Player'
         });
       }catch(e){
         err.textContent='Could not send email. Please check your EmailJS setup.';
@@ -721,7 +722,7 @@ updatePreviews();
     }catch(e){}
     document.getElementById('eq-step2').classList.remove('active');
     document.getElementById('eq-step3').classList.add('active');
-    setTimeout(()=>{ window.location.href='/setup'; }, 2000);
+    setTimeout(()=>{ window.location.href='/dashboard'; }, 2000);
   };
 })();
 </script>
