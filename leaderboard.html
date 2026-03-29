@@ -818,7 +818,7 @@ input::-webkit-search-cancel-button,input::-webkit-search-decoration,input::-web
       allPlayers=[];
       uSnap.docs.forEach(d=>{
         const u=d.data();
-        if(!u.username && !u.displayName)return; // only skip truly empty accounts
+        if(!d.id)return; // include all registered accounts
         const p=ptf[d.id]||{};
         const gd=typeof p.totalGainLoss==='number'?p.totalGainLoss:((p.totalValue||0)-(p.startingBalance||10000));
         allPlayers.push({userId:d.id,username:u.username||'',displayName:u.displayName||u.username||'Player',level:u.level||1,country:u.country||'',avatarConfig:u.avatarConfig||null,startingBalance:p.startingBalance||10000,currentValue:p.totalValue||0,gainDollars:gd,isMe:d.id===me?.uid});
