@@ -221,7 +221,7 @@ function renderTable(users){
     <th>Level</th><th>Status</th><th>Joined</th><th>Actions</th>
   </tr></thead><tbody>`;
   users.forEach(u=>{
-    const av=29u.avatarConfig?.animal||'👤';
+    const av=30u.avatarConfig?.animal||'👤';
     const gain=u.gainLoss;
     const gainStr=(gain>=0?'+':'')+fmt(gain);
     const gainCls=gain>=0?'gain-pos':'gain-neg';
