@@ -11,6 +11,7 @@ export default function AuthLayout() {
       }}
     >
       <Stack.Screen name="avatar" options={{ headerShown: false }} />
+      <Stack.Screen name="terms" options={{ headerShown: false }} />
     </Stack>
   );
 }

@@ -80,7 +80,7 @@ export default function AvatarScreen() {
     if (fromProfile) {
       router.back();
     } else {
-      router.replace('/(auth)/setup');
+      router.replace('/(auth)/terms');
     }
   };
 
