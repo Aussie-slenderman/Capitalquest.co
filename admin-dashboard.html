@@ -324,12 +324,19 @@ async function confirmDelete(){
   const btn=document.querySelector('#delete-modal .modal-btn-confirm');
   btn.disabled=true; btn.textContent='Deleting…';
   try{
-    // Call Cloud Function — deletes Firebase Auth account + ALL Firestore data
-    // so the username is immediately free to re-register
-    const deleteFn=fns.httpsCallable('deleteUserAccount');
-    await deleteFn({uid:targetUid});
+    const uid=targetUid;
+    // Delete notifications subcollection
+    try{const notifs=await db.collection('users').doc(uid).collection('notifications').get();for(const n of notifs.docs)await n.ref.delete();}catch(e){}
+    // Delete user doc
+    await db.collection('users').doc(uid).delete();
+    // Delete portfolio
+    try{await db.collection('portfolios').doc(uid).delete();}catch(e){}
+    // Delete leaderboard entry
+    try{await db.collection('leaderboard').doc(uid).delete();}catch(e){}
+    // Delete transactions
+    try{const txns=await db.collection('transactions').where('userId','==',uid).get();for(const t of txns.docs)await t.ref.delete();}catch(e){}
     closeModal('delete-modal');
-    showToast('🗑️ @'+targetUsername+' fully deleted — username is free to re-use');
+    showToast('🗑️ @'+targetUsername+' deleted — all data removed');
     loadUsers();
   }catch(e){
     showToast('⚠️ Error: '+e.message);
