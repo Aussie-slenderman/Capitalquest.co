@@ -4,7 +4,7 @@ const admin = require('firebase-admin');
 admin.initializeApp();
 
 // Allowed admin emails
-const ADMIN_EMAILS = ['theosmales1@gmail.com', 'cq.admin.mod@capitalquest.app'];
+const ADMIN_EMAILS = ['theosmales1@gmail.com'];
 
 /**
  * deleteUserAccount — callable function
@@ -22,7 +22,7 @@ exports.deleteUserAccount = functions.https.onCall(async (data, context) => {
   // Must be an admin
   const callerEmail = (context.auth.token.email || '').toLowerCase();
   if (!ADMIN_EMAILS.includes(callerEmail)) {
-    throw new functions.https.HttpsError('permission-denied', 'Not authorised. Caller: ' + callerEmail);
+    throw new functions.https.HttpsError('permission-denied', 'Not authorised.');
   }
 
   const uid = data.uid;
@@ -30,80 +30,42 @@ exports.deleteUserAccount = functions.https.onCall(async (data, context) => {
     throw new functions.https.HttpsError('invalid-argument', 'uid is required.');
   }
 
-  console.log(`deleteUserAccount called for uid=${uid} by ${callerEmail}`);
-
   const db = admin.firestore();
   const auth = admin.auth();
 
   // 1. Delete Firebase Auth account (frees the username@capitalquest.app email)
   try {
     await auth.deleteUser(uid);
-    console.log(`Auth user deleted: ${uid}`);
   } catch (e) {
+    // User may not exist in Auth — continue anyway to clean Firestore
     console.warn('Auth delete skipped:', e.message);
   }
 
-  // 2. Delete notifications subcollection
+  // 2. Delete notifications subcollection (must be done before the user doc)
   try {
     const notifs = await db.collection('users').doc(uid).collection('notifications').get();
     const notifDeletes = notifs.docs.map(d => d.ref.delete());
     await Promise.all(notifDeletes);
-    console.log(`Deleted ${notifDeletes.length} notifications`);
   } catch (e) {
     console.warn('Notifications delete skipped:', e.message);
   }
 
-  // 3. Delete transactions
+  // 3. Delete transactions (query-based, can exceed batch limit so delete individually)
   try {
     const txns = await db.collection('transactions').where('userId', '==', uid).get();
     const txnDeletes = txns.docs.map(d => d.ref.delete());
     await Promise.all(txnDeletes);
-    console.log(`Deleted ${txnDeletes.length} transactions`);
   } catch (e) {
     console.warn('Transactions delete skipped:', e.message);
   }
 
-  // 4. Delete top-level docs individually (safer than batch for error isolation)
-  try { await db.collection('users').doc(uid).delete(); } catch (e) { console.warn('users doc delete skipped:', e.message); }
-  try { await db.collection('portfolios').doc(uid).delete(); } catch (e) { console.warn('portfolios doc delete skipped:', e.message); }
-  try { await db.collection('leaderboard').doc(uid).delete(); } catch (e) { console.warn('leaderboard doc delete skipped:', e.message); }
+  // 4. Batch-delete all top-level docs for this user
+  const batch = db.batch();
+  batch.delete(db.collection('users').doc(uid));
+  batch.delete(db.collection('portfolios').doc(uid));
+  batch.delete(db.collection('leaderboard').doc(uid));
+  await batch.commit();
 
   console.log(`deleteUserAccount: fully deleted uid=${uid}`);
-  return { success: true };
-});
-
-/**
- * adminSetTempPassword — callable function
- * Saves a temporary password to the user's Firestore doc.
- * Called with: { uid: string, password: string }
- */
-exports.adminSetTempPassword = functions.https.onCall(async (data, context) => {
-  if (!context.auth) {
-    throw new functions.https.HttpsError('unauthenticated', 'You must be signed in.');
-  }
-
-  const callerEmail = (context.auth.token.email || '').toLowerCase();
-  if (!ADMIN_EMAILS.includes(callerEmail)) {
-    throw new functions.https.HttpsError('permission-denied', 'Not authorised.');
-  }
-
-  const { uid, password } = data;
-  if (!uid || !password) {
-    throw new functions.https.HttpsError('invalid-argument', 'uid and password are required.');
-  }
-  if (password.length < 6) {
-    throw new functions.https.HttpsError('invalid-argument', 'Password must be at least 6 characters.');
-  }
-
-  try {
-    await admin.firestore().collection('users').doc(uid).update({
-      adminTempPassword: password,
-      adminTempPasswordSetAt: Date.now()
-    });
-  } catch (e) {
-    throw new functions.https.HttpsError('internal', 'Failed to save password: ' + e.message);
-  }
-
-  console.log(`adminSetTempPassword: set temp password for uid=${uid}`);
   return { success: true };
 });

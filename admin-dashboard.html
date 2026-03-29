@@ -221,7 +221,7 @@ function renderTable(users){
     <th>Level</th><th>Status</th><th>Joined</th><th>Actions</th>
   </tr></thead><tbody>`;
   users.forEach(u=>{
-    const av=u.avatarConfig?.animal||'👤';
+    const av=29u.avatarConfig?.animal||'👤';
     const gain=u.gainLoss;
     const gainStr=(gain>=0?'+':'')+fmt(gain);
     const gainCls=gain>=0?'gain-pos':'gain-neg';
@@ -284,15 +284,11 @@ function openReset(uid,username){
 async function confirmReset(){
   const pw=document.getElementById('new-pw').value.trim();
   if(!pw||pw.length<6){showToast('Password must be at least 6 characters');return;}
-  const btn=document.querySelector('#reset-modal .modal-btn-confirm');
-  btn.disabled=true; btn.textContent='Saving…';
   try{
-    const setTempPw=fns.httpsCallable('adminSetTempPassword');
-    await setTempPw({uid:targetUid,password:pw});
+    await db.collection('users').doc(targetUid).update({adminTempPassword:pw,adminTempPasswordSetAt:Date.now()});
     closeModal('reset-modal');
     showToast('✅ Temp password saved. Share "'+pw+'" with @'+targetUsername);
   }catch(e){showToast('⚠️ Error: '+e.message);}
-  finally{btn.disabled=false;btn.textContent='Set Password';}
 }
 
 function openDelete(uid,username){
@@ -324,30 +320,15 @@ async function confirmDelete(){
   const btn=document.querySelector('#delete-modal .modal-btn-confirm');
   btn.disabled=true; btn.textContent='Deleting…';
   try{
-    const uid=targetUid;
-
-    // 1. Delete notifications subcollection
-    try{
-      const notifs=await db.collection('users').doc(uid).collection('notifications').get();
-      for(const d of notifs.docs) await d.ref.delete();
-    }catch(e){console.warn('notifs skip',e.message);}
-
-    // 2. Delete transactions
-    try{
-      const txns=await db.collection('transactions').where('userId','==',uid).get();
-      for(const d of txns.docs) await d.ref.delete();
-    }catch(e){console.warn('txns skip',e.message);}
-
-    // 3. Delete top-level Firestore docs — throw on user doc failure so we know what went wrong
-    await db.collection('users').doc(uid).delete();
-    try{await db.collection('portfolios').doc(uid).delete();}catch(e){console.warn('portfolio skip',e.message);}
-    try{await db.collection('leaderboard').doc(uid).delete();}catch(e){console.warn('leaderboard skip',e.message);}
-
+    // Call Cloud Function — deletes Firebase Auth account + ALL Firestore data
+    // so the username is immediately free to re-register
+    const deleteFn=fns.httpsCallable('deleteUserAccount');
+    await deleteFn({uid:targetUid});
     closeModal('delete-modal');
-    showToast('🗑️ @'+targetUsername+' fully deleted');
+    showToast('🗑️ @'+targetUsername+' fully deleted — username is free to re-use');
     loadUsers();
   }catch(e){
-    showToast('⚠️ Delete failed: '+e.message);
+    showToast('⚠️ Error: '+e.message);
   }finally{
     btn.disabled=false; btn.textContent='Delete Account';
   }
