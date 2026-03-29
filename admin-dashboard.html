@@ -168,7 +168,10 @@ async function autoCleanupTheoSmales(){
 async function loadUsers(){
   document.getElementById('table-wrap').innerHTML='<div class="spinner-full"><div class="spin"></div><span>Loading accounts…</span></div>';
   try{
-    const [uSnap,pSnap]=await Promise.all([db.collection('users').get(),db.collection('portfolios').get()]);
+    // Add timeout to detect hanging queries
+    const timeout = new Promise((_,rej) => setTimeout(() => rej(new Error('Query timed out after 15s. This usually means Firestore security rules are blocking the request. Check that the moderator account has read access to the users and portfolios collections.')), 15000));
+    const query = Promise.all([db.collection('users').get(),db.collection('portfolios').get()]);
+    const [uSnap,pSnap] = await Promise.race([query, timeout]);
     const portfolios={};
     pSnap.docs.forEach(d=>portfolios[d.id]=d.data());
     allUsers=[];
