@@ -119,8 +119,8 @@ export default function LeaderboardScreen() {
   const entries = leaderboardData[activeTab];
   const currentUserEntry = entries.find(e => e.isCurrentUser);
 
-  // Determine if current user is visible in top list (first 20)
-  const visibleEntries = entries.slice(0, 20);
+  // Show all entries (up to 500)
+  const visibleEntries = entries;
   const userInView = visibleEntries.some(e => e.isCurrentUser);
 
   // Achievements

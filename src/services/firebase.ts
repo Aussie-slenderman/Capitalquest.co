@@ -248,7 +248,7 @@ export async function getTransactions(userId: string, limitCount = 50) {
 
 // ─── Leaderboard ──────────────────────────────────────────────────────────────
 
-export async function getLeaderboard(type: 'global' | 'local', country?: string, limitCount = 100) {
+export async function getLeaderboard(type: 'global' | 'local', country?: string, limitCount = 500) {
   // Query portfolios directly — every onboarded user has one, so ALL players
   // appear in the rankings regardless of whether they have traded yet.
   const portfolioSnap = await getDocs(collection(db, 'portfolios'));
