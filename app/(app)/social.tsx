@@ -556,9 +556,18 @@ function MessagesTab() {
           createdAt: invite.sentAt,
           chatRoomId: `chat_${invite.clubId}`,
         });
+      } else if (invite.type === 'friend_request') {
+        const { addFriend } = await import('../../src/services/auth');
+        await addFriend(user.id, invite.fromUserId);
       }
-      // friend_request: could add to friends list here in a future expansion
-    } catch { /* non-critical */ } finally {
+      // Update invite status in Firestore
+      try {
+        const { updateInviteStatus } = await import('../../src/services/auth');
+        await updateInviteStatus(invite.id, 'accepted');
+      } catch {}
+    } catch (err) {
+      console.error('Failed to accept invite:', err);
+    } finally {
       removeClubInvite(invite.id);
       setJoiningInviteId(null);
     }

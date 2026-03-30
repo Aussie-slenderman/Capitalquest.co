@@ -99,8 +99,14 @@ export async function registerUser(
   }
   await updateProfile(cred.user, { displayName });
 
-  // Generate unique 8-digit account number
-  const accountNumber = Math.floor(10000000 + Math.random() * 90000000).toString();
+  // Generate unique 8-digit account number (no duplicates)
+  let accountNumber = '';
+  let isUnique = false;
+  while (!isUnique) {
+    accountNumber = Math.floor(10000000 + Math.random() * 90000000).toString();
+    const existing = await getDocs(query(collection(db, 'users'), where('accountNumber', '==', accountNumber)));
+    if (existing.empty) isUnique = true;
+  }
 
   const userData = {
     id: cred.user.uid,
@@ -397,6 +403,27 @@ export async function joinClub(userId: string, clubId: string) {
     participantIds: [...(club.memberIds || []), userId],
   });
   await batch.commit();
+}
+
+export async function addFriend(userId: string, friendId: string) {
+  const userRef = doc(db, 'users', userId);
+  const friendRef = doc(db, 'users', friendId);
+  const userSnap = await getDoc(userRef);
+  const friendSnap = await getDoc(friendRef);
+  if (!userSnap.exists() || !friendSnap.exists()) throw new Error('User not found');
+  const userData = userSnap.data();
+  const friendData = friendSnap.data();
+  const batch = writeBatch(db);
+  batch.update(userRef, { friendIds: [...(userData.friendIds || []), friendId] });
+  batch.update(friendRef, { friendIds: [...(friendData.friendIds || []), userId] });
+  await batch.commit();
+}
+
+export async function updateInviteStatus(inviteId: string, status: 'accepted' | 'declined') {
+  try {
+    const inviteRef = doc(db, 'clubInvites', inviteId);
+    await updateDoc(inviteRef, { status });
+  } catch {}
 }
 
 export async function getPublicClubs(limitCount = 50) {

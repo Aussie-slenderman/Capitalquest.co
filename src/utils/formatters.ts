@@ -65,5 +65,5 @@ export function formatRelativeTime(timestamp: number): string {
 }
 
 export function formatAccountNumber(accountNumber: string): string {
-  return `#${accountNumber.slice(0, 4)}-${accountNumber.slice(4)}`;
+  return `#${accountNumber}`;
 }

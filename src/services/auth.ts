@@ -232,6 +232,16 @@ export async function sendFriendRequest(
   }
 }
 
+export async function addFriend(userId: string, friendId: string) {
+  if (IS_MOCK) return;
+  return FB.addFriend(userId, friendId);
+}
+
+export async function updateInviteStatus(inviteId: string, status: 'accepted' | 'declined') {
+  if (IS_MOCK) return;
+  return FB.updateInviteStatus(inviteId, status);
+}
+
 export async function sendTradeProposal(proposal: Record<string, unknown>) {
   if (IS_MOCK) return `proposal_${Date.now()}`;
   return FB.sendTradeProposal(proposal as Parameters<typeof FB.sendTradeProposal>[0]);
