@@ -140,7 +140,7 @@ h1{font-size:24px;font-weight:800;text-align:center;margin-top:52px;margin-botto
   <h1 style="margin-top:28px">Terms of Service</h1>
   <p class="sub">Please read and accept before continuing</p>
 
-  <div style="width:100%;max-width:420px;background:#111827;border:1px solid #1A2235;border-radius:14px;padding:20px;margin-bottom:16px;max-height:55vh;overflow-y:auto;font-size:14px;line-height:1.7;color:#CBD5E1">
+  <div id="tosScroll" onscroll="checkTosScroll()" style="width:100%;max-width:420px;background:#111827;border:1px solid #1A2235;border-radius:14px;padding:20px;margin-bottom:16px;max-height:55vh;overflow-y:auto;font-size:14px;line-height:1.7;color:#CBD5E1">
     <h2 style="font-size:17px;color:#F1F5F9;margin-bottom:12px;font-weight:700">Terms of Service for Capital Quest – Stock Investment Simulator (Ages 10–15)</h2>
 
     <h3 style="font-size:15px;color:#00B3E6;margin-top:16px;margin-bottom:6px;font-weight:700">1. Introduction</h3>
@@ -208,8 +208,10 @@ h1{font-size:24px;font-weight:800;text-align:center;margin-top:52px;margin-botto
     </div>
   </div>
 
-  <label style="display:flex;align-items:center;gap:10px;width:100%;max-width:420px;padding:14px;background:#111827;border:1px solid #1A2235;border-radius:13px;cursor:pointer;margin-bottom:12px;font-size:14px;color:#94A3B8" id="tosLabel">
-    <input type="checkbox" id="tosCheckbox" onchange="tosToggle()" style="width:20px;height:20px;accent-color:#00B3E6;cursor:pointer"/>
+  <p id="tosScrollHint" style="width:100%;max-width:420px;text-align:center;font-size:13px;color:#475569;margin-bottom:10px">↓ Scroll to the bottom to continue ↓</p>
+
+  <label style="display:flex;align-items:center;gap:10px;width:100%;max-width:420px;padding:14px;background:#111827;border:1px solid #1A2235;border-radius:13px;margin-bottom:12px;font-size:14px;color:#94A3B8;opacity:0.4;pointer-events:none" id="tosLabel">
+    <input type="checkbox" id="tosCheckbox" onchange="tosToggle()" style="width:20px;height:20px;accent-color:#00B3E6;cursor:pointer" disabled/>
     I have read and agree to the Terms of Service
   </label>
 
@@ -638,6 +640,21 @@ async function finish(){
     document.getElementById('page2').classList.remove('active');
     document.getElementById('tosPage').classList.add('active');
     window.scrollTo(0,0);
+  }
+}
+
+function checkTosScroll(){
+  const el=document.getElementById('tosScroll');
+  // Check if scrolled to within 20px of the bottom
+  if(el.scrollTop+el.clientHeight>=el.scrollHeight-20){
+    const label=document.getElementById('tosLabel');
+    const cb=document.getElementById('tosCheckbox');
+    const hint=document.getElementById('tosScrollHint');
+    label.style.opacity='1';
+    label.style.pointerEvents='auto';
+    label.style.cursor='pointer';
+    cb.disabled=false;
+    if(hint) hint.style.display='none';
   }
 }
 
