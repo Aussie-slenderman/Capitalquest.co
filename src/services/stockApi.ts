@@ -599,14 +599,28 @@ function parseYahooChartResponse(data: unknown): ChartDataPoint[] {
 }
 
 async function yahooGetChartData(symbol: string, period: ChartPeriod): Promise<ChartDataPoint[]> {
-  const rangeMap: Record<ChartPeriod, { interval: string; range: string }> = {
-    '1D': { interval: '2m',  range: '1d' },    // ~195 points
-    '1W': { interval: '5m',  range: '5d' },    // ~390 points
-    '1M': { interval: '30m', range: '1mo' },   // ~286 points
-    '1Y': { interval: '1d',  range: '1y' },    // ~252 points
-    '5Y': { interval: '1wk', range: '5y' },    // ~260 points
+  // Fetch granular data, then thin to target point counts:
+  // 1D: ~300 points (most detail) → 1W: ~200 → 1M: ~150 → 1Y: ~100 → 5Y: ~60 (least)
+  const rangeMap: Record<ChartPeriod, { interval: string; range: string; maxPoints: number }> = {
+    '1D': { interval: '1m',  range: '1d',  maxPoints: 300 },
+    '1W': { interval: '5m',  range: '5d',  maxPoints: 200 },
+    '1M': { interval: '30m', range: '1mo', maxPoints: 150 },
+    '1Y': { interval: '1d',  range: '1y',  maxPoints: 100 },
+    '5Y': { interval: '1wk', range: '5y',  maxPoints: 60 },
   };
-  const { interval, range } = rangeMap[period];
+  const { interval, range, maxPoints } = rangeMap[period];
+
+  // Helper: thin data to maxPoints by evenly sampling
+  function thinData(pts: ChartDataPoint[]): ChartDataPoint[] {
+    if (pts.length <= maxPoints) return pts;
+    const step = (pts.length - 1) / (maxPoints - 1);
+    const result: ChartDataPoint[] = [];
+    for (let i = 0; i < maxPoints - 1; i++) {
+      result.push(pts[Math.round(i * step)]);
+    }
+    result.push(pts[pts.length - 1]); // always include last point
+    return result;
+  }
 
   // Try through yahooFetch (uses CORS proxies)
   try {
@@ -614,7 +628,7 @@ async function yahooGetChartData(symbol: string, period: ChartPeriod): Promise<C
       interval, range, includePrePost: false,
     });
     const points = parseYahooChartResponse(data);
-    if (points.length > 0) return points;
+    if (points.length > 0) return thinData(points);
   } catch { /* fall through */ }
 
   // Direct attempt with Cloudflare Worker proxy (without crumb — v8 chart works without it)
@@ -626,7 +640,7 @@ async function yahooGetChartData(symbol: string, period: ChartPeriod): Promise<C
       const proxyUrl = `${CQ_PROXY}?url=${encodeURIComponent(chartUrl)}`;
       const res = await axios.get(proxyUrl, { timeout: 15_000 });
       const points = parseYahooChartResponse(res.data);
-      if (points.length > 0) return points;
+      if (points.length > 0) return thinData(points);
     } catch { /* try next base */ }
   }
 
