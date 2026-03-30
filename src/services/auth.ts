@@ -242,6 +242,21 @@ export async function updateInviteStatus(inviteId: string, status: 'accepted' | 
   return FB.updateInviteStatus(inviteId, status);
 }
 
+export async function revokeClubInvite(inviteId: string, fromUserId: string) {
+  if (IS_MOCK) return;
+  return FB.revokeClubInvite(inviteId, fromUserId);
+}
+
+export async function getSentInvites(userId: string) {
+  if (IS_MOCK) return [];
+  return FB.getSentInvites(userId);
+}
+
+export async function kickMemberFromClub(clubId: string, ownerId: string, memberId: string) {
+  if (IS_MOCK) return;
+  return FB.kickMemberFromClub(clubId, ownerId, memberId);
+}
+
 export async function sendTradeProposal(proposal: Record<string, unknown>) {
   if (IS_MOCK) return `proposal_${Date.now()}`;
   return FB.sendTradeProposal(proposal as Parameters<typeof FB.sendTradeProposal>[0]);

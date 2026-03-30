@@ -595,3 +595,56 @@ export function listenToClubInvites(
 export async function dismissClubInvite(inviteId: string) {
   return updateDoc(doc(db, 'clubInvites', inviteId), { status: 'dismissed' });
 }
+
+export async function revokeClubInvite(inviteId: string, fromUserId: string) {
+  const inviteRef = doc(db, 'clubInvites', inviteId);
+  const inviteSnap = await getDoc(inviteRef);
+  if (!inviteSnap.exists()) throw new Error('Invite not found');
+  const data = inviteSnap.data();
+  if (data.fromUserId !== fromUserId) throw new Error('Only the sender can revoke this invite');
+  return updateDoc(inviteRef, { status: 'revoked' });
+}
+
+export async function getSentInvites(userId: string) {
+  const q = query(
+    collection(db, 'clubInvites'),
+    where('fromUserId', '==', userId),
+    where('status', '==', 'pending')
+  );
+  const snap = await getDocs(q);
+  return snap.docs.map(d => ({ id: d.id, ...d.data() }));
+}
+
+export async function kickMemberFromClub(clubId: string, ownerId: string, memberId: string) {
+  const clubRef = doc(db, 'clubs', clubId);
+  const clubSnap = await getDoc(clubRef);
+  if (!clubSnap.exists()) throw new Error('Club not found');
+  const club = clubSnap.data();
+  if (club.ownerId !== ownerId) throw new Error('Only the club owner can kick members');
+
+  const newMembers = (club.memberIds || []).filter((id: string) => id !== memberId);
+  const batch = writeBatch(db);
+  batch.update(clubRef, { memberIds: newMembers });
+
+  // Remove club from kicked user's clubIds
+  const userRef = doc(db, 'users', memberId);
+  const userSnap = await getDoc(userRef);
+  if (userSnap.exists()) {
+    const userData = userSnap.data();
+    const newClubIds = (userData.clubIds || []).filter((id: string) => id !== clubId);
+    batch.update(userRef, { clubIds: newClubIds });
+  }
+
+  // Remove from chat room
+  if (club.chatRoomId) {
+    const chatRef = doc(db, 'chatRooms', club.chatRoomId);
+    const chatSnap = await getDoc(chatRef);
+    if (chatSnap.exists()) {
+      const chatData = chatSnap.data();
+      const newParticipants = (chatData.participantIds || []).filter((id: string) => id !== memberId);
+      batch.update(chatRef, { participantIds: newParticipants });
+    }
+  }
+
+  await batch.commit();
+}
