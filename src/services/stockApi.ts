@@ -600,11 +600,11 @@ function parseYahooChartResponse(data: unknown): ChartDataPoint[] {
 
 async function yahooGetChartData(symbol: string, period: ChartPeriod): Promise<ChartDataPoint[]> {
   const rangeMap: Record<ChartPeriod, { interval: string; range: string }> = {
-    '1D': { interval: '5m',  range: '1d' },
-    '1W': { interval: '15m', range: '5d' },
-    '1M': { interval: '1h',  range: '1mo' },
-    '1Y': { interval: '1wk', range: '1y' },
-    '5Y': { interval: '1mo', range: '5y' },
+    '1D': { interval: '2m',  range: '1d' },    // ~195 points
+    '1W': { interval: '5m',  range: '5d' },    // ~390 points
+    '1M': { interval: '30m', range: '1mo' },   // ~286 points
+    '1Y': { interval: '1d',  range: '1y' },    // ~252 points
+    '5Y': { interval: '1wk', range: '5y' },    // ~260 points
   };
   const { interval, range } = rangeMap[period];
 
