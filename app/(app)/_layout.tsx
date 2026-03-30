@@ -70,12 +70,23 @@ export default function AppLayout() {
     return unsub;
   }, [user?.id]);
 
-  // Listen to club invites
+  // Listen to club invites from Firestore (replaces local state entirely)
   useEffect(() => {
     if (!user?.id) return;
+    const { clearClubInvites } = useAppStore.getState() as { clearClubInvites?: () => void };
     const unsub = listenToClubInvites(user.id, (invites) => {
-      (invites as Array<{ id: string; clubId?: string; clubName?: string; fromUserId: string; fromUsername: string; sentAt: number }>).forEach((inv) => {
-        addClubInvite({ id: inv.id, type: 'club_invite', clubId: inv.clubId, clubName: inv.clubName, fromUserId: inv.fromUserId, fromUsername: inv.fromUsername, sentAt: inv.sentAt });
+      const typed = invites as Array<{ id: string; clubId?: string; clubName?: string; fromUserId: string; fromUsername: string; sentAt: number }>;
+      // Replace all invites with what Firestore says (clears stale local invites)
+      useAppStore.setState({
+        clubInvites: typed.map(inv => ({
+          id: inv.id,
+          type: 'club_invite' as const,
+          clubId: inv.clubId,
+          clubName: inv.clubName,
+          fromUserId: inv.fromUserId,
+          fromUsername: inv.fromUsername,
+          sentAt: inv.sentAt,
+        })),
       });
     });
     return unsub as () => void;
