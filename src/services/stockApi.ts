@@ -333,65 +333,51 @@ const YAHOO_BASE = 'https://query2.finance.yahoo.com';
 const CQ_PROXY = 'https://cq-yahoo-proxy.capitalquest.workers.dev';
 const YAHOO_MOBILE_UA = 'Mozilla/5.0 (iPhone; CPU iPhone OS 17_4 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/17.4 Mobile/15E148 Safari/604.1';
 
-// ─── Yahoo Finance session (crumb) management ─────────────────────────────────
-// Since ~2024 Yahoo Finance requires a crumb token for all API requests.
-// Flow: GET finance.yahoo.com → extract cookie → GET /v1/test/getcrumb → crumb string.
+// ─── Yahoo Finance session ──────────────────────────────────────────────────
+// Crumb is NOT needed for v8/finance/chart — skip it entirely on web to avoid 401 spam.
+// On native, we do the full cookie→crumb handshake.
 
 let _yahooCrumb: string | null = null;
 let _yahooCookie: string | null = null;
 let _crumbExpiry = 0;
 
 async function ensureYahooSession(): Promise<void> {
-  // Reuse session for 1 hour
+  if (Platform.OS === 'web') {
+    // On web, skip crumb entirely — v8/chart works without it through our proxy
+    return;
+  }
+
   if (_yahooCrumb && Date.now() < _crumbExpiry) return;
 
   try {
-    if (Platform.OS === 'web') {
-      // Web: try to get crumb via our Cloudflare Worker proxy
-      try {
-        const proxyUrl = `${CQ_PROXY}?url=${encodeURIComponent('https://query1.finance.yahoo.com/v1/test/getcrumb')}`;
-        const res = await axios.get(proxyUrl, { timeout: 8_000 });
-        if (typeof res.data === 'string' && res.data.length > 0 && res.data.length < 50 && res.data !== 'null') {
-          _yahooCrumb = res.data.trim();
-          _crumbExpiry = Date.now() + 3_600_000;
-        }
-      } catch {
-        _yahooCrumb = null;
-      }
-    } else {
-      // Native: do the full cookie → crumb handshake directly
-      // Step 1: load finance.yahoo.com to receive session cookies
-      const cookieRes = await axios.get('https://finance.yahoo.com/', {
-        timeout: 12_000,
-        maxRedirects: 5,
-        headers: {
-          'User-Agent': YAHOO_MOBILE_UA,
-          'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8',
-          'Accept-Language': 'en-US,en;q=0.9',
-        },
-      });
-      const rawCookies = cookieRes.headers['set-cookie'];
-      if (rawCookies) {
-        const cookies = Array.isArray(rawCookies) ? rawCookies : [rawCookies];
-        _yahooCookie = cookies.map((c: string) => c.split(';')[0]).join('; ');
-      }
+    const cookieRes = await axios.get('https://finance.yahoo.com/', {
+      timeout: 12_000,
+      maxRedirects: 5,
+      headers: {
+        'User-Agent': YAHOO_MOBILE_UA,
+        'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8',
+        'Accept-Language': 'en-US,en;q=0.9',
+      },
+    });
+    const rawCookies = cookieRes.headers['set-cookie'];
+    if (rawCookies) {
+      const cookies = Array.isArray(rawCookies) ? rawCookies : [rawCookies];
+      _yahooCookie = cookies.map((c: string) => c.split(';')[0]).join('; ');
+    }
 
-      // Step 2: exchange session cookie for a crumb token
-      const crumbRes = await axios.get('https://query2.finance.yahoo.com/v1/test/getcrumb', {
-        timeout: 10_000,
-        headers: {
-          'User-Agent': YAHOO_MOBILE_UA,
-          'Cookie': _yahooCookie ?? '',
-          'Accept': '*/*',
-        },
-      });
-      if (typeof crumbRes.data === 'string' && crumbRes.data.length > 0 && crumbRes.data !== 'null') {
-        _yahooCrumb = crumbRes.data.trim();
-        _crumbExpiry = Date.now() + 3_600_000;
-      }
+    const crumbRes = await axios.get('https://query2.finance.yahoo.com/v1/test/getcrumb', {
+      timeout: 10_000,
+      headers: {
+        'User-Agent': YAHOO_MOBILE_UA,
+        'Cookie': _yahooCookie ?? '',
+        'Accept': '*/*',
+      },
+    });
+    if (typeof crumbRes.data === 'string' && crumbRes.data.length > 0 && crumbRes.data !== 'null') {
+      _yahooCrumb = crumbRes.data.trim();
+      _crumbExpiry = Date.now() + 3_600_000;
     }
   } catch {
-    // If session fetch fails we'll try requests without crumb — some endpoints still work
     _yahooCrumb = null;
   }
 }
@@ -419,12 +405,11 @@ async function fetchWithCorsProxy(url: string, timeout = 15_000): Promise<unknow
 }
 
 async function yahooFetch(path: string, params?: Record<string, string | number | boolean>): Promise<unknown> {
-  // Ensure we have a valid session (crumb) before making data requests
   await ensureYahooSession();
 
-  // Merge crumb into params if available
+  // Build query string — no crumb on web (not needed for v8/chart)
   const allParams: Record<string, string | number | boolean> = { ...params };
-  if (_yahooCrumb) allParams['crumb'] = _yahooCrumb;
+  if (_yahooCrumb && Platform.OS !== 'web') allParams['crumb'] = _yahooCrumb;
 
   const queryStr = Object.keys(allParams).length > 0
     ? '?' + Object.entries(allParams).map(([k, v]) => `${k}=${encodeURIComponent(String(v))}`).join('&')
@@ -432,19 +417,7 @@ async function yahooFetch(path: string, params?: Record<string, string | number 
   const fullUrl = `${YAHOO_BASE}${path}${queryStr}`;
 
   if (Platform.OS === 'web') {
-    // Try without crumb first (v8 chart often works without it)
-    try {
-      return await fetchWithCorsProxy(fullUrl);
-    } catch {}
-    // Try without crumb param
-    if (_yahooCrumb) {
-      const paramsNoCrumb = { ...params };
-      const qsNoCrumb = Object.keys(paramsNoCrumb).length > 0
-        ? '?' + Object.entries(paramsNoCrumb).map(([k, v]) => `${k}=${encodeURIComponent(String(v))}`).join('&')
-        : '';
-      return await fetchWithCorsProxy(`${YAHOO_BASE}${path}${qsNoCrumb}`);
-    }
-    throw new Error('Yahoo fetch failed');
+    return await fetchWithCorsProxy(fullUrl);
   } else {
     const res = await axios.get(fullUrl, {
       timeout: 12_000,
@@ -699,18 +672,15 @@ export async function getQuote(symbol: string): Promise<StockQuote> {
 export async function getQuotes(symbols: string[]): Promise<Record<string, StockQuote>> {
   if (symbols.length === 0) return {};
 
-  // Batch fetch via Yahoo Finance v7 (single request for all symbols)
-  try {
-    await ensureYahooSession();
-    const allParams: Record<string, string | number | boolean> = { symbols: symbols.join(',') };
-    if (_yahooCrumb) allParams['crumb'] = _yahooCrumb;
-    const queryStr = '?' + Object.entries(allParams).map(([k, v]) => `${k}=${encodeURIComponent(String(v))}`).join('&');
-    const fullUrl = `${YAHOO_BASE}/v7/finance/quote${queryStr}`;
-
-    let data: unknown;
-    if (Platform.OS === 'web') {
-      data = await fetchWithCorsProxy(fullUrl);
-    } else {
+  // On web: v7/quote needs crumb which we skip, so fetch individually via v8/chart
+  // On native: try batch v7/quote first
+  if (Platform.OS !== 'web') {
+    try {
+      await ensureYahooSession();
+      const allParams: Record<string, string | number | boolean> = { symbols: symbols.join(',') };
+      if (_yahooCrumb) allParams['crumb'] = _yahooCrumb;
+      const queryStr = '?' + Object.entries(allParams).map(([k, v]) => `${k}=${encodeURIComponent(String(v))}`).join('&');
+      const fullUrl = `${YAHOO_BASE}/v7/finance/quote${queryStr}`;
       const res = await axios.get(fullUrl, {
         timeout: 12_000,
         headers: {
@@ -719,34 +689,30 @@ export async function getQuotes(symbols: string[]): Promise<Record<string, Stock
           ..._yahooCookie ? { 'Cookie': _yahooCookie } : {},
         },
       });
-      data = res.data;
-    }
-
-    const quotes = ((data as Record<string, unknown>)?.quoteResponse as Record<string, unknown>)?.result as Record<string, unknown>[] | undefined;
-    if (quotes && quotes.length > 0) {
-      const out: Record<string, StockQuote> = {};
-      for (const q of quotes) {
-        const sym = String(q.symbol);
-        const price = Number(q.regularMarketPrice ?? 0);
-        const prevClose = Number(q.regularMarketPreviousClose ?? price);
-        if (price > 0) {
-          out[sym] = {
-            symbol: sym,
-            price,
-            change: parseFloat((price - prevClose).toFixed(2)),
-            changePercent: parseFloat(Number(q.regularMarketChangePercent ?? 0).toFixed(2)),
-            timestamp: Date.now(),
-          };
-          quoteCache.set(sym, { data: out[sym], ts: Date.now() });
+      const quotes = ((res.data as Record<string, unknown>)?.quoteResponse as Record<string, unknown>)?.result as Record<string, unknown>[] | undefined;
+      if (quotes && quotes.length > 0) {
+        const out: Record<string, StockQuote> = {};
+        for (const q of quotes) {
+          const sym = String(q.symbol);
+          const price = Number(q.regularMarketPrice ?? 0);
+          const prevClose = Number(q.regularMarketPreviousClose ?? price);
+          if (price > 0) {
+            out[sym] = {
+              symbol: sym, price,
+              change: parseFloat((price - prevClose).toFixed(2)),
+              changePercent: parseFloat(Number(q.regularMarketChangePercent ?? 0).toFixed(2)),
+              timestamp: Date.now(),
+            };
+            quoteCache.set(sym, { data: out[sym], ts: Date.now() });
+          }
         }
+        for (const sym of symbols) {
+          if (!out[sym]) out[sym] = await getQuote(sym);
+        }
+        return out;
       }
-      // Fill any missing symbols from cache or mock
-      for (const sym of symbols) {
-        if (!out[sym]) out[sym] = await getQuote(sym);
-      }
-      return out;
-    }
-  } catch { /* fall through to individual fetches */ }
+    } catch { /* fall through */ }
+  }
 
   // Fallback: individual fetches
   const results = await Promise.allSettled(symbols.map(getQuote));
