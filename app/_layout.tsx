@@ -51,12 +51,18 @@ class ErrorBoundary extends React.Component<{ children: React.ReactNode }, EBSta
 SplashScreen.preventAutoHideAsync();
 
 export default function RootLayout() {
-  const { setUser, setAuthLoading, setShowWelcomePopup, setPortfolio } = useAppStore();
+  const { setUser, setAuthLoading, setShowWelcomePopup, setPortfolio, resetUserData } = useAppStore();
 
   useEffect(() => {
+    let previousUid: string | null = null;
     const unsub = onAuthChange(async (session: unknown) => {
       const s = session as { uid?: string } | null;
       if (s?.uid) {
+        // Reset all user-specific data when switching to a different account
+        if (previousUid && previousUid !== s.uid) {
+          resetUserData();
+        }
+        previousUid = s.uid;
         const userData = await getUserById(s.uid);
         setUser(userData as import('../src/types').User);
         // Load portfolio from Firestore so holdings persist across sessions
@@ -79,7 +85,9 @@ export default function RootLayout() {
           router.replace('/(app)/dashboard');
         }
       } else {
+        resetUserData();
         setUser(null);
+        previousUid = null;
         router.replace('/(auth)/welcome');
       }
       setAuthLoading(false);

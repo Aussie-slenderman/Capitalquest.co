@@ -10,6 +10,7 @@ interface AppState {
   isAuthLoading: boolean;
   setUser: (user: User | null) => void;
   setAuthLoading: (v: boolean) => void;
+  resetUserData: () => void;
 
   // Achievement toast
   pendingAchievement: Achievement | null;
@@ -92,6 +93,19 @@ export const useAppStore = create<AppState>((set) => ({
   isAuthLoading: true,
   setUser: (user) => set({ user }),
   setAuthLoading: (isAuthLoading) => set({ isAuthLoading }),
+  resetUserData: () => set({
+    portfolio: null,
+    quotes: {},
+    myClubs: [],
+    chatRooms: [],
+    unreadCount: 0,
+    notifications: [],
+    clubInvites: [],
+    globalLeaderboard: [],
+    localLeaderboard: [],
+    selectedStock: null,
+    pendingAchievement: null,
+  }),
 
   // Achievement toast
   pendingAchievement: null,
