@@ -27,6 +27,8 @@ import {
   increment,
   Timestamp,
   writeBatch,
+  arrayUnion,
+  deleteDoc,
   documentId,
 } from 'firebase/firestore';
 import {
@@ -410,12 +412,27 @@ export async function joinClub(userId: string, clubId: string) {
   const club = clubSnap.data();
 
   const batch = writeBatch(db);
-  batch.update(clubRef, { memberIds: [...(club.memberIds || []), userId] });
-  batch.update(doc(db, 'users', userId), { clubIds: [clubId] });
-  batch.update(doc(db, 'chatRooms', club.chatRoomId), {
-    participantIds: [...(club.memberIds || []), userId],
-  });
+  batch.update(clubRef, { memberIds: arrayUnion(userId) });
+  batch.update(doc(db, 'users', userId), { clubIds: arrayUnion(clubId) });
+  if (club.chatRoomId) {
+    batch.update(doc(db, 'chatRooms', club.chatRoomId), {
+      participantIds: arrayUnion(userId),
+    });
+  }
   await batch.commit();
+}
+
+export async function getClub(clubId: string) {
+  const snap = await getDoc(doc(db, 'clubs', clubId));
+  return snap.exists() ? { id: snap.id, ...snap.data() } : null;
+}
+
+export async function sendNotificationToUser(userId: string, notification: { type: string; title: string; body: string; data?: Record<string, unknown> }) {
+  await addDoc(collection(db, 'users', userId, 'notifications'), {
+    ...notification,
+    read: false,
+    createdAt: Date.now(),
+  });
 }
 
 export async function addFriend(userId: string, friendId: string) {
