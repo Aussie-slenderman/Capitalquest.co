@@ -400,6 +400,27 @@ export default function Sidebar({ visible, onClose }: SidebarProps) {
               </View>
             )}
           </View>
+
+          {/* ── Add Email (if not set) ─────────────────────────────────── */}
+          {user && !user.notificationEmail && (
+            <>
+              <SectionHeader title="Complete Your Profile" />
+              <TouchableOpacity
+                style={styles.addEmailBtn}
+                onPress={() => {
+                  onClose();
+                  router.push('/(auth)/email-entry' as never);
+                }}
+              >
+                <Text style={styles.addEmailIcon}>📧</Text>
+                <View style={{ flex: 1 }}>
+                  <Text style={styles.addEmailTitle}>Add Your Email</Text>
+                  <Text style={styles.addEmailSub}>Get weekly performance reports</Text>
+                </View>
+                <Text style={styles.addEmailArrow}>→</Text>
+              </TouchableOpacity>
+            </>
+          )}
         </ScrollView>
       </Animated.View>
     </>
@@ -709,5 +730,37 @@ const styles = StyleSheet.create({
   nextMilestoneText: {
     fontSize: FontSize.xs,
     fontWeight: FontWeight.semibold,
+  },
+
+  // Add Email
+  addEmailBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: Colors.bg.tertiary,
+    borderRadius: Radius.lg,
+    padding: Spacing.base,
+    marginHorizontal: Spacing.base,
+    marginBottom: Spacing.sm,
+    borderWidth: 1,
+    borderColor: Colors.brand.primary + '40',
+    gap: Spacing.sm,
+  },
+  addEmailIcon: {
+    fontSize: 24,
+  },
+  addEmailTitle: {
+    fontSize: FontSize.sm,
+    fontWeight: FontWeight.semibold,
+    color: Colors.text.primary,
+  },
+  addEmailSub: {
+    fontSize: FontSize.xs,
+    color: Colors.text.tertiary,
+    marginTop: 1,
+  },
+  addEmailArrow: {
+    fontSize: FontSize.lg,
+    color: Colors.brand.primary,
+    fontWeight: FontWeight.bold,
   },
 });

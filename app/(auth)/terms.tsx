@@ -115,7 +115,7 @@ export default function TermsScreen() {
           style={[styles.continueBtn, !accepted && styles.continueBtnDisabled]}
           onPress={() => {
             if (accepted) {
-              router.replace('/(auth)/setup');
+              router.replace('/(auth)/email-entry');
             }
           }}
           disabled={!accepted}

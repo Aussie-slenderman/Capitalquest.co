@@ -38,6 +38,7 @@ export default function RegisterScreen() {
         username,
         'United States',
       );
+      setLoading(false);
       router.replace('/(auth)/avatar');
     } catch (e: unknown) {
       const msg = (e as { message?: string }).message || 'Registration failed. Please try again.';
