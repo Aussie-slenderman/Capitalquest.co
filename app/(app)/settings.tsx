@@ -32,9 +32,7 @@ const ACCENT_COLORS = [
 const TAB_COLOR_OPTIONS = [
   { label: 'Ranks',   tab: 'leaderboard', defaultColor: '#F5C518', icon: '🏆' },
   { label: 'Social',  tab: 'social',      defaultColor: '#EC4899', icon: '💬' },
-  { label: 'AI',      tab: 'advisor',     defaultColor: '#00D4AA', icon: '🤖' },
   { label: 'Trade',   tab: 'trade',       defaultColor: '#00C853', icon: '📊' },
-  { label: 'Shop',    tab: 'shop',        defaultColor: '#F59E0B', icon: '🛒' },
   { label: 'Profile', tab: 'profile',     defaultColor: '#7C3AED', icon: '👤' },
 ];
 

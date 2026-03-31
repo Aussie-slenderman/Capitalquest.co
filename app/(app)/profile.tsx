@@ -194,21 +194,13 @@ export default function ProfileScreen() {
         </View>
       </LinearGradient>
 
-      {/* Tab Switcher */}
+      {/* Profile Header */}
       <View style={styles.tabSwitcher}>
         <TouchableOpacity
           style={[styles.tabPill, { backgroundColor: tabColor }]}
         >
           <Text style={[styles.tabPillText, { color: '#fff' }]}>
             Profile
-          </Text>
-        </TouchableOpacity>
-        <TouchableOpacity
-          style={styles.tabPill}
-          onPress={() => router.push('/(auth)/avatar?from=profile' as any)}
-        >
-          <Text style={[styles.tabPillText, { color: C.text.secondary }]}>
-            Wardrobe
           </Text>
         </TouchableOpacity>
       </View>
