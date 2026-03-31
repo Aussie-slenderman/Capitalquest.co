@@ -287,55 +287,7 @@ export default function ProfileScreen() {
           ))}
         </View>
 
-        {/* Tile Style */}
-        <Text style={[styles.settingsSubhead, { color: C.text.secondary }]}>Tile Style</Text>
-        <View style={styles.tileRow}>
-          {TILE_STYLES.map(({ key, label, desc, preview }) => (
-            <TouchableOpacity
-              key={key}
-              style={[
-                styles.tileOption,
-                { borderColor: appTileStyle === key ? appAccentColor : C.border.default },
-                appTileStyle === key && { backgroundColor: `${appAccentColor}20` },
-              ]}
-              onPress={() => setAppTileStyle(key)}
-            >
-              <View style={[styles.tilePreviewBox, { backgroundColor: preview, borderColor: C.border.default }]} />
-              <Text style={[styles.tileLabel, { color: C.text.primary }]}>{label}</Text>
-              <Text style={[styles.tileDesc, { color: C.text.tertiary }]}>{desc}</Text>
-              {appTileStyle === key && (
-                <View style={[styles.tileCheck, { backgroundColor: appAccentColor }]}>
-                  <Text style={{ color: '#fff', fontSize: 10, fontWeight: FontWeight.bold }}>✓</Text>
-                </View>
-              )}
-            </TouchableOpacity>
-          ))}
-        </View>
-
-        {/* Tab Screen Colours */}
-        <Text style={[styles.settingsSubhead, { color: C.text.secondary }]}>Screen Colours</Text>
-        {TAB_COLOR_OPTIONS.map(({ label, tab, icon }) => {
-          const current = appTabColors[tab] ?? TAB_COLOR_OPTIONS.find(t => t.tab === tab)?.defaultColor ?? '#00B3E6';
-          return (
-            <View key={tab} style={[styles.tabColorRow, { borderBottomColor: C.border.default }]}>
-              <Text style={{ fontSize: 18, marginBottom: 4 }}>{icon}</Text>
-              <Text style={[styles.tabColorLabel, { color: C.text.primary }]}>{label}</Text>
-              <View style={styles.tabMiniSwatches}>
-                {TAB_PALETTE.map(color => (
-                  <TouchableOpacity
-                    key={color}
-                    style={[
-                      styles.miniSwatch,
-                      { backgroundColor: color },
-                      current === color && styles.miniSwatchActive,
-                    ]}
-                    onPress={() => setAppTabColor(tab, color)}
-                  />
-                ))}
-              </View>
-            </View>
-          );
-        })}
+        {/* Tile Style and Screen Colours removed */}
 
         {/* Reset */}
         <TouchableOpacity

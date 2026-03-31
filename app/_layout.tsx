@@ -62,8 +62,12 @@ export default function RootLayout() {
         // Load portfolio from Firestore so holdings persist across sessions
         try {
           const portfolio = await getPortfolio(s.uid);
-          if (portfolio) setPortfolio(portfolio as import('../src/types').Portfolio);
-        } catch { /* non-critical — portfolio will load when a trade is placed */ }
+          if (portfolio && (portfolio as Record<string, unknown>).holdings) {
+            setPortfolio(portfolio as import('../src/types').Portfolio);
+          }
+        } catch (err) {
+          console.warn('[CQ] Portfolio load failed, will retry via listener:', err);
+        }
         if (!userData || !(userData as Record<string, unknown>).onboardingComplete) {
           router.replace('/(auth)/setup');
         } else {

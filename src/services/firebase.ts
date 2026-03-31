@@ -243,7 +243,12 @@ export async function getPortfolio(userId: string) {
 
 export function listenToPortfolio(userId: string, callback: (data: unknown) => void) {
   return onSnapshot(doc(db, 'portfolios', userId), (snap) => {
-    if (snap.exists()) callback(snap.data());
+    if (snap.exists()) {
+      const data = snap.data();
+      if (data && data.holdings) {
+        callback(data);
+      }
+    }
   });
 }
 
