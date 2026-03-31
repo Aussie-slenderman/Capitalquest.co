@@ -97,18 +97,11 @@ export async function mockRegister(
   displayName: string,
   country: string
 ) {
-  const email = username + '@capitalquest.app';
+  const uniqueId = Date.now().toString(36) + Math.random().toString(36).slice(2, 8);
+  const email = `${uniqueId}@capitalquest.app`;
   const users = getCollection('users') as Record<string, unknown>;
 
-  const exists = Object.values(users).find(
-    (u: unknown) => (u as Record<string, string>).email === email
-  );
-  if (exists) throw new Error('An account with this username already exists.');
-
-  const usernameTaken = Object.values(users).find(
-    (u: unknown) => (u as Record<string, string>).username === username
-  );
-  if (usernameTaken) throw new Error('This username is already taken.');
+  // Usernames can be reused — no uniqueness check needed
 
   const uid = `mock_${Date.now()}_${Math.random().toString(36).slice(2)}`;
   const accountNumber = Math.floor(10000000 + Math.random() * 90000000).toString();
