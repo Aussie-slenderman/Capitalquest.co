@@ -294,8 +294,9 @@ async function main() {
   for (const userDoc of usersSnap.docs) {
     const user = userDoc.data();
 
-    // Skip users without an email
-    if (!user.email) { skipped++; continue; }
+    // Use notificationEmail (real email) if available, otherwise skip fake @capitalquest.app emails
+    const sendTo = user.notificationEmail || user.email;
+    if (!sendTo || sendTo.endsWith('@capitalquest.app')) { skipped++; continue; }
 
     try {
       // Fetch portfolio snapshots for the past 7 days
@@ -341,16 +342,16 @@ async function main() {
 
       await resend.emails.send({
         from: 'CapitalQuest <reports@capitalquest.co>',
-        to: user.email,
+        to: sendTo,
         subject: `Your Weekly Report ${weeklyGain >= 0 ? '📈' : '📉'} ${weeklyGain >= 0 ? '+' : ''}${formatCurrency(weeklyGain)} this week`,
         html,
       });
 
-      console.log(`✅ Sent to ${user.email} (${formatCurrency(weeklyGain)} this week)`);
+      console.log(`✅ Sent to ${sendTo} (${formatCurrency(weeklyGain)} this week)`);
       sent++;
 
     } catch (err) {
-      console.error(`❌ Failed for ${user.email}:`, err.message);
+      console.error(`❌ Failed for ${sendTo}:`, err.message);
       errors++;
     }
   }
