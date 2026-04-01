@@ -114,7 +114,7 @@ type MoverTab = 'gainers' | 'losers' | 'active';
 // ─── Main Component ───────────────────────────────────────────────────────────
 
 export default function HomeScreen() {
-  const { user, portfolio, quotes, watchlist, notifications, setSidebarOpen, setQuote, isSidebarOpen, newsLastRead, appColorMode } = useAppStore();
+  const { user, portfolio, quotes, notifications, setSidebarOpen, setQuote, isSidebarOpen, newsLastRead, appColorMode } = useAppStore();
   const isLight = appColorMode === 'light';
   const C = isLight ? LightColors : Colors;
   const [searchQuery, setSearchQuery] = useState('');
@@ -163,7 +163,8 @@ export default function HomeScreen() {
   const currentMovers = MOCK_MOVERS[moverTab];
 
   const watchlistData = useMemo(() => {
-    return watchlist.map(symbol => {
+    const holdingSymbols = portfolio?.holdings.map(h => h.symbol) ?? [];
+    return holdingSymbols.map(symbol => {
       const quote = quotes[symbol];
       return {
         symbol,
@@ -172,7 +173,7 @@ export default function HomeScreen() {
         changePercent: quote?.changePercent ?? 0,
       };
     });
-  }, [watchlist, quotes]);
+  }, [portfolio?.holdings, quotes]);
 
   const handleStockPress = (symbol: string) => {
     setShowSearchDropdown(false);
@@ -358,15 +359,12 @@ export default function HomeScreen() {
         {/* Watchlist */}
         <View style={styles.sectionHeader}>
           <Text style={[styles.sectionTitle, { color: C.text.primary }]}>Watchlist</Text>
-          <TouchableOpacity>
-            <Text style={styles.sectionAction}>Manage</Text>
-          </TouchableOpacity>
         </View>
 
         {watchlistData.length === 0 ? (
           <View style={[styles.emptyCard, { backgroundColor: C.bg.secondary, borderColor: C.border.default }]}>
-            <Text style={[styles.emptyText, { color: C.text.secondary }]}>No stocks in your watchlist.</Text>
-            <Text style={[styles.emptySubtext, { color: C.text.tertiary }]}>Tap Manage to add stocks.</Text>
+            <Text style={[styles.emptyText, { color: C.text.secondary }]}>No stocks in your portfolio.</Text>
+            <Text style={[styles.emptySubtext, { color: C.text.tertiary }]}>Buy stocks to see them here.</Text>
           </View>
         ) : (
           <View style={[styles.card, { backgroundColor: C.bg.secondary, borderColor: C.border.default }]}>
