@@ -79,6 +79,11 @@ export default function RootLayout() {
           const portfolio = await getPortfolio(s.uid);
           if (portfolio && (portfolio as Record<string, unknown>).holdings) {
             setPortfolio(portfolio as import('../src/types').Portfolio);
+            // Save daily snapshot for weekly email chart
+            const p = portfolio as import('../src/types').Portfolio;
+            import('../src/services/firebase').then(({ savePortfolioSnapshot }) => {
+              savePortfolioSnapshot(s.uid, p.totalValue, p.cashBalance, p.totalGainLoss ?? 0, p.totalGainLossPercent ?? 0).catch(() => {});
+            });
           }
         } catch (err) {
           console.warn('[CQ] Portfolio load failed, will retry via listener:', err);
