@@ -89,24 +89,24 @@ export default function RootLayout() {
           console.warn('[CQ] Portfolio load failed, will retry via listener:', err);
         }
         const ud2 = userData as Record<string, unknown> | null;
-        const hasPortfolio = !!(await getPortfolio(s.uid));
-        const isExistingAccount = !!(ud2?.createdAt) || hasPortfolio || !!(ud2?.startingBalance);
-        if (!ud2?.onboardingComplete && !isExistingAccount) {
-          // Only send to setup if this is a brand new account with no data
-          router.replace('/(auth)/setup');
-        } else {
-          // Mark onboarding complete for existing accounts that didn't have the flag
-          if (!ud2?.onboardingComplete && isExistingAccount) {
+        // Check if user document exists in Firestore (means they've registered before)
+        const userDocExists = ud2 && ud2.username;
+
+        if (userDocExists) {
+          // Existing user signing in — go straight to dashboard
+          // Auto-fix missing onboardingComplete flag
+          if (!ud2.onboardingComplete) {
             import('../src/services/auth').then(({ updateUser }) => {
               updateUser(s.uid, { onboardingComplete: true }).catch(() => {});
             });
           }
-          // Show welcome popup for users who have never seen it
-          // (covers existing accounts and cases where setup.tsx was bypassed)
-          if (!(userData as Record<string, unknown>).welcomeShown) {
+          if (!ud2.welcomeShown) {
             setShowWelcomePopup(true);
           }
           router.replace('/(app)/dashboard');
+        } else {
+          // Brand new account — no user doc yet, send to onboarding
+          router.replace('/(auth)/setup');
         }
       } else {
         resetUserData();
