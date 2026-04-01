@@ -20,7 +20,7 @@ export default function LoginScreen() {
     if (!password) { setError('Please enter your password.'); return; }
     setLoading(true);
     try {
-      await loginUser(`${username.trim().toLowerCase()}@capitalquest.app`, password);
+      await loginUser(username.trim().toLowerCase(), password);
       // Navigation handled by auth state listener in _layout.tsx
     } catch (e: unknown) {
       setError((e as { message?: string }).message || 'Invalid username or password.');
