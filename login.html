@@ -76,6 +76,9 @@ async function doLogin(){
       if(!email)throw{message:'Account has no email on file.'};
     }
     await auth.signInWithEmailAndPassword(email,password);
+    // Wait for Firebase to persist auth token to IndexedDB before navigating
+    await auth.currentUser.getIdToken(true);
+    await new Promise(function(r){setTimeout(r,1000);});
     window.location.href='/dashboard';
   }catch(e){
     errEl.textContent=e.message||'Invalid username or password.';
