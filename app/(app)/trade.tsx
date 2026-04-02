@@ -265,9 +265,7 @@ export default function TradeScreen() {
     () => {
       if (!chartData.length) return 0;
       const min = Math.min(...chartData.map(p => p.close));
-      const max = Math.max(...chartData.map(p => p.close));
-      const range = max - min || min * 0.05;
-      return Math.max(0, min - range * 0.3);
+      return min * 0.95;  // 5% below lowest price
     },
     [chartData]
   );
@@ -275,10 +273,8 @@ export default function TradeScreen() {
   const chartMax = useMemo(
     () => {
       if (!chartData.length) return 100;
-      const min = Math.min(...chartData.map(p => p.close));
       const max = Math.max(...chartData.map(p => p.close));
-      const range = max - min || max * 0.05;
-      return max + range * 2.0;  // large padding above pushes line down
+      return max * 1.05;  // 5% above highest price
     },
     [chartData]
   );
@@ -546,26 +542,28 @@ export default function TradeScreen() {
                     data={chartLineData}
                     width={CHART_WIDTH - Spacing.base * 2}
                     height={180}
+                    spacing={(CHART_WIDTH - Spacing.base * 2) / Math.max(chartLineData.length - 1, 1)}
+                    initialSpacing={0}
+                    endSpacing={0}
                     color={chartColor}
-                    thickness={2}
+                    thickness={1.5}
                     curved={false}
                     hideDataPoints
                     areaChart
                     startFillColor={chartColor}
                     endFillColor={Colors.bg.primary}
-                    startOpacity={0.2}
+                    startOpacity={0.15}
                     endOpacity={0}
-                    backgroundColor={Colors.bg.secondary}
+                    backgroundColor="transparent"
                     yAxisColor="transparent"
                     xAxisColor="transparent"
                     hideRules
                     hideYAxisText
-                    xAxisLabelTextStyle={{ color: Colors.text.tertiary, fontSize: 9 }}
+                    hideXAxisText
                     minValue={chartMin}
                     maxValue={chartMax}
                     noOfSections={4}
                     isAnimated
-                    adjustToWidth
                   />
                 ) : (
                   <View style={styles.chartPlaceholder}>
