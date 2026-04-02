@@ -401,26 +401,6 @@ export default function Sidebar({ visible, onClose }: SidebarProps) {
             )}
           </View>
 
-          {/* ── Add Email (if not set) ─────────────────────────────────── */}
-          {user && !user.notificationEmail && (
-            <>
-              <SectionHeader title="Complete Your Profile" />
-              <TouchableOpacity
-                style={styles.addEmailBtn}
-                onPress={() => {
-                  onClose();
-                  router.push('/(auth)/email-entry' as never);
-                }}
-              >
-                <Text style={styles.addEmailIcon}>📧</Text>
-                <View style={{ flex: 1 }}>
-                  <Text style={styles.addEmailTitle}>Add Your Email</Text>
-                  <Text style={styles.addEmailSub}>Get weekly performance reports</Text>
-                </View>
-                <Text style={styles.addEmailArrow}>→</Text>
-              </TouchableOpacity>
-            </>
-          )}
         </ScrollView>
       </Animated.View>
     </>

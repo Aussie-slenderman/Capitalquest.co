@@ -80,7 +80,7 @@ export default function RegisterScreen() {
         country,
       );
       setLoading(false);
-      router.replace('/(auth)/avatar');
+      router.replace('/(auth)/setup');
     } catch (e: unknown) {
       const msg = (e as { message?: string }).message || 'Registration failed. Please try again.';
       setError(msg);

@@ -54,6 +54,10 @@ SplashScreen.preventAutoHideAsync();
 export let isRegistrationInProgress = false;
 export function setRegistrationInProgress(v: boolean) { isRegistrationInProgress = v; }
 
+// Global flag: when true, the auth listener skips navigation (login flow handles its own routing)
+export let isLoginInProgress = false;
+export function setLoginInProgress(v: boolean) { isLoginInProgress = v; }
+
 export default function RootLayout() {
   const { setUser, setAuthLoading, setShowWelcomePopup, setPortfolio, resetUserData } = useAppStore();
 
@@ -92,8 +96,8 @@ export default function RootLayout() {
         } catch (err) {
           console.warn('[CQ] Portfolio load failed, will retry via listener:', err);
         }
-        // If registration flow is in progress, don't navigate — let the flow handle it
-        if (isRegistrationInProgress) {
+        // If registration or login flow is in progress, don't navigate — let the flow handle it
+        if (isRegistrationInProgress || isLoginInProgress) {
           setAuthLoading(false);
           return;
         }
