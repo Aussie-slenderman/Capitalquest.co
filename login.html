@@ -2,6 +2,8 @@
 <html lang="en">
 <head>
 <meta charset="utf-8"/>
+<meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate"/>
+<meta http-equiv="Pragma" content="no-cache"/>
 <meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no"/>
 <title>Sign In — CapitalQuest</title>
 <meta name="theme-color" content="#0A0E1A"/>
@@ -42,21 +44,33 @@
 
 <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-auth-compat.js"></script>
-<script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore-compat.js"></script>
 <script>
+var API_KEY='AIzaSyCP1AcnDTU2umjR3cGycRxQ5mwOFq4Xjgg';
+var PROJECT_ID='capitalquest-4d20b';
+
 firebase.initializeApp({
-  apiKey:'AIzaSyCP1AcnDTU2umjR3cGycRxQ5mwOFq4Xjgg',
-  authDomain:'capitalquest-4d20b.firebaseapp.com',
-  projectId:'capitalquest-4d20b',
-  appId:'1:407589569541:web:3b8a543f03ad9f110ec86c'
+  apiKey: API_KEY,
+  authDomain: PROJECT_ID+'.firebaseapp.com',
+  projectId: PROJECT_ID,
+  appId: '1:407589569541:web:3b8a543f03ad9f110ec86c'
 });
 var auth=firebase.auth();
-var db=firebase.firestore();
 
 // If already signed in, go straight to dashboard
 auth.onAuthStateChanged(function(u){
   if(u) window.location.href='/dashboard';
 });
+
+// Look up username via Firestore REST API (no auth needed for public reads)
+async function lookupEmail(username){
+  var url='https://firestore.googleapis.com/v1/projects/'+PROJECT_ID+'/databases/(default)/documents:runQuery';
+  var body={structuredQuery:{from:[{collectionId:'users'}],where:{fieldFilter:{field:{fieldPath:'username'},op:'EQUAL',value:{stringValue:username}}},limit:{value:1},select:{fields:[{fieldPath:'email'}]}}};
+  var res=await fetch(url,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(body)});
+  var data=await res.json();
+  if(!res.ok||!data||!data[0]||!data[0].document)return null;
+  var fields=data[0].document.fields;
+  return fields&&fields.email?fields.email.stringValue:null;
+}
 
 async function doLogin(){
   var errEl=document.getElementById('err');
@@ -70,23 +84,22 @@ async function doLogin(){
   try{
     var email=username;
     if(username.indexOf('@')===-1){
-      var snap=await db.collection('users').where('username','==',username).get();
-      if(snap.empty)throw{message:'No account found with that username.'};
-      email=snap.docs[0].data().email;
-      if(!email)throw{message:'Account has no email on file.'};
+      email=await lookupEmail(username);
+      if(!email)throw{message:'No account found with that username.'};
     }
     await auth.signInWithEmailAndPassword(email,password);
-    // Wait for Firebase to persist auth token to IndexedDB before navigating
     await auth.currentUser.getIdToken(true);
     await new Promise(function(r){setTimeout(r,1000);});
     window.location.href='/dashboard';
   }catch(e){
-    errEl.textContent=e.message||'Invalid username or password.';
+    var msg=e.message||'Invalid username or password.';
+    // Clean up Firebase error messages
+    if(msg.indexOf('auth/')>-1) msg='Invalid username or password.';
+    errEl.textContent=msg;
     errEl.style.display='block';
     btn.disabled=false;btn.textContent='Sign In';
   }
 }
-// Allow Enter key to submit
 document.getElementById('pass').addEventListener('keydown',function(e){if(e.key==='Enter')doLogin();});
 document.getElementById('user').addEventListener('keydown',function(e){if(e.key==='Enter')document.getElementById('pass').focus();});
 </script>
