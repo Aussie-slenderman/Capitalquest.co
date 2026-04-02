@@ -266,8 +266,8 @@ export default function TradeScreen() {
       if (!chartData.length) return 0;
       const min = Math.min(...chartData.map(p => p.close));
       const max = Math.max(...chartData.map(p => p.close));
-      const range = max - min || 1;
-      return min - range * 0.15;  // 15% padding below
+      const range = max - min || min * 0.02;
+      return Math.max(0, min - range * 0.5);  // 50% padding below so line sits higher
     },
     [chartData]
   );
@@ -277,8 +277,8 @@ export default function TradeScreen() {
       if (!chartData.length) return 100;
       const min = Math.min(...chartData.map(p => p.close));
       const max = Math.max(...chartData.map(p => p.close));
-      const range = max - min || 1;
-      return max + range * 0.1;  // 10% padding above
+      const range = max - min || max * 0.02;
+      return max + range * 0.3;  // 30% padding above
     },
     [chartData]
   );
@@ -548,6 +548,7 @@ export default function TradeScreen() {
                     height={180}
                     color={chartColor}
                     thickness={2}
+                    curved={false}
                     hideDataPoints
                     areaChart
                     startFillColor={chartColor}
@@ -556,15 +557,15 @@ export default function TradeScreen() {
                     endOpacity={0}
                     backgroundColor={Colors.bg.secondary}
                     yAxisColor="transparent"
-                    xAxisColor={Colors.border.default}
-                    rulesColor={Colors.chart.grid}
-                    rulesType="solid"
+                    xAxisColor="transparent"
+                    hideRules
                     hideYAxisText
                     xAxisLabelTextStyle={{ color: Colors.text.tertiary, fontSize: 9 }}
                     minValue={chartMin}
                     maxValue={chartMax}
                     noOfSections={4}
                     isAnimated
+                    adjustToWidth
                   />
                 ) : (
                   <View style={styles.chartPlaceholder}>
