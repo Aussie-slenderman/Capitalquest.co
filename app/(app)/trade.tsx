@@ -266,8 +266,8 @@ export default function TradeScreen() {
       if (!chartData.length) return 0;
       const min = Math.min(...chartData.map(p => p.close));
       const max = Math.max(...chartData.map(p => p.close));
-      const range = max - min || min * 0.02;
-      return Math.max(0, min - range * 0.5);  // 50% padding below so line sits higher
+      const range = max - min || min * 0.05;
+      return Math.max(0, min - range * 0.3);
     },
     [chartData]
   );
@@ -277,8 +277,8 @@ export default function TradeScreen() {
       if (!chartData.length) return 100;
       const min = Math.min(...chartData.map(p => p.close));
       const max = Math.max(...chartData.map(p => p.close));
-      const range = max - min || max * 0.02;
-      return max + range * 0.3;  // 30% padding above
+      const range = max - min || max * 0.05;
+      return max + range * 2.0;  // large padding above pushes line down
     },
     [chartData]
   );
