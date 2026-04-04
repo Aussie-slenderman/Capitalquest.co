@@ -8,6 +8,7 @@ import { LinearGradient } from 'expo-linear-gradient';
 import AppHeader from '../../src/components/AppHeader';
 import Sidebar from '../../src/components/Sidebar';
 import { useAppStore } from '../../src/store/useAppStore';
+import { useT } from '../../src/constants/translations';
 import { Colors, LightColors, FontSize, FontWeight, Spacing, Radius } from '../../src/constants/theme';
 
 const { width: SW } = Dimensions.get('window');
@@ -59,6 +60,7 @@ export default function SettingsScreen() {
     isSidebarOpen, setSidebarOpen,
   } = useAppStore();
 
+  const t = useT();
   const isDark = appColorMode === 'dark';
   const isLight = !isDark;
   const C = isLight ? LightColors : Colors;
@@ -87,12 +89,12 @@ export default function SettingsScreen() {
         style={StyleSheet.absoluteFill}
         pointerEvents="none"
       />
-      <AppHeader title="Settings" />
+      <AppHeader title={t('settings')} />
 
       <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={styles.scroll}>
 
         {/* ── Dark / Light Mode ── */}
-        <Section title="Mode" icon="🌗" txt={txt}>
+        <Section title={t('mode')} icon="🌗" txt={txt}>
           <View style={[styles.modeRow, { backgroundColor: surface, borderColor: border }]}>
             <ModeButton
               label="🌑  Dark"
@@ -112,7 +114,7 @@ export default function SettingsScreen() {
         </Section>
 
         {/* ── Accent Colour ── */}
-        <Section title="Accent Colour" icon="🎨" txt={txt}>
+        <Section title={t('accent_colour')} icon="🎨" txt={txt}>
           <Text style={[styles.sectionDesc, { color: sub }]}>
             Applied to headers, tab bar, and highlights
           </Text>
@@ -141,7 +143,7 @@ export default function SettingsScreen() {
         </Section>
 
         {/* ── Tile Style ── */}
-        <Section title="Tile Style" icon="🃏" txt={txt}>
+        <Section title={t('tile_style')} icon="🃏" txt={txt}>
           <Text style={[styles.sectionDesc, { color: sub }]}>
             Controls how cards and panels appear
           </Text>
@@ -170,7 +172,7 @@ export default function SettingsScreen() {
         </Section>
 
         {/* ── Tab Screen Colours ── */}
-        <Section title="Screen Colours" icon="🖼️" txt={txt}>
+        <Section title={t('screen_colours')} icon="🖼️" txt={txt}>
           <Text style={[styles.sectionDesc, { color: sub }]}>
             Choose the highlight colour for each tab
           </Text>
@@ -208,7 +210,7 @@ export default function SettingsScreen() {
             TAB_COLOR_OPTIONS.forEach(({ tab, defaultColor }) => setAppTabColor(tab, defaultColor));
           }}
         >
-          <Text style={[styles.resetText, { color: sub }]}>↺  Reset to Defaults</Text>
+          <Text style={[styles.resetText, { color: sub }]}>↺  {t('reset_defaults')}</Text>
         </TouchableOpacity>
 
         <View style={{ height: 40 }} />

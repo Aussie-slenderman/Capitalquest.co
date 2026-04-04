@@ -11,11 +11,12 @@ import {
 import { refreshPortfolioPrices } from '../../src/services/tradingEngine';
 import { subscribeToPrices } from '../../src/services/stockApi';
 import { Colors, FontSize, FontWeight } from '../../src/constants/theme';
-import { t } from '../../src/constants/translations';
+import { useT } from '../../src/constants/translations';
 import type { Portfolio, ChatRoom } from '../../src/types';
 import AchievementToast from '../../src/components/AchievementToast';
 
 export default function AppLayout() {
+  const t = useT();
   const {
     user, setPortfolio, setChatRooms, setUnreadCount, unreadCount,
     portfolio, setQuote,
@@ -138,7 +139,7 @@ export default function AppLayout() {
       <Tabs.Screen
         name="tutorial"
         options={{
-          title: 'Learn',
+          title: t('learn'),
           tabBarIcon: ({ focused }) => <TabIcon icon="🎓" focused={focused} bgColor="rgba(210, 150, 255, 0.35)" />,
         }}
       />
@@ -188,7 +189,7 @@ export default function AppLayout() {
       <Tabs.Screen
         name="trophy-road"
         options={{
-          title: 'Trophy',
+          title: t('trophy'),
           tabBarIcon: ({ focused }) => <TabIcon icon="🎖️" focused={focused} bgColor="rgba(255, 200, 120, 0.35)" />,
         }}
       />
@@ -229,6 +230,7 @@ function TabIcon({
 }
 
 function CenterTabButton({ onPress, accessibilityState }: any) {
+  const t = useT();
   const focused = accessibilityState?.selected;
   return (
     <TouchableOpacity

@@ -44,7 +44,7 @@ import { useAppStore } from '../../src/store/useAppStore';
 import { Colors, LightColors, FontSize, FontWeight, Spacing, Radius } from '../../src/constants/theme';
 import { formatCurrency, formatShares, formatRelativeTime } from '../../src/utils/formatters';
 import type { ChatRoom, Message, TradeProposal, Club, ClubInvite, LeaderboardEntry } from '../../src/types';
-import { t } from '../../src/constants/translations';
+import { useT } from '../../src/constants/translations';
 
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
 
@@ -104,6 +104,7 @@ function InitialsAvatar({
 // ─── Club Digest Header ────────────────────────────────────────────────────────
 
 function ClubDigestHeader({ club }: { club: Club }) {
+  const t = useT();
   const { globalLeaderboard, user, portfolio, appColorMode: dgAppColorMode } = useAppStore();
   const DC = dgAppColorMode === 'light' ? LightColors : Colors;
 
@@ -323,6 +324,7 @@ function ChatModal({
   onClose: () => void;
   club?: Club;
 }) {
+  const t = useT();
   const { user, appColorMode } = useAppStore();
   const CMC = appColorMode === 'light' ? LightColors : Colors;
   const [messages, setMessages] = useState<Message[]>([]);
@@ -521,6 +523,7 @@ function ChatModal({
 // ─── Messages Tab ─────────────────────────────────────────────────────────────
 
 function MessagesTab() {
+  const t = useT();
   const { chatRooms, user, clubInvites, removeClubInvite, addMyClub, appColorMode } = useAppStore();
   const MC = appColorMode === 'light' ? LightColors : Colors;
   const [activeChatRoom, setActiveChatRoom] = useState<ChatRoom | null>(null);
@@ -1115,6 +1118,7 @@ function ClubsTab() {
 // ─── Find Friends Tab ─────────────────────────────────────────────────────────
 
 function FindFriendsTab() {
+  const t = useT();
   const { user, chatRooms, setChatRooms, appColorMode } = useAppStore();
   const FC = appColorMode === 'light' ? LightColors : Colors;
   const [searchQuery, setSearchQuery] = useState('');
@@ -1405,6 +1409,7 @@ function FindFriendsTab() {
 // ─── Virtual Trading Tab ──────────────────────────────────────────────────────
 
 function RankingsTab() {
+  const t = useT();
   const { user, portfolio, appColorMode } = useAppStore();
   const RC = appColorMode === 'light' ? LightColors : Colors;
   const [entries, setEntries] = useState<LeaderboardEntry[]>([]);
@@ -1546,6 +1551,7 @@ function RankingsTab() {
 // ─── Main Social Screen ───────────────────────────────────────────────────────
 
 export default function SocialScreen() {
+  const t = useT();
   const { appColorMode, appTabColors, isSidebarOpen, setSidebarOpen } = useAppStore();
   const tabColor = appTabColors['social'] ?? '#EC4899';
   const isLight = appColorMode === 'light';
@@ -1598,7 +1604,7 @@ export default function SocialScreen() {
         end={{ x: 1, y: 0.5 }}
         pointerEvents="none"
       />
-      <AppHeader title="Social" />
+      <AppHeader title={t('social')} />
 
       {/* Tab Bar */}
       <View style={[styles.tabBar, { backgroundColor: isLight ? 'rgba(255,240,248,0.95)' : 'rgba(61, 0, 37, 0.85)', borderBottomColor: isLight ? 'rgba(180,0,100,0.15)' : 'rgba(180, 0, 100, 0.3)' }]}>

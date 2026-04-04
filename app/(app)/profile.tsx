@@ -14,7 +14,7 @@ import Sidebar from '../../src/components/Sidebar';
 import { Colors, LightColors, FontSize, FontWeight, Spacing, Radius } from '../../src/constants/theme';
 import { formatCurrency, formatPercent, formatAccountNumber } from '../../src/utils/formatters';
 import type { AvatarConfig } from '../../src/types';
-import { LANGUAGES, t } from '../../src/constants/translations';
+import { LANGUAGES, useT } from '../../src/constants/translations';
 
 const { width: PROFILE_SW } = Dimensions.get('window');
 const PROFILE_SWATCH_SIZE = Math.floor((PROFILE_SW - Spacing.base * 2 - 8 * 11) / 12);
@@ -83,6 +83,7 @@ const profileAvatarStyles = StyleSheet.create({
 });
 
 export default function ProfileScreen() {
+  const t = useT();
   const {
     user, portfolio, setUser,
     appColorMode, setAppColorMode,
@@ -258,7 +259,7 @@ export default function ProfileScreen() {
         onPress={() => setWardrobeVisible(true)}
       >
         <Text style={{ fontSize: 18 }}>👕</Text>
-        <Text style={{ color: '#fff', fontSize: FontSize.md, fontWeight: FontWeight.bold }}>Wardrobe</Text>
+        <Text style={{ color: '#fff', fontSize: FontSize.md, fontWeight: FontWeight.bold }}>{t('wardrobe')}</Text>
       </TouchableOpacity>
 
       <>
@@ -515,7 +516,7 @@ export default function ProfileScreen() {
       <View style={{ flex: 1, backgroundColor: 'rgba(0,0,0,0.7)', justifyContent: 'flex-end' }}>
         <View style={{ backgroundColor: C.bg.secondary, borderTopLeftRadius: Radius.xl, borderTopRightRadius: Radius.xl, maxHeight: '85%', paddingBottom: 40 }}>
           <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', padding: Spacing.base, borderBottomWidth: 1, borderBottomColor: C.border.default }}>
-            <Text style={{ fontSize: FontSize.lg, fontWeight: FontWeight.bold, color: C.text.primary }}>👕 Wardrobe</Text>
+            <Text style={{ fontSize: FontSize.lg, fontWeight: FontWeight.bold, color: C.text.primary }}>{`👕 ${t('wardrobe')}`}</Text>
             <TouchableOpacity onPress={() => setWardrobeVisible(false)}>
               <Text style={{ fontSize: 20, color: C.text.tertiary, padding: 4 }}>✕</Text>
             </TouchableOpacity>
@@ -527,11 +528,11 @@ export default function ProfileScreen() {
               <View style={{ width: 80, height: 80, borderRadius: 40, backgroundColor: selectedBgColor, alignItems: 'center', justifyContent: 'center', borderWidth: 2, borderColor: Colors.brand.primary }}>
                 <Text style={{ fontSize: 44 }}>{selectedAnimal}</Text>
               </View>
-              <Text style={{ color: C.text.secondary, fontSize: FontSize.sm, marginTop: Spacing.sm }}>Preview</Text>
+              <Text style={{ color: C.text.secondary, fontSize: FontSize.sm, marginTop: Spacing.sm }}>{t('preview')}</Text>
             </View>
 
             {/* Animal Selection */}
-            <Text style={{ fontSize: FontSize.base, fontWeight: FontWeight.semibold, color: C.text.primary, marginBottom: Spacing.sm }}>Choose Animal</Text>
+            <Text style={{ fontSize: FontSize.base, fontWeight: FontWeight.semibold, color: C.text.primary, marginBottom: Spacing.sm }}>{t('choose_animal')}</Text>
             <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: Spacing.sm, marginBottom: Spacing.lg }}>
               {WARDROBE_ANIMALS.map(animal => (
                 <TouchableOpacity
@@ -551,7 +552,7 @@ export default function ProfileScreen() {
             </View>
 
             {/* Background Color */}
-            <Text style={{ fontSize: FontSize.base, fontWeight: FontWeight.semibold, color: C.text.primary, marginBottom: Spacing.sm }}>Background Colour</Text>
+            <Text style={{ fontSize: FontSize.base, fontWeight: FontWeight.semibold, color: C.text.primary, marginBottom: Spacing.sm }}>{t('background_colour')}</Text>
             <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: Spacing.sm, marginBottom: Spacing.xl }}>
               {WARDROBE_COLORS.map((color, i) => (
                 <TouchableOpacity

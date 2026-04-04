@@ -220,6 +220,32 @@ const en: Dict = {
   xp_levels: 'XP Levels',
   portfolio_value: 'Portfolio Value',
 
+  // Stats
+  orders_placed: 'orders placed',
+  avg: 'Avg',
+
+  // Settings screen
+  tile_style: 'Tile Style',
+  screen_colours: 'Screen Colours',
+
+  // Tab labels
+  learn: 'Learn',
+  trophy: 'Trophy',
+
+  // Extra
+  no_data: 'No data available',
+  no_recent_news: 'No recent news',
+  not_signed_in: 'Not signed in',
+  please_login: 'Please log in to trade.',
+  enter_amount: 'Enter an amount',
+  insufficient_funds: 'Insufficient funds',
+  not_enough_shares: 'Not enough shares',
+  about_company: 'About',
+  wardrobe: 'Wardrobe',
+  choose_animal: 'Choose Animal',
+  background_colour: 'Background Colour',
+  preview: 'Preview',
+
   // Common
   confirm: 'Confirm',
   save: 'Save',
@@ -293,6 +319,14 @@ const es: Dict = {
   delete_account: 'Eliminar Cuenta', sign_out_confirm: '¿Seguro que quieres cerrar sesión?',
   delete_confirm: 'Esto eliminará permanentemente tu cuenta, portafolio y todo tu progreso.',
   xp_levels: 'Niveles XP', portfolio_value: 'Valor del Portafolio',
+  orders_placed: 'órdenes realizadas', avg: 'Prom',
+  tile_style: 'Estilo de Tarjeta', screen_colours: 'Colores de Pantalla',
+  learn: 'Aprender', trophy: 'Trofeo', no_data: 'Sin datos disponibles',
+  not_signed_in: 'No has iniciado sesión', please_login: 'Inicia sesión para operar.',
+  enter_amount: 'Ingresa una cantidad', insufficient_funds: 'Fondos insuficientes',
+  not_enough_shares: 'Acciones insuficientes', about_company: 'Acerca de',
+  wardrobe: 'Vestuario', choose_animal: 'Elegir Animal', background_colour: 'Color de Fondo',
+  preview: 'Vista Previa',
   confirm: 'Confirmar', save: 'Guardar', delete: 'Eliminar', error: 'Error',
   success: 'Éxito', back: 'Atrás', close: 'Cerrar', about: 'Acerca de', you: 'TÚ',
 };
@@ -358,6 +392,14 @@ const fr: Dict = {
   delete_account: 'Supprimer le Compte', sign_out_confirm: 'Voulez-vous vraiment vous déconnecter ?',
   delete_confirm: 'Cela supprimera définitivement votre compte, portefeuille et toute progression.',
   xp_levels: 'Niveaux XP', portfolio_value: 'Valeur du Portefeuille',
+  orders_placed: 'ordres passés', avg: 'Moy',
+  tile_style: 'Style de Carte', screen_colours: 'Couleurs d\'Écran',
+  learn: 'Apprendre', trophy: 'Trophée', no_data: 'Aucune donnée',
+  not_signed_in: 'Non connecté', please_login: 'Connectez-vous pour trader.',
+  enter_amount: 'Entrez un montant', insufficient_funds: 'Fonds insuffisants',
+  not_enough_shares: 'Actions insuffisantes', about_company: 'À propos de',
+  wardrobe: 'Garde-Robe', choose_animal: 'Choisir Animal', background_colour: 'Couleur de Fond',
+  preview: 'Aperçu',
   confirm: 'Confirmer', save: 'Enregistrer', delete: 'Supprimer', error: 'Erreur',
   success: 'Succès', back: 'Retour', close: 'Fermer', about: 'À propos', you: 'VOUS',
 };
@@ -419,6 +461,14 @@ const de: Dict = {
   delete_account: 'Konto löschen', sign_out_confirm: 'Möchten Sie sich wirklich abmelden?',
   delete_confirm: 'Ihr Konto, Portfolio und Fortschritt werden dauerhaft gelöscht.',
   xp_levels: 'XP-Stufen', portfolio_value: 'Portfoliowert',
+  orders_placed: 'Orders aufgegeben', avg: 'Durchschn.',
+  tile_style: 'Kachel-Stil', screen_colours: 'Bildschirmfarben',
+  learn: 'Lernen', trophy: 'Trophäe', no_data: 'Keine Daten verfügbar',
+  not_signed_in: 'Nicht angemeldet', please_login: 'Bitte melden Sie sich an.',
+  enter_amount: 'Betrag eingeben', insufficient_funds: 'Unzureichende Mittel',
+  not_enough_shares: 'Nicht genügend Aktien', about_company: 'Über',
+  wardrobe: 'Garderobe', choose_animal: 'Tier wählen', background_colour: 'Hintergrundfarbe',
+  preview: 'Vorschau',
   confirm: 'Bestätigen', save: 'Speichern', delete: 'Löschen', error: 'Fehler',
   success: 'Erfolg', back: 'Zurück', close: 'Schließen', about: 'Über', you: 'DU',
 };
@@ -556,4 +606,15 @@ const translations: Record<string, Dict> = {
 export function t(key: string): string {
   const lang = useAppStore.getState().appLanguage ?? 'en';
   return translations[lang]?.[key] ?? translations.en[key] ?? key;
+}
+
+/**
+ * React hook that re-renders the component when the language changes.
+ * Returns the same t() function but triggers re-render on language switch.
+ * Usage:  const t = useT();
+ */
+export function useT(): (key: string) => string {
+  // Subscribe to appLanguage — component re-renders when it changes
+  const lang = useAppStore((s) => s.appLanguage) ?? 'en';
+  return (key: string) => translations[lang]?.[key] ?? translations.en[key] ?? key;
 }

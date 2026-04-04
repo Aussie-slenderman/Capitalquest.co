@@ -27,6 +27,7 @@ import {
   formatCurrency,
 } from '../../src/utils/formatters';
 import { Colors, LightColors, FontSize, FontWeight, Spacing, Radius } from '../../src/constants/theme';
+import { useT } from '../../src/constants/translations';
 import { ACHIEVEMENTS, getXPProgress, getLevelFromXP } from '../../src/constants/achievements';
 import type { LeaderboardEntry, LeaderboardType, Achievement } from '../../src/types';
 
@@ -84,6 +85,7 @@ function buildUserEntry(
 
 export default function LeaderboardScreen() {
   const { user, portfolio, globalLeaderboard, localLeaderboard, setGlobalLeaderboard, setLocalLeaderboard, appColorMode, appTabColors, isSidebarOpen, setSidebarOpen } = useAppStore();
+  const t = useT();
   const tabColor = appTabColors['leaderboard'] ?? '#F5C518';
   const isLight = appColorMode === 'light';
   const C = isLight ? LightColors : Colors;
@@ -276,7 +278,7 @@ export default function LeaderboardScreen() {
         end={{ x: 1, y: 0.5 }}
         pointerEvents="none"
       />
-      <AppHeader title="Leaderboard" />
+      <AppHeader title={t('leaderboard')} />
 
       <ScrollView
         style={styles.flex}
@@ -329,23 +331,23 @@ export default function LeaderboardScreen() {
         {/* ── User Stats Card ── */}
         {user && portfolio && (
           <View style={[styles.statsCard, { backgroundColor: C.bg.secondary, borderColor: C.border.default }]}>
-            <Text style={[styles.statsCardTitle, { color: C.text.primary }]}>Your Performance</Text>
+            <Text style={[styles.statsCardTitle, { color: C.text.primary }]}>{t('your_performance')}</Text>
             <View style={styles.statsRow}>
               <StatsItem
-                label="Current Rank"
+                label={t('current_rank')}
                 value={currentUserEntry ? `#${currentUserEntry.rank}` : '—'}
                 highlight
               />
               <StatsItem
-                label="Starting Balance"
+                label={t('starting_balance')}
                 value={formatCurrency(portfolio.startingBalance, 'USD', true)}
               />
               <StatsItem
-                label="Current Value"
+                label={t('current_value')}
                 value={formatCurrency(portfolio.totalValue, 'USD', true)}
               />
               <StatsItem
-                label="Total Gain"
+                label={t('total_gain')}
                 value={(portfolio.totalGainLoss >= 0 ? '+' : '') + formatCurrency(portfolio.totalGainLoss, 'USD', true)}
                 positive={portfolio.totalGainLoss >= 0}
                 colored
@@ -409,12 +411,12 @@ export default function LeaderboardScreen() {
         {isLoading ? (
           <View style={styles.loadingContainer}>
             <ActivityIndicator color={Colors.brand.primary} size="large" />
-            <Text style={[styles.loadingText, { color: C.text.secondary }]}>Loading rankings…</Text>
+            <Text style={[styles.loadingText, { color: C.text.secondary }]}>{t('loading_rankings')}</Text>
           </View>
         ) : entries.length === 0 ? (
           <View style={styles.emptyContainer}>
             <Text style={styles.emptyEmoji}>🏆</Text>
-            <Text style={[styles.emptyTitle, { color: C.text.primary }]}>No Rankings Yet</Text>
+            <Text style={[styles.emptyTitle, { color: C.text.primary }]}>{t('no_rankings')}</Text>
             <Text style={[styles.emptySubtitle, { color: C.text.secondary }]}>
               {activeTab === 'club'
                 ? 'Join a trading club to see club rankings.'
@@ -440,7 +442,7 @@ export default function LeaderboardScreen() {
         {!isLoading && !userInView && currentUserEntry && (
           <View style={[styles.stickyUserContainer, { borderTopColor: C.border.default }]}>
             <View style={styles.stickyUserLabel}>
-              <Text style={[styles.stickyUserLabelText, { color: C.text.tertiary }]}>Your Position</Text>
+              <Text style={[styles.stickyUserLabelText, { color: C.text.tertiary }]}>{t('your_position')}</Text>
             </View>
             <LeaderboardRow entry={currentUserEntry} getInitials={getInitials} isSticky />
           </View>
@@ -448,7 +450,7 @@ export default function LeaderboardScreen() {
 
         {/* ── Achievements ── */}
         <View style={styles.achievementsSection}>
-          <Text style={[styles.sectionTitle, { color: C.text.primary }]}>Achievements</Text>
+          <Text style={[styles.sectionTitle, { color: C.text.primary }]}>{t('achievements')}</Text>
           <Text style={[styles.achievementsSubtitle, { color: C.text.secondary }]}>
             {userAchievements.size} / {ACHIEVEMENTS.length} unlocked
           </Text>

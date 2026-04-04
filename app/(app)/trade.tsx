@@ -44,7 +44,7 @@ import {
   type SearchResult,
 } from '../../src/services/stockApi';
 import type { Stock, ChartDataPoint, ChartPeriod, NewsArticle } from '../../src/types';
-import { t } from '../../src/constants/translations';
+import { useT } from '../../src/constants/translations';
 
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
 const CHART_WIDTH = SCREEN_WIDTH - Spacing.base * 2;
@@ -111,6 +111,7 @@ function chartPointsForPeriod(period: ChartPeriod, basePrice: number): ChartData
 
 export default function TradeScreen() {
   const { user, portfolio, setQuote, appColorMode, appTabColors, watchlist, addToWatchlist, removeFromWatchlist } = useAppStore();
+  const t = useT();
   const tabColor = appTabColors['trade'] ?? '#00C853';
   const isLight = appColorMode === 'light';
   const screenBg = isLight ? '#EDFFF5' : '#05200A';
@@ -456,7 +457,7 @@ export default function TradeScreen() {
                   <Text style={styles.searchLoadingText}>Searching…</Text>
                 </View>
               ) : searchResults.length === 0 ? (
-                <Text style={styles.noResultsText}>No results found</Text>
+                <Text style={styles.noResultsText}>{t('no_results')}</Text>
               ) : (
                 <FlatList
                   data={searchResults}
@@ -484,7 +485,7 @@ export default function TradeScreen() {
             <Text style={styles.emptyEmoji}>📈</Text>
             <Text style={styles.emptyTitle}>{t('find_stock')}</Text>
             <Text style={styles.emptySubtitle}>
-              Search for any stock, ETF, or index to view details and place orders
+              {t('search_stock_desc')}
             </Text>
           </View>
         )}
@@ -516,7 +517,7 @@ export default function TradeScreen() {
                           styles.marketStatusText,
                           { color: stock.isOpen ? Colors.market.gain : Colors.market.loss },
                         ]}>
-                          {stock.isOpen ? 'Open' : 'Closed'}
+                          {stock.isOpen ? t('open') : t('closed')}
                         </Text>
                       </View>
                     </View>
@@ -625,11 +626,11 @@ export default function TradeScreen() {
               <View style={styles.statsGrid}>
                 <StatItem label="Market Cap" value={stock.marketCap ? formatCurrency(stock.marketCap, 'USD', true) : '—'} />
                 <StatItem label="P/E Ratio" value={stock.pe ? stock.pe.toFixed(2) : '—'} />
-                <StatItem label="Volume" value={formatVolume(stock.volume)} />
-                <StatItem label="52W High" value={stock.high52w ? formatCurrency(stock.high52w) : '—'} />
-                <StatItem label="52W Low" value={stock.low52w ? formatCurrency(stock.low52w) : '—'} />
+                <StatItem label={t('volume')} value={formatVolume(stock.volume)} />
+                <StatItem label={t('w52_high')} value={stock.high52w ? formatCurrency(stock.high52w) : '—'} />
+                <StatItem label={t('w52_low')} value={stock.low52w ? formatCurrency(stock.low52w) : '—'} />
                 {stock.dividend != null && (
-                  <StatItem label="Dividend" value={formatPercent(stock.dividend)} />
+                  <StatItem label={t('dividend')} value={formatPercent(stock.dividend)} />
                 )}
               </View>
 
@@ -677,7 +678,7 @@ export default function TradeScreen() {
                     <Text style={[
                       styles.inputModeText,
                       inputMode === 'dollars' && styles.inputModeTextActive,
-                    ]}>$ Dollars</Text>
+                    ]}>{t('dollars')}</Text>
                   </TouchableOpacity>
                   <TouchableOpacity
                     style={[
@@ -689,7 +690,7 @@ export default function TradeScreen() {
                     <Text style={[
                       styles.inputModeText,
                       inputMode === 'shares' && styles.inputModeTextActive,
-                    ]}># Shares</Text>
+                    ]}>{t('num_shares')}</Text>
                   </TouchableOpacity>
                 </View>
 
@@ -727,12 +728,12 @@ export default function TradeScreen() {
                 <View style={styles.balanceRow}>
                   {orderSide === 'buy' ? (
                     <>
-                      <Text style={styles.balanceLabel}>Available cash</Text>
+                      <Text style={styles.balanceLabel}>{t('available_cash')}</Text>
                       <Text style={styles.balanceValue}>{formatCurrency(availableCash)}</Text>
                     </>
                   ) : (
                     <>
-                      <Text style={styles.balanceLabel}>Shares owned</Text>
+                      <Text style={styles.balanceLabel}>{t('shares_owned')}</Text>
                       <Text style={styles.balanceValue}>{formatShares(sharesOwned)} {stock.symbol}</Text>
                     </>
                   )}
@@ -764,7 +765,7 @@ export default function TradeScreen() {
               {/* ── Company Description ── */}
               {stock.description ? (
                 <View style={styles.descriptionCard}>
-                  <Text style={styles.sectionTitle}>About {stock.name}</Text>
+                  <Text style={styles.sectionTitle}>{t('about_company')} {stock.name}</Text>
                   <Text style={styles.descriptionText}>{stock.description}</Text>
                 </View>
               ) : null}
@@ -778,7 +779,7 @@ export default function TradeScreen() {
                     style={{ marginTop: Spacing.base }}
                   />
                 ) : news.length === 0 ? (
-                  <Text style={styles.noDataText}>No recent news</Text>
+                  <Text style={styles.noDataText}>{t('no_recent_news')}</Text>
                 ) : (
                   news.map(renderNewsItem)
                 )}
@@ -819,19 +820,19 @@ export default function TradeScreen() {
                 </View>
 
                 <View style={styles.modalDetailRow}>
-                  <Text style={styles.modalLabel}>Symbol</Text>
+                  <Text style={styles.modalLabel}>{t('symbol')}</Text>
                   <Text style={styles.modalValue}>{stock.symbol}</Text>
                 </View>
                 <View style={styles.modalDivider} />
 
                 <View style={styles.modalDetailRow}>
-                  <Text style={styles.modalLabel}>Order Type</Text>
+                  <Text style={styles.modalLabel}>{t('order_type')}</Text>
                   <Text style={styles.modalValue}>{t('market_order')}</Text>
                 </View>
                 <View style={styles.modalDivider} />
 
                 <View style={styles.modalDetailRow}>
-                  <Text style={styles.modalLabel}>Quantity</Text>
+                  <Text style={styles.modalLabel}>{t('quantity')}</Text>
                   <Text style={styles.modalValue}>
                     {formatShares(confirmOrderShares)} shares
                   </Text>
@@ -839,13 +840,13 @@ export default function TradeScreen() {
                 <View style={styles.modalDivider} />
 
                 <View style={styles.modalDetailRow}>
-                  <Text style={styles.modalLabel}>Est. Price</Text>
+                  <Text style={styles.modalLabel}>{t('est_price')}</Text>
                   <Text style={styles.modalValue}>{formatCurrency(stock.price)}</Text>
                 </View>
                 <View style={styles.modalDivider} />
 
                 <View style={styles.modalDetailRow}>
-                  <Text style={styles.modalLabel}>Est. Total</Text>
+                  <Text style={styles.modalLabel}>{t('est_total')}</Text>
                   <Text style={[styles.modalValue, styles.modalValueLarge]}>
                     {formatCurrency(confirmOrderCost)}
                   </Text>

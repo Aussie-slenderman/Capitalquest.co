@@ -20,7 +20,7 @@ import { formatCurrency, formatPercent, formatRelativeTime } from '../../src/uti
 import { searchStocks, getQuotes, getMarketMovers, type SearchResult } from '../../src/services/stockApi';
 import { POPULAR_STOCKS } from '../../src/constants/stocks';
 import type { StockQuote } from '../../src/types';
-import { t } from '../../src/constants/translations';
+import { useT } from '../../src/constants/translations';
 import {
   Colors,
   LightColors,
@@ -94,6 +94,7 @@ export default function HomeScreen() {
     user, portfolio, quotes, notifications, setSidebarOpen, setQuote, isSidebarOpen,
     newsLastRead, appColorMode, watchlist, addToWatchlist, removeFromWatchlist,
   } = useAppStore();
+  const t = useT();
   const isLight = appColorMode === 'light';
   const C = isLight ? LightColors : Colors;
   const [searchQuery, setSearchQuery] = useState('');
@@ -206,7 +207,7 @@ export default function HomeScreen() {
     <SafeAreaView style={[styles.safeArea, { backgroundColor: C.bg.primary }]}>
       <StatusBar barStyle="light-content" backgroundColor={C.bg.primary} />
 
-      <AppHeader title="Markets" />
+      <AppHeader title={t('markets')} />
 
       <ScrollView
         style={styles.scrollView}
@@ -215,7 +216,7 @@ export default function HomeScreen() {
       >
         {/* Market Indices Row */}
         <View style={styles.sectionHeader}>
-          <Text style={[styles.sectionTitle, { color: C.text.primary }]}>Markets</Text>
+          <Text style={[styles.sectionTitle, { color: C.text.primary }]}>{t('markets')}</Text>
         </View>
         <ScrollView
           horizontal
@@ -279,7 +280,7 @@ export default function HomeScreen() {
           {showSearchDropdown && (
             <View style={[styles.searchDropdown, { backgroundColor: C.bg.secondary, borderColor: C.border.default }]}>
               {searchResults.length === 0 && !isSearching ? (
-                <Text style={[styles.noResultsText, { color: C.text.tertiary }]}>No results — try a ticker like AAPL</Text>
+                <Text style={[styles.noResultsText, { color: C.text.tertiary }]}>{t('no_results')}</Text>
               ) : (
                 searchResults.map((item) => {
                   const isInWatchlist = watchlist.includes(item.symbol);
@@ -343,7 +344,7 @@ export default function HomeScreen() {
             </View>
           ) : currentMovers.length === 0 ? (
             <View style={{ padding: Spacing.xl, alignItems: 'center' }}>
-              <Text style={{ color: C.text.tertiary, fontSize: FontSize.sm }}>No data available</Text>
+              <Text style={{ color: C.text.tertiary, fontSize: FontSize.sm }}>{t('no_data')}</Text>
             </View>
           ) : (
             currentMovers.map((stock, i) => {
@@ -391,8 +392,8 @@ export default function HomeScreen() {
 
         {watchlistData.length === 0 ? (
           <View style={[styles.emptyCard, { backgroundColor: C.bg.secondary, borderColor: C.border.default }]}>
-            <Text style={[styles.emptyText, { color: C.text.secondary }]}>No stocks in your watchlist.</Text>
-            <Text style={[styles.emptySubtext, { color: C.text.tertiary }]}>Search for stocks to add them here.</Text>
+            <Text style={[styles.emptyText, { color: C.text.secondary }]}>{t('no_watchlist')}</Text>
+            <Text style={[styles.emptySubtext, { color: C.text.tertiary }]}>{t('search_to_add')}</Text>
           </View>
         ) : (
           <View style={[styles.card, { backgroundColor: C.bg.secondary, borderColor: C.border.default }]}>
@@ -432,7 +433,7 @@ export default function HomeScreen() {
                         {up ? '+' : ''}{formatPercent(item.changePercent)}
                       </Text>
                     ) : (
-                      <Text style={[styles.watchlistSubtext, { color: C.text.tertiary }]}>Loading…</Text>
+                      <Text style={[styles.watchlistSubtext, { color: C.text.tertiary }]}>{t('loading')}</Text>
                     )}
                   </View>
                 </TouchableOpacity>

@@ -11,7 +11,7 @@ import {
 import { router } from 'expo-router';
 import { LineChart } from 'react-native-gifted-charts';
 import AppHeader from '../../src/components/AppHeader';
-import { t } from '../../src/constants/translations';
+import { useT } from '../../src/constants/translations';
 import Sidebar from '../../src/components/Sidebar';
 import { useAppStore } from '../../src/store/useAppStore';
 import {
@@ -76,6 +76,7 @@ function buildChartData(totalValue: number, startingBalance: number, portfolioHi
 // ─── Main Component ───────────────────────────────────────────────────────────
 
 export default function PortfolioScreen() {
+  const t = useT();
   const { user, portfolio, quotes, isSidebarOpen, setSidebarOpen, appColorMode } = useAppStore();
   const isLight = appColorMode === 'light';
   const C = isLight ? LightColors : Colors;
@@ -281,7 +282,7 @@ export default function PortfolioScreen() {
                         {formatShares(holding.shares)} shares
                       </Text>
                       <Text style={[styles.holdingAvgCost, { color: C.text.tertiary }]}>
-                        Avg {formatCurrency(holding.avgCostBasis)}
+                        {t('avg')} {formatCurrency(holding.avgCostBasis)}
                       </Text>
                     </View>
                   </View>
@@ -339,13 +340,13 @@ export default function PortfolioScreen() {
             <Text style={styles.statIcon}>🔁</Text>
             <Text style={[styles.statLabel, { color: C.text.tertiary }]}>{t('total_trades')}</Text>
             <Text style={[styles.statValue, { color: C.text.primary }]}>{orders.length}</Text>
-            <Text style={[styles.statSub, { color: C.text.tertiary }]}>orders placed</Text>
+            <Text style={[styles.statSub, { color: C.text.tertiary }]}>{t('orders_placed')}</Text>
           </View>
           <View style={[styles.statCard, { backgroundColor: C.bg.secondary, borderColor: C.border.default }]}>
             <Text style={styles.statIcon}>📅</Text>
             <Text style={[styles.statLabel, { color: C.text.tertiary }]}>{t('portfolio_age')}</Text>
             <Text style={[styles.statValue, { color: C.text.primary }]}>{portfolioAgeDays}</Text>
-            <Text style={[styles.statSub, { color: C.text.tertiary }]}>days active</Text>
+            <Text style={[styles.statSub, { color: C.text.tertiary }]}>{t('days_active')}</Text>
           </View>
         </View>
 
@@ -356,7 +357,7 @@ export default function PortfolioScreen() {
 
         {recentOrders.length === 0 ? (
           <View style={[styles.emptyCard, { backgroundColor: C.bg.secondary, borderColor: C.border.default }]}>
-            <Text style={[styles.emptyText, { color: C.text.secondary }]}>No transactions yet.</Text>
+            <Text style={[styles.emptyText, { color: C.text.secondary }]}>{t('no_transactions')}</Text>
           </View>
         ) : (
           <View style={[styles.card, { backgroundColor: C.bg.secondary, borderColor: C.border.default }]}>
