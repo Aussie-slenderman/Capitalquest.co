@@ -1000,22 +1000,34 @@ export async function searchStocks(query: string): Promise<SearchResult[]> {
 
 // ─── Trending / Movers ────────────────────────────────────────────────────────
 
-export async function getMarketMovers(): Promise<{
-  gainers: StockQuote[];
-  losers: StockQuote[];
-  active: StockQuote[];
-}> {
-  // Finnhub free tier doesn't have market movers, so we poll our seed list
-  // In production, replace with a real movers endpoint
-  const { POPULAR_STOCKS } = await import('../constants/stocks');
-  const symbols = POPULAR_STOCKS.slice(0, 20).map(s => s.symbol);
-  const quotes = await getQuotes(symbols);
+function buildMoversFromQuotes(quotes: Record<string, StockQuote>) {
   const sorted = Object.values(quotes).sort((a, b) => b.changePercent - a.changePercent);
   return {
     gainers: sorted.slice(0, 5),
     losers: sorted.slice(-5).reverse(),
     active: [...Object.values(quotes)].sort((a, b) => Math.abs(b.changePercent) - Math.abs(a.changePercent)).slice(0, 5),
   };
+}
+
+export async function getMarketMovers(): Promise<{
+  gainers: StockQuote[];
+  losers: StockQuote[];
+  active: StockQuote[];
+}> {
+  const { POPULAR_STOCKS } = await import('../constants/stocks');
+  const symbols = POPULAR_STOCKS.slice(0, 20).map(s => s.symbol);
+
+  // Race real data against a timeout — fall back to mock data if too slow
+  const realDataPromise = getQuotes(symbols).then(buildMoversFromQuotes);
+  const timeoutPromise = new Promise<null>((resolve) => setTimeout(() => resolve(null), 8_000));
+
+  const result = await Promise.race([realDataPromise, timeoutPromise]);
+  if (result) return result;
+
+  // Timeout: use mock quotes so the UI isn't stuck loading
+  const mockQuotes: Record<string, StockQuote> = {};
+  for (const sym of symbols) mockQuotes[sym] = getMockQuote(sym);
+  return buildMoversFromQuotes(mockQuotes);
 }
 
 // ─── News ─────────────────────────────────────────────────────────────────────

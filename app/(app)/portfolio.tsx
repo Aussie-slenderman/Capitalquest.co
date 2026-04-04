@@ -11,6 +11,7 @@ import {
 import { router } from 'expo-router';
 import { LineChart } from 'react-native-gifted-charts';
 import AppHeader from '../../src/components/AppHeader';
+import { t } from '../../src/constants/translations';
 import Sidebar from '../../src/components/Sidebar';
 import { useAppStore } from '../../src/store/useAppStore';
 import {
@@ -145,7 +146,7 @@ export default function PortfolioScreen() {
     <View style={{ flex: 1 }}>
     <SafeAreaView style={[styles.safeArea, { backgroundColor: C.bg.primary }]}>
       <StatusBar barStyle="light-content" backgroundColor={C.bg.primary} />
-      <AppHeader title="Portfolio" />
+      <AppHeader title={t('portfolio')} />
 
       <ScrollView
         style={styles.scrollView}
@@ -173,7 +174,7 @@ export default function PortfolioScreen() {
 
         {/* Portfolio Value Hero */}
         <View style={[styles.heroCard, { backgroundColor: C.bg.secondary, borderColor: C.border.default }]}>
-          <Text style={[styles.heroLabel, { color: C.text.secondary }]}>Total Portfolio Value</Text>
+          <Text style={[styles.heroLabel, { color: C.text.secondary }]}>{t('total_portfolio_value')}</Text>
           <Text style={[styles.heroValue, { color: C.text.primary }]}>{formatCurrency(totalValue)}</Text>
           <View style={styles.heroPnlRow}>
             <View style={[styles.heroPnlBadge, {
@@ -188,19 +189,19 @@ export default function PortfolioScreen() {
           </View>
           <View style={[styles.cashRow, { borderTopColor: C.border.default }]}>
             <View style={styles.cashItem}>
-              <Text style={[styles.cashLabel, { color: C.text.tertiary }]}>Cash Balance</Text>
+              <Text style={[styles.cashLabel, { color: C.text.tertiary }]}>{t('cash_balance')}</Text>
               <Text style={[styles.cashValue, { color: C.text.primary }]}>{formatCurrency(cashBalance)}</Text>
             </View>
             <View style={[styles.cashDivider, { backgroundColor: C.border.default }]} />
             <View style={styles.cashItem}>
-              <Text style={[styles.cashLabel, { color: C.text.tertiary }]}>Invested</Text>
+              <Text style={[styles.cashLabel, { color: C.text.tertiary }]}>{t('invested')}</Text>
               <Text style={[styles.cashValue, { color: C.text.primary }]}>
                 {formatCurrency(portfolio?.investedValue ?? 0)}
               </Text>
             </View>
             <View style={[styles.cashDivider, { backgroundColor: C.border.default }]} />
             <View style={styles.cashItem}>
-              <Text style={[styles.cashLabel, { color: C.text.tertiary }]}>Starting</Text>
+              <Text style={[styles.cashLabel, { color: C.text.tertiary }]}>{t('starting')}</Text>
               <Text style={[styles.cashValue, { color: C.text.primary }]}>{formatCurrency(startingBalance)}</Text>
             </View>
           </View>
@@ -208,7 +209,7 @@ export default function PortfolioScreen() {
 
         {/* Portfolio Chart */}
         <View style={styles.sectionHeader}>
-          <Text style={[styles.sectionTitle, { color: C.text.primary }]}>Performance (30 Days)</Text>
+          <Text style={[styles.sectionTitle, { color: C.text.primary }]}>{t('performance_30d')}</Text>
         </View>
         <View style={[styles.chartCard, { backgroundColor: C.bg.secondary, borderColor: C.border.default }]}>
           {chartData.length > 0 ? (
@@ -245,19 +246,19 @@ export default function PortfolioScreen() {
 
         {/* Holdings */}
         <View style={styles.sectionHeader}>
-          <Text style={[styles.sectionTitle, { color: C.text.primary }]}>Holdings ({enrichedHoldings.length})</Text>
+          <Text style={[styles.sectionTitle, { color: C.text.primary }]}>{t('holdings')} ({enrichedHoldings.length})</Text>
         </View>
 
         {enrichedHoldings.length === 0 ? (
           <View style={[styles.emptyCard, { backgroundColor: C.bg.secondary, borderColor: C.border.default }]}>
             <Text style={styles.emptyIcon}>📂</Text>
-            <Text style={[styles.emptyText, { color: C.text.secondary }]}>No holdings yet</Text>
-            <Text style={[styles.emptySubtext, { color: C.text.tertiary }]}>Buy your first stock to get started.</Text>
+            <Text style={[styles.emptyText, { color: C.text.secondary }]}>{t('no_holdings')}</Text>
+            <Text style={[styles.emptySubtext, { color: C.text.tertiary }]}>{t('buy_first_stock')}</Text>
             <TouchableOpacity
               style={styles.emptyButton}
               onPress={() => router.push('/(app)/trade')}
             >
-              <Text style={styles.emptyButtonText}>Start Trading</Text>
+              <Text style={styles.emptyButtonText}>{t('start_trading')}</Text>
             </TouchableOpacity>
           </View>
         ) : (
@@ -307,12 +308,12 @@ export default function PortfolioScreen() {
 
         {/* Performance Stats */}
         <View style={styles.sectionHeader}>
-          <Text style={[styles.sectionTitle, { color: C.text.primary }]}>Performance Stats</Text>
+          <Text style={[styles.sectionTitle, { color: C.text.primary }]}>{t('performance_stats')}</Text>
         </View>
         <View style={styles.statsGrid}>
           <View style={[styles.statCard, { backgroundColor: C.bg.secondary, borderColor: C.border.default }]}>
             <Text style={styles.statIcon}>🏆</Text>
-            <Text style={[styles.statLabel, { color: C.text.tertiary }]}>Best Trade</Text>
+            <Text style={[styles.statLabel, { color: C.text.tertiary }]}>{t('best_trade')}</Text>
             <Text style={[styles.statValue, { color: Colors.market.gain }]}>
               {biggestWinner ? biggestWinner.symbol : '—'}
             </Text>
@@ -324,7 +325,7 @@ export default function PortfolioScreen() {
           </View>
           <View style={[styles.statCard, { backgroundColor: C.bg.secondary, borderColor: C.border.default }]}>
             <Text style={styles.statIcon}>📉</Text>
-            <Text style={[styles.statLabel, { color: C.text.tertiary }]}>Worst Trade</Text>
+            <Text style={[styles.statLabel, { color: C.text.tertiary }]}>{t('worst_trade')}</Text>
             <Text style={[styles.statValue, { color: Colors.market.loss }]}>
               {biggestLoser ? biggestLoser.symbol : '—'}
             </Text>
@@ -336,13 +337,13 @@ export default function PortfolioScreen() {
           </View>
           <View style={[styles.statCard, { backgroundColor: C.bg.secondary, borderColor: C.border.default }]}>
             <Text style={styles.statIcon}>🔁</Text>
-            <Text style={[styles.statLabel, { color: C.text.tertiary }]}>Total Trades</Text>
+            <Text style={[styles.statLabel, { color: C.text.tertiary }]}>{t('total_trades')}</Text>
             <Text style={[styles.statValue, { color: C.text.primary }]}>{orders.length}</Text>
             <Text style={[styles.statSub, { color: C.text.tertiary }]}>orders placed</Text>
           </View>
           <View style={[styles.statCard, { backgroundColor: C.bg.secondary, borderColor: C.border.default }]}>
             <Text style={styles.statIcon}>📅</Text>
-            <Text style={[styles.statLabel, { color: C.text.tertiary }]}>Portfolio Age</Text>
+            <Text style={[styles.statLabel, { color: C.text.tertiary }]}>{t('portfolio_age')}</Text>
             <Text style={[styles.statValue, { color: C.text.primary }]}>{portfolioAgeDays}</Text>
             <Text style={[styles.statSub, { color: C.text.tertiary }]}>days active</Text>
           </View>
@@ -350,7 +351,7 @@ export default function PortfolioScreen() {
 
         {/* Recent Activity */}
         <View style={styles.sectionHeader}>
-          <Text style={[styles.sectionTitle, { color: C.text.primary }]}>Recent Activity</Text>
+          <Text style={[styles.sectionTitle, { color: C.text.primary }]}>{t('recent_activity')}</Text>
         </View>
 
         {recentOrders.length === 0 ? (
@@ -380,7 +381,7 @@ export default function PortfolioScreen() {
                   </View>
                   <View style={styles.activityMeta}>
                     <View style={styles.activityTitleRow}>
-                      <Text style={[styles.activityType, { color: C.text.primary }]}>{isBuy ? 'Bought' : 'Sold'}</Text>
+                      <Text style={[styles.activityType, { color: C.text.primary }]}>{isBuy ? t('bought') : t('sold')}</Text>
                       <Text style={styles.activitySymbol}>{order.symbol}</Text>
                     </View>
                     <Text style={[styles.activityDetail, { color: C.text.secondary }]}>

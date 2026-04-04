@@ -44,6 +44,7 @@ import {
   type SearchResult,
 } from '../../src/services/stockApi';
 import type { Stock, ChartDataPoint, ChartPeriod, NewsArticle } from '../../src/types';
+import { t } from '../../src/constants/translations';
 
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
 const CHART_WIDTH = SCREEN_WIDTH - Spacing.base * 2;
@@ -51,51 +52,59 @@ const CHART_PERIODS: ChartPeriod[] = ['1D', '1W', '1M', '1Y', '5Y'];
 
 // ─── Seeded placeholder chart data ─────────────────────────────────────────
 
-function generateSeededChartData(
-  basePrice: number,
-  points: number,
-  seed: number
-): ChartDataPoint[] {
-  let price = basePrice;
-  const now = Date.now();
-  const intervalMs = (86400 * 1000) / points;
-  const rng = (i: number) => {
-    const x = Math.sin(seed + i * 9301 + 49297) * 233280;
-    return x - Math.floor(x);
+function chartPointsForPeriod(period: ChartPeriod, basePrice: number): ChartDataPoint[] {
+  // Period config: points, stepMs between bars, volatility scale
+  const config: Record<ChartPeriod, { points: number; stepMs: number; volScale: number }> = {
+    '1D':  { points: 78,  stepMs: 5 * 60_000,            volScale: 0.35 },   // 5-min bars, ~6.5 hrs
+    '1W':  { points: 130, stepMs: 15 * 60_000,           volScale: 0.6 },    // 15-min bars
+    '1M':  { points: 150, stepMs: 60 * 60_000,           volScale: 1.2 },    // hourly bars
+    '1Y':  { points: 252, stepMs: 24 * 3600_000,         volScale: 3.0 },    // daily bars
+    '5Y':  { points: 260, stepMs: 7 * 24 * 3600_000,     volScale: 6.0 },    // weekly bars
   };
-  // Box-Muller for more natural price movements
-  const normalRng = (i: number) => {
-    const u1 = rng(i * 2) || 0.001;
-    const u2 = rng(i * 2 + 1);
+  const { points, stepMs, volScale } = config[period];
+  const dailyVol = 0.025; // base daily volatility
+  const vol = dailyVol * volScale;
+
+  // Seeded pseudo-random — include period so each timeframe looks different
+  const baseSeed = Math.round(basePrice * 1000) + period.charCodeAt(0) * 137;
+  let rngState = baseSeed;
+  function seededRandom(): number {
+    rngState = (rngState * 1664525 + 1013904223) & 0x7fffffff;
+    return rngState / 0x7fffffff;
+  }
+  function normalRandom(): number {
+    const u1 = seededRandom() || 0.001;
+    const u2 = seededRandom();
     return Math.sqrt(-2 * Math.log(u1)) * Math.cos(2 * Math.PI * u2);
-  };
-  const vol = 0.015; // ~1.5% per step for realistic intraday movement
-  return Array.from({ length: points }, (_, i) => {
-    const shock = normalRng(i) * vol;
-    const drift = 0.0001; // slight upward bias
-    price = price * Math.exp(drift + shock);
-    price = Math.max(price * 0.3, price); // floor
-    const intraVol = price * vol * 0.4;
-    const open = price + (rng(i + 100) - 0.5) * intraVol;
-    const high = Math.max(open, price) + rng(i + 200) * intraVol * 0.5;
-    const low = Math.min(open, price) - rng(i + 300) * intraVol * 0.5;
+  }
+
+  // Work backwards from current price using geometric Brownian motion
+  const now = Date.now();
+  const prices: number[] = [basePrice];
+  for (let i = 1; i < points; i++) {
+    const prev = prices[i - 1];
+    const drift = -0.0002;
+    const shock = normalRandom() * vol;
+    prices.push(prev * Math.exp(-(drift + shock)));
+  }
+  prices.reverse(); // oldest → newest
+
+  return prices.map((close, i) => {
+    const timestamp = now - (points - 1 - i) * stepMs;
+    const intraVol = close * vol * 0.3;
+    const open = close + (seededRandom() - 0.5) * intraVol;
+    const high = Math.max(open, close) + seededRandom() * intraVol * 0.5;
+    const low = Math.min(open, close) - seededRandom() * intraVol * 0.5;
+    const volume = Math.floor(5_000_000 + seededRandom() * 30_000_000);
     return {
-      timestamp: now - (points - i) * intervalMs,
+      timestamp,
       open: parseFloat(open.toFixed(2)),
       high: parseFloat(high.toFixed(2)),
       low: parseFloat(low.toFixed(2)),
-      close: parseFloat(price.toFixed(2)),
-      volume: Math.floor(rng(i + 400) * 10_000_000),
+      close: parseFloat(close.toFixed(2)),
+      volume,
     };
   });
-}
-
-function chartPointsForPeriod(period: ChartPeriod, basePrice: number): ChartDataPoint[] {
-  const countMap: Record<ChartPeriod, number> = {
-    '1D': 78, '1W': 130, '1M': 150, '3M': 180, '6M': 200, '1Y': 252, '5Y': 260,
-  };
-  const seed = basePrice * 1000;
-  return generateSeededChartData(basePrice, countMap[period], seed);
 }
 
 // ─── Component ──────────────────────────────────────────────────────────────
@@ -419,7 +428,7 @@ export default function TradeScreen() {
             <Text style={styles.searchIcon}>🔍</Text>
             <TextInput
               style={styles.searchInput}
-              placeholder="Search stocks, ETFs…"
+              placeholder={t('search_stocks')}
               placeholderTextColor={Colors.text.tertiary}
               value={searchQuery}
               onChangeText={handleSearchChange}
@@ -473,7 +482,7 @@ export default function TradeScreen() {
         {!isLoadingStock && !stock && (
           <View style={styles.emptyState}>
             <Text style={styles.emptyEmoji}>📈</Text>
-            <Text style={styles.emptyTitle}>Find a Stock</Text>
+            <Text style={styles.emptyTitle}>{t('find_stock')}</Text>
             <Text style={styles.emptySubtitle}>
               Search for any stock, ETF, or index to view details and place orders
             </Text>
@@ -545,7 +554,7 @@ export default function TradeScreen() {
                       styles.watchlistHeaderBtnText,
                       watchlist.includes(stock.symbol) && styles.watchlistHeaderBtnTextActive,
                     ]}>
-                      {watchlist.includes(stock.symbol) ? 'Watching' : 'Watch'}
+                      {watchlist.includes(stock.symbol) ? t('watching') : t('watch')}
                     </Text>
                   </TouchableOpacity>
                 </View>
@@ -626,7 +635,7 @@ export default function TradeScreen() {
 
               {/* ── Order Panel ── */}
               <View style={styles.orderPanel}>
-                <Text style={styles.sectionTitle}>Place Order</Text>
+                <Text style={styles.sectionTitle}>{t('place_order')}</Text>
 
                 {/* Buy / Sell Toggle */}
                 <View style={styles.sideToggle}>
@@ -640,7 +649,7 @@ export default function TradeScreen() {
                     <Text style={[
                       styles.sideButtonText,
                       orderSide === 'buy' && styles.sideButtonTextActive,
-                    ]}>Buy</Text>
+                    ]}>{t('buy')}</Text>
                   </TouchableOpacity>
                   <TouchableOpacity
                     style={[
@@ -652,7 +661,7 @@ export default function TradeScreen() {
                     <Text style={[
                       styles.sideButtonText,
                       orderSide === 'sell' && styles.sideButtonTextActive,
-                    ]}>Sell</Text>
+                    ]}>{t('sell')}</Text>
                   </TouchableOpacity>
                 </View>
 
@@ -746,7 +755,7 @@ export default function TradeScreen() {
                     style={[styles.placeOrderGradient, !canPlaceOrder && { opacity: 0.4 }]}
                   >
                     <Text style={styles.placeOrderText}>
-                      {orderSide === 'buy' ? 'Buy' : 'Sell'} {stock.symbol}
+                      {orderSide === 'buy' ? t('buy') : t('sell')} {stock.symbol}
                     </Text>
                   </LinearGradient>
                 </TouchableOpacity>
@@ -762,7 +771,7 @@ export default function TradeScreen() {
 
               {/* ── News ── */}
               <View style={styles.newsSection}>
-                <Text style={styles.sectionTitle}>Recent News</Text>
+                <Text style={styles.sectionTitle}>{t('recent_news')}</Text>
                 {isLoadingNews ? (
                   <ActivityIndicator
                     color={Colors.brand.primary}
@@ -793,7 +802,7 @@ export default function TradeScreen() {
           <View style={styles.modalSheet}>
             <View style={styles.modalHandle} />
 
-            <Text style={styles.modalTitle}>Confirm Order</Text>
+            <Text style={styles.modalTitle}>{t('confirm_order')}</Text>
 
             {stock && (
               <>
@@ -817,7 +826,7 @@ export default function TradeScreen() {
 
                 <View style={styles.modalDetailRow}>
                   <Text style={styles.modalLabel}>Order Type</Text>
-                  <Text style={styles.modalValue}>Market Order</Text>
+                  <Text style={styles.modalValue}>{t('market_order')}</Text>
                 </View>
                 <View style={styles.modalDivider} />
 
@@ -847,7 +856,7 @@ export default function TradeScreen() {
                     style={styles.modalCancelButton}
                     onPress={() => setShowConfirmModal(false)}
                   >
-                    <Text style={styles.modalCancelText}>Cancel</Text>
+                    <Text style={styles.modalCancelText}>{t('cancel')}</Text>
                   </TouchableOpacity>
 
                   <TouchableOpacity
@@ -869,7 +878,7 @@ export default function TradeScreen() {
                         <ActivityIndicator color="#fff" size="small" />
                       ) : (
                         <Text style={styles.modalConfirmText}>
-                          Confirm {orderSide === 'buy' ? 'Buy' : 'Sell'}
+                          {orderSide === 'buy' ? t('confirm_buy') : t('confirm_sell')}
                         </Text>
                       )}
                     </LinearGradient>

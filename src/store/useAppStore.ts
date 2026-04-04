@@ -79,6 +79,8 @@ interface AppState {
   setAppTileStyle: (style: 'default' | 'vivid' | 'glass') => void;
   appTabColors: Record<string, string>; // tabName → custom color
   setAppTabColor: (tab: string, color: string) => void;
+  appLanguage: string;
+  setAppLanguage: (lang: string) => void;
   getSavedSettings: () => Record<string, unknown>;
 
   // One-time welcome popup (shown once after account creation)
@@ -267,6 +269,16 @@ export const useAppStore = create<AppState>()(persist((set) => ({
       });
     }
   },
+  appLanguage: 'en',
+  setAppLanguage: (appLanguage) => {
+    set({ appLanguage });
+    const { user } = useAppStore.getState();
+    if (user?.id) {
+      import('../services/auth').then(({ updateUser }) => {
+        updateUser(user.id, { settings: { ...useAppStore.getState().getSavedSettings() } }).catch(() => {});
+      });
+    }
+  },
   // Helper to get all settings for saving
   getSavedSettings: () => {
     const s = useAppStore.getState();
@@ -275,6 +287,7 @@ export const useAppStore = create<AppState>()(persist((set) => ({
       appAccentColor: s.appAccentColor,
       appTileStyle: s.appTileStyle,
       appTabColors: s.appTabColors,
+      appLanguage: s.appLanguage,
     };
   },
 

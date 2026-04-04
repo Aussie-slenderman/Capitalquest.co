@@ -20,6 +20,7 @@ import { formatCurrency, formatPercent, formatRelativeTime } from '../../src/uti
 import { searchStocks, getQuotes, getMarketMovers, type SearchResult } from '../../src/services/stockApi';
 import { POPULAR_STOCKS } from '../../src/constants/stocks';
 import type { StockQuote } from '../../src/types';
+import { t } from '../../src/constants/translations';
 import {
   Colors,
   LightColors,
@@ -250,7 +251,7 @@ export default function HomeScreen() {
             <Text style={styles.searchIcon}>🔍</Text>
             <TextInput
               style={[styles.searchInput, { color: C.text.primary }]}
-              placeholder="Search stocks, ETFs — e.g. AAPL, Tesla..."
+              placeholder={t('search_stocks')}
               placeholderTextColor={C.text.tertiary}
               value={searchQuery}
               onChangeText={handleSearchChange}
@@ -316,7 +317,7 @@ export default function HomeScreen() {
 
         {/* Market Movers */}
         <View style={styles.sectionHeader}>
-          <Text style={[styles.sectionTitle, { color: C.text.primary }]}>Market Movers</Text>
+          <Text style={[styles.sectionTitle, { color: C.text.primary }]}>{t('market_movers')}</Text>
         </View>
         <View style={[styles.card, { backgroundColor: C.bg.secondary, borderColor: C.border.default }]}>
           {/* Tab row */}
@@ -328,7 +329,7 @@ export default function HomeScreen() {
                 onPress={() => setMoverTab(tab)}
               >
                 <Text style={[styles.moverTabText, { color: C.text.tertiary }, moverTab === tab && styles.moverTabTextActive]}>
-                  {tab === 'gainers' ? 'Top Gainers' : tab === 'losers' ? 'Top Losers' : 'Most Changed'}
+                  {tab === 'gainers' ? t('top_gainers') : tab === 'losers' ? t('top_losers') : t('most_changed')}
                 </Text>
               </TouchableOpacity>
             ))}
@@ -338,7 +339,7 @@ export default function HomeScreen() {
           {moversLoading ? (
             <View style={{ padding: Spacing.xl, alignItems: 'center' }}>
               <ActivityIndicator size="small" color={Colors.brand.primary} />
-              <Text style={{ color: C.text.tertiary, fontSize: FontSize.sm, marginTop: 8 }}>Loading market data...</Text>
+              <Text style={{ color: C.text.tertiary, fontSize: FontSize.sm, marginTop: 8 }}>{t('loading_market')}</Text>
             </View>
           ) : currentMovers.length === 0 ? (
             <View style={{ padding: Spacing.xl, alignItems: 'center' }}>
@@ -380,10 +381,10 @@ export default function HomeScreen() {
 
         {/* Watchlist */}
         <View style={styles.sectionHeader}>
-          <Text style={[styles.sectionTitle, { color: C.text.primary }]}>Watchlist</Text>
+          <Text style={[styles.sectionTitle, { color: C.text.primary }]}>{t('watchlist')}</Text>
           {watchlist.length > 0 && (
             <TouchableOpacity onPress={() => setIsManagingWatchlist(!isManagingWatchlist)}>
-              <Text style={styles.sectionAction}>{isManagingWatchlist ? 'Done' : 'Manage'}</Text>
+              <Text style={styles.sectionAction}>{isManagingWatchlist ? t('done') : t('manage')}</Text>
             </TouchableOpacity>
           )}
         </View>
@@ -442,9 +443,9 @@ export default function HomeScreen() {
 
         {/* News */}
         <View style={styles.sectionHeader}>
-          <Text style={[styles.sectionTitle, { color: C.text.primary }]}>Market News</Text>
+          <Text style={[styles.sectionTitle, { color: C.text.primary }]}>{t('market_news')}</Text>
           <TouchableOpacity>
-            <Text style={styles.sectionAction}>See All</Text>
+            <Text style={styles.sectionAction}>{t('see_all')}</Text>
           </TouchableOpacity>
         </View>
 

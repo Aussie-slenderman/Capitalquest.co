@@ -1,7 +1,8 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
 import {
   View, Text, StyleSheet, ScrollView,
   TouchableOpacity, Modal, Dimensions,
+  TextInput, FlatList,
 } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { router } from 'expo-router';
@@ -13,6 +14,7 @@ import Sidebar from '../../src/components/Sidebar';
 import { Colors, LightColors, FontSize, FontWeight, Spacing, Radius } from '../../src/constants/theme';
 import { formatCurrency, formatPercent, formatAccountNumber } from '../../src/utils/formatters';
 import type { AvatarConfig } from '../../src/types';
+import { LANGUAGES, t } from '../../src/constants/translations';
 
 const { width: PROFILE_SW } = Dimensions.get('window');
 const PROFILE_SWATCH_SIZE = Math.floor((PROFILE_SW - Spacing.base * 2 - 8 * 11) / 12);
@@ -87,6 +89,7 @@ export default function ProfileScreen() {
     appAccentColor, setAppAccentColor,
     appTileStyle, setAppTileStyle,
     appTabColors, setAppTabColor,
+    appLanguage, setAppLanguage,
     isSidebarOpen, setSidebarOpen,
   } = useAppStore();
   const tabColor = appTabColors['profile'] ?? '#7C3AED';
@@ -97,11 +100,45 @@ export default function ProfileScreen() {
   const gcFull = (a: string, b: string, c: string, d: string) => [a,b,c,d] as any;
   const [signOutVisible, setSignOutVisible] = useState(false);
   const [deleteVisible, setDeleteVisible] = useState(false);
+  const [wardrobeVisible, setWardrobeVisible] = useState(false);
+  const [selectedAnimal, setSelectedAnimal] = useState(user?.avatarConfig?.animal ?? '🐶');
+  const [selectedBgColor, setSelectedBgColor] = useState(user?.avatarConfig?.bgColor ?? Colors.bg.tertiary);
+  const [langPickerVisible, setLangPickerVisible] = useState(false);
+  const [langSearch, setLangSearch] = useState('');
+  const filteredLangs = useMemo(() => {
+    if (!langSearch.trim()) return LANGUAGES;
+    const q = langSearch.toLowerCase();
+    return LANGUAGES.filter(l =>
+      l.name.toLowerCase().includes(q) || l.nativeName.toLowerCase().includes(q)
+    );
+  }, [langSearch]);
+  const currentLang = LANGUAGES.find(l => l.code === appLanguage) ?? LANGUAGES[0];
 
   if (!user) return null;
 
   const xpInfo = getXPProgress(user.xp || 0);
   const levelColor = LEVELS.find(l => l.level === user.level)?.color ?? Colors.brand.primary;
+
+  const WARDROBE_ANIMALS = [
+    '🐶','🐱','🐻','🐼','🦊','🐨','🐯','🦁','🐮','🐷','🐸','🐵',
+    '🐔','🐧','🐦','🦅','🦉','🐴','🦄','🐲','🐙','🦋','🐢','🐬',
+    '🦈','🐠','🦜','🦩','🐺','🦝','🐹','🐰',
+  ];
+  const WARDROBE_COLORS = [
+    '#FF6B6B','#F59E0B','#22C55E','#00B3E6','#7C3AED','#EC4899',
+    '#00D4AA','#6366F1','#F5C518','#EF4444','#06B6D4','#FF6B6B',
+    '#1A2235','#111827','#0A0E1A','#334155',
+  ];
+
+  const handleSaveAvatar = async () => {
+    const newConfig = { animal: selectedAnimal, bgColor: selectedBgColor };
+    setUser({ ...user, avatarConfig: newConfig });
+    setWardrobeVisible(false);
+    try {
+      const { updateUser } = await import('../../src/services/auth');
+      await updateUser(user.id, { avatarConfig: newConfig });
+    } catch {}
+  };
 
   const handleSignOut = () => setSignOutVisible(true);
 
@@ -142,7 +179,7 @@ export default function ProfileScreen() {
         end={{ x: 1, y: 0.5 }}
         pointerEvents="none"
       />
-      <AppHeader title="Profile" />
+      <AppHeader title={t('profile')} />
     <ScrollView style={styles.container} contentContainerStyle={styles.content}>
       {/* Header */}
       <LinearGradient
@@ -199,69 +236,113 @@ export default function ProfileScreen() {
           style={[styles.tabPill, { backgroundColor: tabColor }]}
         >
           <Text style={[styles.tabPillText, { color: '#fff' }]}>
-            Profile
+            {t('profile')}
           </Text>
         </TouchableOpacity>
       </View>
+
+      {/* Wardrobe Button */}
+      <TouchableOpacity
+        style={{
+          marginHorizontal: Spacing.base,
+          marginTop: Spacing.sm,
+          marginBottom: Spacing.sm,
+          backgroundColor: Colors.brand.accent,
+          borderRadius: Radius.full,
+          paddingVertical: 12,
+          alignItems: 'center',
+          flexDirection: 'row',
+          justifyContent: 'center',
+          gap: 8,
+        }}
+        onPress={() => setWardrobeVisible(true)}
+      >
+        <Text style={{ fontSize: 18 }}>👕</Text>
+        <Text style={{ color: '#fff', fontSize: FontSize.md, fontWeight: FontWeight.bold }}>Wardrobe</Text>
+      </TouchableOpacity>
 
       <>
       {/* Stats */}
       <View style={styles.statsGrid}>
         <StatCard
-          label="Portfolio Value"
+          label={t('portfolio_value')}
           value={formatCurrency(portfolio?.totalValue ?? user.startingBalance)}
           icon="💼"
         />
         <StatCard
-          label="Total Gain"
+          label={t('total_gain')}
           value={formatPercent(totalGainPercent)}
           icon={totalGainPercent >= 0 ? '📈' : '📉'}
           valueColor={totalGainPercent >= 0 ? Colors.market.gain : Colors.market.loss}
         />
         <StatCard
-          label="Starting Balance"
+          label={t('starting_balance')}
           value={formatCurrency(user.startingBalance)}
           icon="💰"
         />
         <StatCard
-          label="Achievements"
+          label={t('achievements')}
           value={`${unlockedAchievements.length} / ${ACHIEVEMENTS.length}`}
           icon="🏆"
         />
       </View>
 
       {/* Settings */}
-      <SectionHeader title="Settings" icon="⚙️" />
+      <SectionHeader title={t('settings')} icon="⚙️" />
       <View style={[styles.settingsContainer, { backgroundColor: C.bg.secondary, borderColor: C.border.default }]}>
         <SettingsRow
-          label="Account Number"
+          label={t('account_number')}
           right={<Text style={[styles.settingsValue, { color: C.text.secondary }]}>{formatAccountNumber(user.accountNumber)}</Text>}
         />
       </View>
 
+      {/* Language Button — standalone below Account Number */}
+      <TouchableOpacity
+        style={{
+          marginHorizontal: Spacing.base,
+          marginTop: Spacing.sm,
+          backgroundColor: C.bg.secondary,
+          borderRadius: Radius.lg,
+          borderWidth: 1,
+          borderColor: C.border.default,
+          flexDirection: 'row',
+          alignItems: 'center',
+          justifyContent: 'space-between',
+          paddingHorizontal: Spacing.base,
+          paddingVertical: 14,
+        }}
+        onPress={() => setLangPickerVisible(true)}
+      >
+        <Text style={{ fontSize: FontSize.base, fontWeight: FontWeight.medium, color: C.text.primary }}>🌐  {t('language')}</Text>
+        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
+          <Text style={{ fontSize: FontSize.base, color: Colors.brand.primary, fontWeight: FontWeight.semibold }}>{currentLang.nativeName}</Text>
+          <Text style={{ fontSize: 12, color: C.text.tertiary }}>▶</Text>
+        </View>
+      </TouchableOpacity>
+
       {/* ── Appearance Settings ── */}
       <View style={[styles.settingsSection, { borderTopColor: C.border.default }]}>
-        <Text style={[styles.sectionTitle, { color: C.text.primary }]}>Appearance</Text>
+        <Text style={[styles.sectionTitle, { color: C.text.primary }]}>{t('appearance')}</Text>
 
         {/* Dark / Light Mode */}
-        <Text style={[styles.settingsSubhead, { color: C.text.secondary }]}>Mode</Text>
+        <Text style={[styles.settingsSubhead, { color: C.text.secondary }]}>{t('mode')}</Text>
         <View style={[styles.modeRow, { backgroundColor: C.bg.tertiary, borderColor: C.border.default }]}>
           <TouchableOpacity
             style={[styles.modeBtn, appColorMode === 'dark' && { backgroundColor: appAccentColor }]}
             onPress={() => setAppColorMode('dark')}
           >
-            <Text style={{ fontSize: FontSize.base, fontWeight: FontWeight.semibold, color: appColorMode === 'dark' ? '#fff' : C.text.primary }}>🌑  Dark</Text>
+            <Text style={{ fontSize: FontSize.base, fontWeight: FontWeight.semibold, color: appColorMode === 'dark' ? '#fff' : C.text.primary }}>{`🌑  ${t('dark')}`}</Text>
           </TouchableOpacity>
           <TouchableOpacity
             style={[styles.modeBtn, appColorMode === 'light' && { backgroundColor: appAccentColor }]}
             onPress={() => setAppColorMode('light')}
           >
-            <Text style={{ fontSize: FontSize.base, fontWeight: FontWeight.semibold, color: appColorMode === 'light' ? '#fff' : C.text.primary }}>☀️  Light</Text>
+            <Text style={{ fontSize: FontSize.base, fontWeight: FontWeight.semibold, color: appColorMode === 'light' ? '#fff' : C.text.primary }}>{`☀️  ${t('light')}`}</Text>
           </TouchableOpacity>
         </View>
 
         {/* Accent Colour */}
-        <Text style={[styles.settingsSubhead, { color: C.text.secondary }]}>Accent Colour</Text>
+        <Text style={[styles.settingsSubhead, { color: C.text.secondary }]}>{t('accent_colour')}</Text>
         <View style={styles.colorGrid}>
           {ACCENT_COLORS.map(({ label, color }) => (
             <TouchableOpacity
@@ -290,12 +371,12 @@ export default function ProfileScreen() {
             TAB_COLOR_OPTIONS.forEach(({ tab, defaultColor }) => setAppTabColor(tab, defaultColor));
           }}
         >
-          <Text style={[styles.resetText, { color: C.text.tertiary }]}>↺  Reset to Defaults</Text>
+          <Text style={[styles.resetText, { color: C.text.tertiary }]}>{`↺  ${t('reset_defaults')}`}</Text>
         </TouchableOpacity>
       </View>
 
       {/* Achievements */}
-      <SectionHeader title="Achievements" icon="🏆" />
+      <SectionHeader title={t('achievements')} icon="🏆" />
       <View style={styles.achievementsList}>
         {ACHIEVEMENTS.map(ach => {
           const unlocked = (user.achievements || []).some(a => a.id === ach.id && a.unlockedAt);
@@ -329,7 +410,7 @@ export default function ProfileScreen() {
       </View>
 
       {/* XP Levels */}
-      <SectionHeader title="XP Levels" icon="⭐" />
+      <SectionHeader title={t('xp_levels')} icon="⭐" />
       <View style={styles.levelsList}>
         {LEVELS.map(lvl => {
           const isCurrentLevel = user.level === lvl.level;
@@ -369,12 +450,12 @@ export default function ProfileScreen() {
 
       {/* Sign out */}
       <TouchableOpacity style={styles.signOutButton} onPress={handleSignOut}>
-        <Text style={styles.signOutText}>Sign Out</Text>
+        <Text style={styles.signOutText}>{t('sign_out')}</Text>
       </TouchableOpacity>
 
       {/* Delete account */}
       <TouchableOpacity style={styles.deleteAccountButton} onPress={() => setDeleteVisible(true)}>
-        <Text style={styles.deleteAccountText}>Delete Account</Text>
+        <Text style={styles.deleteAccountText}>{t('delete_account')}</Text>
       </TouchableOpacity>
 
       <Text style={[styles.version, { color: C.text.tertiary }]}>CapitalQuest v1.0.0 · Virtual trading only · No real money involved</Text>
@@ -391,13 +472,13 @@ export default function ProfileScreen() {
       <View style={styles.signOutOverlay}>
         <View style={styles.signOutCard}>
           <Text style={styles.deleteModalIcon}>⚠️</Text>
-          <Text style={[styles.signOutTitle, { color: C.text.primary }]}>Delete Account</Text>
+          <Text style={[styles.signOutTitle, { color: C.text.primary }]}>{t('delete_account')}</Text>
           <Text style={[styles.deleteModalMessage, { color: C.text.secondary }]}>
             This will permanently delete your account, portfolio, and all progress. This cannot be undone.
           </Text>
           <View style={styles.signOutButtons}>
             <TouchableOpacity style={styles.signOutCancelBtn} onPress={() => setDeleteVisible(false)}>
-              <Text style={[styles.signOutCancelText, { color: C.text.secondary }]}>Cancel</Text>
+              <Text style={[styles.signOutCancelText, { color: C.text.secondary }]}>{t('cancel')}</Text>
             </TouchableOpacity>
             <TouchableOpacity style={styles.deleteConfirmBtn} onPress={confirmDeleteAccount}>
               <Text style={styles.signOutConfirmText}>Delete</Text>
@@ -416,16 +497,132 @@ export default function ProfileScreen() {
     >
       <View style={styles.signOutOverlay}>
         <View style={styles.signOutCard}>
-          <Text style={[styles.signOutTitle, { color: C.text.primary }]}>Sign Out</Text>
-          <Text style={[styles.signOutMessage, { color: C.text.secondary }]}>Are you sure you want to sign out?</Text>
+          <Text style={[styles.signOutTitle, { color: C.text.primary }]}>{t('sign_out')}</Text>
+          <Text style={[styles.signOutMessage, { color: C.text.secondary }]}>{t('sign_out_confirm')}</Text>
           <View style={styles.signOutButtons}>
             <TouchableOpacity style={styles.signOutCancelBtn} onPress={() => setSignOutVisible(false)}>
-              <Text style={[styles.signOutCancelText, { color: C.text.secondary }]}>Cancel</Text>
+              <Text style={[styles.signOutCancelText, { color: C.text.secondary }]}>{t('cancel')}</Text>
             </TouchableOpacity>
             <TouchableOpacity style={styles.signOutConfirmBtn} onPress={confirmSignOut}>
-              <Text style={styles.signOutConfirmText}>Sign Out</Text>
+              <Text style={styles.signOutConfirmText}>{t('sign_out')}</Text>
             </TouchableOpacity>
           </View>
+        </View>
+      </View>
+    </Modal>
+    {/* ── Wardrobe Modal ── */}
+    <Modal visible={wardrobeVisible} animationType="slide" transparent>
+      <View style={{ flex: 1, backgroundColor: 'rgba(0,0,0,0.7)', justifyContent: 'flex-end' }}>
+        <View style={{ backgroundColor: C.bg.secondary, borderTopLeftRadius: Radius.xl, borderTopRightRadius: Radius.xl, maxHeight: '85%', paddingBottom: 40 }}>
+          <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', padding: Spacing.base, borderBottomWidth: 1, borderBottomColor: C.border.default }}>
+            <Text style={{ fontSize: FontSize.lg, fontWeight: FontWeight.bold, color: C.text.primary }}>👕 Wardrobe</Text>
+            <TouchableOpacity onPress={() => setWardrobeVisible(false)}>
+              <Text style={{ fontSize: 20, color: C.text.tertiary, padding: 4 }}>✕</Text>
+            </TouchableOpacity>
+          </View>
+
+          <ScrollView style={{ padding: Spacing.base }} showsVerticalScrollIndicator={false}>
+            {/* Preview */}
+            <View style={{ alignItems: 'center', marginBottom: Spacing.lg }}>
+              <View style={{ width: 80, height: 80, borderRadius: 40, backgroundColor: selectedBgColor, alignItems: 'center', justifyContent: 'center', borderWidth: 2, borderColor: Colors.brand.primary }}>
+                <Text style={{ fontSize: 44 }}>{selectedAnimal}</Text>
+              </View>
+              <Text style={{ color: C.text.secondary, fontSize: FontSize.sm, marginTop: Spacing.sm }}>Preview</Text>
+            </View>
+
+            {/* Animal Selection */}
+            <Text style={{ fontSize: FontSize.base, fontWeight: FontWeight.semibold, color: C.text.primary, marginBottom: Spacing.sm }}>Choose Animal</Text>
+            <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: Spacing.sm, marginBottom: Spacing.lg }}>
+              {WARDROBE_ANIMALS.map(animal => (
+                <TouchableOpacity
+                  key={animal}
+                  onPress={() => setSelectedAnimal(animal)}
+                  style={{
+                    width: 48, height: 48, borderRadius: Radius.md,
+                    alignItems: 'center', justifyContent: 'center',
+                    backgroundColor: animal === selectedAnimal ? Colors.brand.primary + '22' : C.bg.tertiary,
+                    borderWidth: animal === selectedAnimal ? 2 : 1,
+                    borderColor: animal === selectedAnimal ? Colors.brand.primary : C.border.default,
+                  }}
+                >
+                  <Text style={{ fontSize: 26 }}>{animal}</Text>
+                </TouchableOpacity>
+              ))}
+            </View>
+
+            {/* Background Color */}
+            <Text style={{ fontSize: FontSize.base, fontWeight: FontWeight.semibold, color: C.text.primary, marginBottom: Spacing.sm }}>Background Colour</Text>
+            <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: Spacing.sm, marginBottom: Spacing.xl }}>
+              {WARDROBE_COLORS.map((color, i) => (
+                <TouchableOpacity
+                  key={color + i}
+                  onPress={() => setSelectedBgColor(color)}
+                  style={{
+                    width: 40, height: 40, borderRadius: 20,
+                    backgroundColor: color,
+                    borderWidth: color === selectedBgColor ? 3 : 1,
+                    borderColor: color === selectedBgColor ? Colors.brand.primary : C.border.default,
+                    alignItems: 'center', justifyContent: 'center',
+                  }}
+                >
+                  {color === selectedBgColor && <Text style={{ color: '#fff', fontSize: 16, fontWeight: FontWeight.bold }}>✓</Text>}
+                </TouchableOpacity>
+              ))}
+            </View>
+
+            {/* Save Button */}
+            <TouchableOpacity
+              style={{ backgroundColor: Colors.brand.primary, borderRadius: Radius.lg, paddingVertical: 14, alignItems: 'center', marginBottom: Spacing.base }}
+              onPress={handleSaveAvatar}
+            >
+              <Text style={{ color: '#fff', fontSize: FontSize.md, fontWeight: FontWeight.bold }}>{t('save')}</Text>
+            </TouchableOpacity>
+          </ScrollView>
+        </View>
+      </View>
+    </Modal>
+
+    {/* ── Language Picker Modal ── */}
+    <Modal visible={langPickerVisible} animationType="slide" transparent>
+      <View style={{ flex: 1, backgroundColor: 'rgba(0,0,0,0.7)', justifyContent: 'flex-end' }}>
+        <View style={{ backgroundColor: C.bg.secondary, borderTopLeftRadius: Radius.xl, borderTopRightRadius: Radius.xl, maxHeight: '80%', paddingBottom: 40 }}>
+          <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', padding: Spacing.base, borderBottomWidth: 1, borderBottomColor: C.border.default }}>
+            <Text style={{ fontSize: FontSize.lg, fontWeight: FontWeight.bold, color: C.text.primary }}>{t('select_language')}</Text>
+            <TouchableOpacity onPress={() => { setLangPickerVisible(false); setLangSearch(''); }}>
+              <Text style={{ fontSize: 20, color: C.text.tertiary, padding: 4 }}>✕</Text>
+            </TouchableOpacity>
+          </View>
+          <View style={{ padding: Spacing.base }}>
+            <TextInput
+              style={{ backgroundColor: C.bg.input ?? C.bg.tertiary, borderRadius: Radius.md, paddingHorizontal: Spacing.base, paddingVertical: 12, borderWidth: 1, borderColor: C.border.default, color: C.text.primary, fontSize: FontSize.base }}
+              placeholder={t('search_languages')}
+              placeholderTextColor={C.text.tertiary}
+              value={langSearch}
+              onChangeText={setLangSearch}
+              autoCapitalize="none"
+              autoCorrect={false}
+            />
+          </View>
+          <FlatList
+            data={filteredLangs}
+            keyExtractor={item => item.code}
+            style={{ maxHeight: 400 }}
+            keyboardShouldPersistTaps="handled"
+            renderItem={({ item }) => (
+              <TouchableOpacity
+                style={{ paddingHorizontal: Spacing.base, paddingVertical: 14, borderBottomWidth: 1, borderBottomColor: C.border.subtle ?? C.border.default, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', ...(item.code === appLanguage ? { backgroundColor: 'rgba(0,179,230,0.1)' } : {}) }}
+                onPress={() => { setAppLanguage(item.code); setLangPickerVisible(false); setLangSearch(''); }}
+              >
+                <View style={{ flex: 1 }}>
+                  <Text style={{ fontSize: FontSize.base, color: item.code === appLanguage ? Colors.brand.primary : C.text.primary, fontWeight: item.code === appLanguage ? FontWeight.semibold : FontWeight.regular }}>
+                    {item.nativeName}
+                  </Text>
+                  <Text style={{ fontSize: FontSize.xs, color: C.text.tertiary, marginTop: 2 }}>{item.name}</Text>
+                </View>
+                {item.code === appLanguage && <Text style={{ color: Colors.brand.primary, fontSize: FontSize.lg, fontWeight: FontWeight.bold }}>✓</Text>}
+              </TouchableOpacity>
+            )}
+          />
         </View>
       </View>
     </Modal>
@@ -766,7 +963,6 @@ const styles = StyleSheet.create({
     borderRadius: Radius.lg,
     borderWidth: 1,
     borderColor: Colors.border.default,
-    overflow: 'hidden',
   },
   settingsRow: {
     flexDirection: 'row',

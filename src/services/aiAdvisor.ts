@@ -95,28 +95,28 @@ function getTodayDate(): string {
 // ─── Prompt builder ───────────────────────────────────────────────────────────
 
 function buildSystemPrompt(): string {
-  return `You are an expert financial educator and market analyst for CapitalQuest, a virtual stock trading simulation app designed for students and young investors aged 8–18.
+  return `You are a friendly financial educator for StockQuest, a VIRTUAL stock trading SIMULATION game. This is NOT real investing — all money is virtual and no real funds are ever involved.
 
 Your role is to:
-1. Analyse current market news and trends
-2. Review the user's virtual portfolio performance
-3. Provide educational buy/sell/hold recommendations with clear reasoning
-4. Draw on historical market patterns (dot-com bubble, 2008 crash, COVID dip, inflation cycles, etc.) where relevant
-5. Always remind users this is a SIMULATION using virtual money — no real funds are involved
+1. Help students learn about how markets work by discussing current news and trends
+2. Review the user's virtual portfolio performance in the simulation
+3. Suggest educational strategies the student could explore in the simulation (e.g. "you might consider looking into…")
+4. Reference historical market events (dot-com bubble, 2008 crash, COVID dip, etc.) as learning examples
+5. Reinforce that this is a game for learning — no real money, no real risk
 
 Communication style:
-- Friendly, encouraging, and educational — like a knowledgeable mentor
-- Explain WHY behind every recommendation
-- Use simple analogies for complex concepts
-- Include a confidence level (High / Medium / Low) for each recommendation
-- Always note risks and never guarantee outcomes
+- Friendly, encouraging, age-appropriate — like a fun teacher or mentor
+- Explain the reasoning behind every suggestion using simple analogies
+- Frame everything as learning opportunities, not financial advice
+- Never guarantee outcomes — emphasise that markets are unpredictable
+- Use hedging language: "you might explore", "one strategy could be", "historically…"
 
-Format your response with clear sections using emoji headers:
-📰 Market Snapshot — 2–3 key news items affecting markets
-📊 Your Portfolio — brief assessment of their current positions
-🤔 Historical Context — relevant historical parallel if applicable
-💡 Recommendations — specific actionable suggestions with reasoning
-⚠️ Risk Reminder — one important caveat
+Format your response with clear sections:
+📰 Market Snapshot — 2–3 interesting things happening in markets
+📊 Your Portfolio — how the student's simulation portfolio is doing
+🤔 Fun Fact — a cool historical market parallel
+💡 Ideas to Explore — educational strategies to try in the simulation
+⚠️ Remember — this is a learning game with virtual money
 `;
 }
 
@@ -205,8 +205,15 @@ export async function streamMarketAdvice(
     const message =
       err instanceof Error ? err.message : 'Unknown error contacting AI service.';
 
-    // Provide helpful mock response if no API key
-    if (message.includes('401') || message.includes('placeholder') || message.includes('invalid')) {
+    // Provide helpful mock response if no API key or content blocked
+    if (
+      message.includes('401') ||
+      message.includes('placeholder') ||
+      message.includes('invalid') ||
+      message.includes('content filtering') ||
+      message.includes('Output blocked') ||
+      message.includes('400')
+    ) {
       callbacks.onChunk(getMockAdvice(portfolio));
       callbacks.onDone();
     } else {

@@ -93,6 +93,7 @@ export default function RootLayout() {
           if (saved.appAccentColor) useAppStore.setState({ appAccentColor: saved.appAccentColor as string });
           if (saved.appTileStyle) useAppStore.setState({ appTileStyle: saved.appTileStyle as 'default' | 'vivid' | 'glass' });
           if (saved.appTabColors) useAppStore.setState({ appTabColors: saved.appTabColors as Record<string, string> });
+          if (saved.appLanguage) useAppStore.setState({ appLanguage: saved.appLanguage as string });
         }
         // Load portfolio from Firestore so holdings persist across sessions
         try {

@@ -44,6 +44,7 @@ import { useAppStore } from '../../src/store/useAppStore';
 import { Colors, LightColors, FontSize, FontWeight, Spacing, Radius } from '../../src/constants/theme';
 import { formatCurrency, formatShares, formatRelativeTime } from '../../src/utils/formatters';
 import type { ChatRoom, Message, TradeProposal, Club, ClubInvite, LeaderboardEntry } from '../../src/types';
+import { t } from '../../src/constants/translations';
 
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
 
@@ -179,7 +180,7 @@ function ClubDigestHeader({ club }: { club: Club }) {
                 <Text style={digestStyles.memberName}>{m.displayName}</Text>
                 {isCurrentUser && (
                   <View style={digestStyles.youBadge}>
-                    <Text style={digestStyles.youBadgeText}>YOU</Text>
+                    <Text style={digestStyles.youBadgeText}>{t('you')}</Text>
                   </View>
                 )}
               </View>
@@ -418,13 +419,13 @@ function ChatModal({
                 style={[styles.proposalBtn, { backgroundColor: Colors.market.gain + '22', borderColor: Colors.market.gain }]}
                 onPress={() => handleRespondToProposal(meta.proposalId!, 'accepted')}
               >
-                <Text style={[styles.proposalBtnText, { color: Colors.market.gain }]}>Accept</Text>
+                <Text style={[styles.proposalBtnText, { color: Colors.market.gain }]}>{t('accept')}</Text>
               </TouchableOpacity>
               <TouchableOpacity
                 style={[styles.proposalBtn, { backgroundColor: Colors.market.loss + '22', borderColor: Colors.market.loss }]}
                 onPress={() => handleRespondToProposal(meta.proposalId!, 'declined')}
               >
-                <Text style={[styles.proposalBtnText, { color: Colors.market.loss }]}>Decline</Text>
+                <Text style={[styles.proposalBtnText, { color: Colors.market.loss }]}>{t('decline')}</Text>
               </TouchableOpacity>
             </View>
           )}
@@ -478,7 +479,7 @@ function ChatModal({
           contentContainerStyle={styles.messagesList}
           ListHeaderComponent={club ? <ClubDigestHeader club={club} /> : null}
           ListEmptyComponent={
-            <Text style={[styles.emptyText, { color: CMC.text.secondary }]}>No messages yet. Say hi!</Text>
+            <Text style={[styles.emptyText, { color: CMC.text.secondary }]}>{t('no_messages_yet')}</Text>
           }
         />
 
@@ -490,7 +491,7 @@ function ChatModal({
               style={styles.chatInput}
               value={inputText}
               onChangeText={setInputText}
-              placeholder="Type a message..."
+              placeholder={t('type_a_message')}
               placeholderTextColor={Colors.text.tertiary}
               multiline
               returnKeyType="send"
@@ -507,7 +508,7 @@ function ChatModal({
               {sending ? (
                 <ActivityIndicator size="small" color={Colors.text.primary} />
               ) : (
-                <Text style={[styles.sendBtnText, { color: CMC.text.primary }]}>Send</Text>
+                <Text style={[styles.sendBtnText, { color: CMC.text.primary }]}>{t('send')}</Text>
               )}
             </TouchableOpacity>
           </View>
@@ -612,10 +613,10 @@ function MessagesTab() {
 
       {/* ── Pending Invites ── */}
         <View style={[styles.inviteSection, { borderBottomColor: MC.border.default }]}>
-          <Text style={[styles.inviteSectionLabel, { color: MC.text.secondary }]}>📬  Invites</Text>
+          <Text style={[styles.inviteSectionLabel, { color: MC.text.secondary }]}>📬  {t('invites')}</Text>
           {clubInvites.length === 0 && (
             <View style={{ paddingVertical: 12, paddingHorizontal: 16 }}>
-              <Text style={{ color: MC.text.tertiary, fontSize: 13, textAlign: 'center' }}>No pending invites</Text>
+              <Text style={{ color: MC.text.tertiary, fontSize: 13, textAlign: 'center' }}>{t('no_pending_invites')}</Text>
             </View>
           )}
           {clubInvites.map((invite) => (
@@ -662,7 +663,7 @@ function MessagesTab() {
       {chatRooms.length === 0 ? (
         <View style={styles.emptyState}>
           <Text style={styles.emptyStateIcon}>💬</Text>
-          <Text style={[styles.emptyStateTitle, { color: MC.text.primary }]}>No conversations yet</Text>
+          <Text style={[styles.emptyStateTitle, { color: MC.text.primary }]}>{t('no_conversations_yet')}</Text>
           <Text style={[styles.emptyStateSubtitle, { color: MC.text.secondary }]}>
             Find friends or join clubs to start chatting
           </Text>
@@ -690,7 +691,7 @@ function MessagesTab() {
 // ─── Clubs Tab ────────────────────────────────────────────────────────────────
 
 function ClubsTab() {
-  const { user, chatRooms, setChatRooms, myClubs, setMyClubs, addMyClub, addClubInvite, appColorMode } = useAppStore();
+  const { user, chatRooms, setChatRooms, myClubs, setMyClubs, addMyClub, appColorMode } = useAppStore();
   const CC = appColorMode === 'light' ? LightColors : Colors;
   const [publicClubs, setPublicClubs] = useState<Club[]>([]);
   const [loading, setLoading] = useState(true);
@@ -795,16 +796,6 @@ function ClubsTab() {
       inviteClub.name,
     );
     if (result.success) {
-      // In mock mode, add the invite locally so we can preview how it looks
-      addClubInvite({
-        id: `invite_${Date.now()}`,
-        type: 'club_invite',
-        clubId: inviteClub.id,
-        clubName: inviteClub.name,
-        fromUserId: user.id,
-        fromUsername: user.username ?? user.displayName ?? 'A member',
-        sentAt: Date.now(),
-      });
       setInviteFeedback('✓ Invite sent!');
       setInvitePlayerNum('');
       setTimeout(() => {
@@ -1124,7 +1115,7 @@ function ClubsTab() {
 // ─── Find Friends Tab ─────────────────────────────────────────────────────────
 
 function FindFriendsTab() {
-  const { user, chatRooms, setChatRooms, addClubInvite, appColorMode } = useAppStore();
+  const { user, chatRooms, setChatRooms, appColorMode } = useAppStore();
   const FC = appColorMode === 'light' ? LightColors : Colors;
   const [searchQuery, setSearchQuery] = useState('');
   const [searchResults, setSearchResults] = useState<UserResult[]>([]);
@@ -1132,6 +1123,32 @@ function FindFriendsTab() {
   const [proposals, setProposals] = useState<TradeProposal[]>([]);
   const [respondingId, setRespondingId] = useState<string | null>(null);
   const searchTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const [addFriendModalVisible, setAddFriendModalVisible] = useState(false);
+  const [friendAccountNum, setFriendAccountNum] = useState('');
+  const [addingFriend, setAddingFriend] = useState(false);
+  const [addFriendFeedback, setAddFriendFeedback] = useState<string | null>(null);
+
+  const handleAddFriend = async () => {
+    if (!user || !friendAccountNum.trim() || friendAccountNum.trim().length !== 8) {
+      setAddFriendFeedback('Enter a valid 8-digit account number');
+      return;
+    }
+    setAddingFriend(true);
+    setAddFriendFeedback(null);
+    const result = await sendFriendRequest(
+      user.id,
+      user.username ?? user.displayName ?? 'A player',
+      friendAccountNum.trim(),
+    );
+    if (result.success) {
+      setAddFriendFeedback('✓ Friend request sent!');
+      setFriendAccountNum('');
+      setTimeout(() => { setAddFriendModalVisible(false); setAddFriendFeedback(null); }, 1200);
+    } else {
+      setAddFriendFeedback(result.error ?? 'Player not found');
+    }
+    setAddingFriend(false);
+  };
 
   useEffect(() => {
     if (!user) return;
@@ -1183,14 +1200,6 @@ function FindFriendsTab() {
       user.username ?? user.displayName ?? 'A player',
       targetUser.accountNumber,
     );
-    // Add to local invites so the current user can see the pending request
-    addClubInvite({
-      id: `friend_${Date.now()}_${targetUser.id}`,
-      type: 'friend_request',
-      fromUserId: user.id,
-      fromUsername: user.username ?? user.displayName ?? 'A player',
-      sentAt: Date.now(),
-    });
   };
 
   const handleRespondToProposal = async (
@@ -1217,13 +1226,14 @@ function FindFriendsTab() {
   };
 
   return (
+    <>
     <ScrollView style={styles.tabContent} contentContainerStyle={{ paddingBottom: 32 }}>
       <View style={styles.searchRow}>
         <TextInput
           style={[styles.searchInput, { backgroundColor: FC.bg.input, borderColor: FC.border.default, color: FC.text.primary }]}
           value={searchQuery}
           onChangeText={handleSearch}
-          placeholder="Search by username or 8-digit account #"
+          placeholder={t('search_placeholder')}
           placeholderTextColor={FC.text.tertiary}
           clearButtonMode="while-editing"
         />
@@ -1234,11 +1244,17 @@ function FindFriendsTab() {
             style={{ marginLeft: Spacing.sm }}
           />
         )}
+        <TouchableOpacity
+          style={{ marginLeft: Spacing.sm, backgroundColor: Colors.brand.accent + '22', borderWidth: 1, borderColor: Colors.brand.accent, borderRadius: Radius.md, paddingHorizontal: Spacing.md, paddingVertical: Spacing.sm + 2, justifyContent: 'center' }}
+          onPress={() => setAddFriendModalVisible(true)}
+        >
+          <Text style={{ color: Colors.brand.accent, fontSize: FontSize.sm, fontWeight: FontWeight.semibold }}>{t('add_friend')}</Text>
+        </TouchableOpacity>
       </View>
 
       {searchResults.length > 0 && (
         <View>
-          <Text style={[styles.sectionLabel, { color: FC.text.secondary }]}>Results</Text>
+          <Text style={[styles.sectionLabel, { color: FC.text.secondary }]}>{t('results')}</Text>
           {searchResults.map((u) => (
             <View key={u.id} style={[styles.userCard, { backgroundColor: FC.bg.secondary, borderColor: FC.border.default }]}>
               <InitialsAvatar name={u.displayName} />
@@ -1264,7 +1280,7 @@ function FindFriendsTab() {
                   style={styles.sendMsgBtn}
                   onPress={() => handleSendMessage(u)}
                 >
-                  <Text style={styles.sendMsgBtnText}>Message</Text>
+                  <Text style={styles.sendMsgBtnText}>{t('message')}</Text>
                 </TouchableOpacity>
                 <TouchableOpacity
                   style={[styles.sendMsgBtn, { backgroundColor: Colors.brand.accent + '22', borderColor: Colors.brand.accent }]}
@@ -1279,11 +1295,11 @@ function FindFriendsTab() {
       )}
 
       {searchQuery && !searching && searchResults.length === 0 && (
-        <Text style={[styles.emptyText, { color: FC.text.tertiary }]}>No users found.</Text>
+        <Text style={[styles.emptyText, { color: FC.text.tertiary }]}>{t('no_users_found')}</Text>
       )}
 
       <Text style={[styles.sectionLabel, { marginTop: Spacing.lg, color: FC.text.secondary }]}>
-        Pending Trade Proposals
+        {t('trade_proposals')}
       </Text>
       {proposals.length === 0 ? (
         <Text style={[styles.emptyText, { color: FC.text.tertiary }]}>No pending proposals.</Text>
@@ -1321,7 +1337,7 @@ function FindFriendsTab() {
                 disabled={respondingId === proposal.id}
               >
                 <Text style={[styles.proposalBtnText, { color: Colors.market.gain }]}>
-                  Accept
+                  {t('accept')}
                 </Text>
               </TouchableOpacity>
               <TouchableOpacity
@@ -1337,7 +1353,7 @@ function FindFriendsTab() {
                 disabled={respondingId === proposal.id}
               >
                 <Text style={[styles.proposalBtnText, { color: Colors.market.loss }]}>
-                  Decline
+                  {t('decline')}
                 </Text>
               </TouchableOpacity>
             </View>
@@ -1345,13 +1361,51 @@ function FindFriendsTab() {
         ))
       )}
     </ScrollView>
+
+    {/* Add Friend Modal */}
+    <Modal visible={addFriendModalVisible} animationType="fade" transparent>
+      <View style={{ flex: 1, backgroundColor: 'rgba(0,0,0,0.7)', justifyContent: 'center', alignItems: 'center' }}>
+        <View style={{ backgroundColor: FC.bg.secondary, borderRadius: Radius.xl, padding: Spacing.xl, width: '85%', maxWidth: 360 }}>
+          <Text style={{ fontSize: FontSize.lg, fontWeight: FontWeight.bold, color: FC.text.primary, marginBottom: Spacing.md }}>{t('add_friend')}</Text>
+          <Text style={{ fontSize: FontSize.sm, color: FC.text.secondary, marginBottom: Spacing.base }}>{t('enter_player_number')}</Text>
+          <TextInput
+            style={{ backgroundColor: FC.bg.input ?? FC.bg.tertiary, borderRadius: Radius.md, paddingHorizontal: Spacing.base, paddingVertical: 12, borderWidth: 1, borderColor: FC.border.default, color: FC.text.primary, fontSize: FontSize.base, marginBottom: Spacing.md }}
+            value={friendAccountNum}
+            onChangeText={setFriendAccountNum}
+            placeholder="12345678"
+            placeholderTextColor={FC.text.tertiary}
+            keyboardType="number-pad"
+            maxLength={8}
+          />
+          {addFriendFeedback && (
+            <Text style={{ fontSize: FontSize.sm, color: addFriendFeedback.startsWith('✓') ? Colors.market.gain : Colors.market.loss, marginBottom: Spacing.sm }}>{addFriendFeedback}</Text>
+          )}
+          <View style={{ flexDirection: 'row', gap: Spacing.sm }}>
+            <TouchableOpacity
+              style={{ flex: 1, paddingVertical: 12, borderRadius: Radius.md, alignItems: 'center', borderWidth: 1, borderColor: FC.border.default }}
+              onPress={() => { setAddFriendModalVisible(false); setFriendAccountNum(''); setAddFriendFeedback(null); }}
+            >
+              <Text style={{ color: FC.text.secondary, fontWeight: FontWeight.semibold }}>{t('cancel')}</Text>
+            </TouchableOpacity>
+            <TouchableOpacity
+              style={{ flex: 1, paddingVertical: 12, borderRadius: Radius.md, alignItems: 'center', backgroundColor: Colors.brand.accent, opacity: addingFriend ? 0.6 : 1 }}
+              onPress={handleAddFriend}
+              disabled={addingFriend}
+            >
+              <Text style={{ color: '#fff', fontWeight: FontWeight.bold }}>{addingFriend ? t('loading') : t('send')}</Text>
+            </TouchableOpacity>
+          </View>
+        </View>
+      </View>
+    </Modal>
+    </>
   );
 }
 
 // ─── Virtual Trading Tab ──────────────────────────────────────────────────────
 
 function RankingsTab() {
-  const { user, appColorMode } = useAppStore();
+  const { user, portfolio, appColorMode } = useAppStore();
   const RC = appColorMode === 'light' ? LightColors : Colors;
   const [entries, setEntries] = useState<LeaderboardEntry[]>([]);
   const [loading, setLoading] = useState(true);
@@ -1360,18 +1414,36 @@ function RankingsTab() {
     setLoading(true);
     try {
       const data = await getLeaderboard('global');
-      if (Array.isArray(data) && data.length > 0) {
-        setEntries(
-          (data as LeaderboardEntry[]).map(e => ({
+      let mapped = Array.isArray(data) && data.length > 0
+        ? (data as LeaderboardEntry[]).map(e => ({
             ...e,
             gainDollars: e.gainDollars ?? (e.currentValue - e.startingBalance),
             isCurrentUser: e.userId === user?.id,
           }))
-        );
+        : [];
+
+      // Ensure the current user always appears in the rankings
+      if (user && !mapped.some(e => e.userId === user.id)) {
+        const startBal = portfolio?.startingBalance ?? user.startingBalance ?? 10000;
+        const curVal = portfolio?.totalValue ?? startBal;
+        const gain = curVal - startBal;
+        mapped.push({
+          rank: mapped.length + 1,
+          userId: user.id,
+          username: user.username ?? 'Player',
+          displayName: user.displayName ?? user.username ?? 'Player',
+          level: user.level ?? 1,
+          country: user.country ?? '',
+          startingBalance: startBal,
+          currentValue: curVal,
+          gainDollars: gain,
+          isCurrentUser: true,
+        });
       }
+      setEntries(mapped);
     } catch {}
     setLoading(false);
-  }, [user?.id]);
+  }, [user?.id, portfolio?.totalValue]);
 
   useEffect(() => { loadRankings(); }, []);
 
@@ -1384,7 +1456,7 @@ function RankingsTab() {
     return (
       <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center', paddingVertical: 60 }}>
         <ActivityIndicator color={Colors.brand.primary} size="large" />
-        <Text style={{ color: RC.text.secondary, marginTop: 12, fontSize: FontSize.base }}>Loading rankings…</Text>
+        <Text style={{ color: RC.text.secondary, marginTop: 12, fontSize: FontSize.base }}>{t('loading_rankings')}</Text>
       </View>
     );
   }
@@ -1393,9 +1465,9 @@ function RankingsTab() {
     return (
       <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center', paddingVertical: 60 }}>
         <Text style={{ fontSize: 48, marginBottom: 12 }}>{'\u{1F3C6}'}</Text>
-        <Text style={{ color: RC.text.primary, fontSize: FontSize.lg, fontWeight: FontWeight.bold }}>No Rankings Yet</Text>
+        <Text style={{ color: RC.text.primary, fontSize: FontSize.lg, fontWeight: FontWeight.bold }}>{t('no_rankings')}</Text>
         <Text style={{ color: RC.text.secondary, fontSize: FontSize.base, textAlign: 'center', marginTop: 8 }}>
-          Rankings will appear here once players start trading.
+          {t('rankings_will_appear')}
         </Text>
       </View>
     );
@@ -1405,10 +1477,10 @@ function RankingsTab() {
     <ScrollView style={styles.tabContent} contentContainerStyle={{ paddingBottom: 32 }}>
       <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: Spacing.md }}>
         <Text style={[styles.sectionLabel, { color: RC.text.secondary, marginBottom: 0 }]}>
-          Global Rankings
+          {t('global_rankings')}
         </Text>
         <TouchableOpacity onPress={loadRankings} style={{ paddingHorizontal: 12, paddingVertical: 6, backgroundColor: RC.bg.secondary, borderRadius: Radius.md, borderWidth: 1, borderColor: RC.border.default }}>
-          <Text style={{ color: RC.text.secondary, fontSize: FontSize.sm }}>{'\u21BB'} Refresh</Text>
+          <Text style={{ color: RC.text.secondary, fontSize: FontSize.sm }}>{'\u21BB'} {t('refresh')}</Text>
         </TouchableOpacity>
       </View>
       {entries.map(entry => {
@@ -1449,7 +1521,7 @@ function RankingsTab() {
                 <Text style={{ fontSize: FontSize.base, fontWeight: FontWeight.semibold, color: RC.text.primary, flexShrink: 1 }} numberOfLines={1}>{entry.displayName}</Text>
                 {entry.isCurrentUser && (
                   <View style={{ backgroundColor: Colors.brand.primary, paddingHorizontal: 6, paddingVertical: 1, borderRadius: 999 }}>
-                    <Text style={{ fontSize: 9, fontWeight: FontWeight.extrabold, color: '#fff', letterSpacing: 0.5 }}>YOU</Text>
+                    <Text style={{ fontSize: 9, fontWeight: FontWeight.extrabold, color: '#fff', letterSpacing: 0.5 }}>{t('you')}</Text>
                   </View>
                 )}
               </View>
@@ -1484,10 +1556,10 @@ export default function SocialScreen() {
   const [activeTab, setActiveTab] = useState<SocialTab>('messages');
 
   const tabs: { key: SocialTab; label: string }[] = [
-    { key: 'messages', label: 'Messages' },
-    { key: 'clubs', label: 'Clubs' },
-    { key: 'friends', label: 'Friends' },
-    { key: 'rankings', label: 'Rankings' },
+    { key: 'messages', label: t('messages') },
+    { key: 'clubs', label: t('clubs') },
+    { key: 'friends', label: t('friends') },
+    { key: 'rankings', label: t('rankings') },
   ];
 
   const renderContent = () => {

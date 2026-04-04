@@ -207,7 +207,7 @@ export async function findUserByAccountNumber(accountNumber: string) {
   );
   const snap = await getDocs(q);
   if (snap.empty) return null;
-  return snap.docs[0].data();
+  return { id: snap.docs[0].id, ...snap.docs[0].data() };
 }
 
 export async function searchUsers(searchTerm: string) {

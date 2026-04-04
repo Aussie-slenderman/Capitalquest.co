@@ -11,12 +11,13 @@ import {
 import { refreshPortfolioPrices } from '../../src/services/tradingEngine';
 import { subscribeToPrices } from '../../src/services/stockApi';
 import { Colors, FontSize, FontWeight } from '../../src/constants/theme';
+import { t } from '../../src/constants/translations';
 import type { Portfolio, ChatRoom } from '../../src/types';
 import AchievementToast from '../../src/components/AchievementToast';
 
 export default function AppLayout() {
   const {
-    user, setPortfolio, setChatRooms, setUnreadCount, unreadCount, addClubInvite,
+    user, setPortfolio, setChatRooms, setUnreadCount, unreadCount,
     portfolio, setQuote,
     appAccentColor, appColorMode,
   } = useAppStore();
@@ -144,14 +145,14 @@ export default function AppLayout() {
       <Tabs.Screen
         name="home"
         options={{
-          title: 'Markets',
+          title: t('markets'),
           tabBarIcon: ({ focused }) => <TabIcon icon="📊" focused={focused} bgColor="rgba(120, 180, 255, 0.35)" />,
         }}
       />
       <Tabs.Screen
         name="portfolio"
         options={{
-          title: 'Portfolio',
+          title: t('portfolio'),
           tabBarIcon: ({ focused }) => <TabIcon icon="💼" focused={focused} bgColor="rgba(100, 240, 160, 0.35)" />,
         }}
       />
@@ -162,7 +163,7 @@ export default function AppLayout() {
       <Tabs.Screen
         name="dashboard"
         options={{
-          title: 'Home',
+          title: t('home'),
           tabBarButton: (props) => <CenterTabButton {...props} />,
         }}
       />
@@ -171,7 +172,7 @@ export default function AppLayout() {
       <Tabs.Screen
         name="social"
         options={{
-          title: 'Social',
+          title: t('social'),
           tabBarIcon: ({ focused }) => (
             <View>
               <TabIcon icon="💬" focused={focused} bgColor="rgba(255, 160, 200, 0.35)" />
@@ -195,7 +196,7 @@ export default function AppLayout() {
       <Tabs.Screen
         name="profile"
         options={{
-          title: 'Profile',
+          title: t('profile'),
           tabBarIcon: ({ focused }) => <TabIcon icon="👤" focused={focused} bgColor="rgba(190, 170, 255, 0.35)" />,
         }}
       />
@@ -237,7 +238,7 @@ function CenterTabButton({ onPress, accessibilityState }: any) {
     >
       <View style={[styles.centerTabBox, focused && styles.centerTabBoxActive]}>
         <Text style={styles.centerTabIcon}>🏠</Text>
-        <Text style={[styles.centerTabLabel, { color: focused ? '#fff' : Colors.text.tertiary }]}>Home</Text>
+        <Text style={[styles.centerTabLabel, { color: focused ? '#fff' : Colors.text.tertiary }]}>{t('home')}</Text>
       </View>
     </TouchableOpacity>
   );
