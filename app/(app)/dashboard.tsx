@@ -270,7 +270,8 @@ export default function DashboardScreen() {
           </View>
 
           {DASHBOARD_NEWS.map((article, i) => (
-            <TouchableOpacity key={article.id} style={[styles.newsCard, { backgroundColor: C.bg.secondary, borderColor: C.border.default }]} activeOpacity={0.8}>
+            <TouchableOpacity key={article.id} style={[styles.newsCard, { backgroundColor: C.bg.secondary, borderColor: C.border.default }]} activeOpacity={0.8}
+              onPress={() => router.push({ pathname: '/(app)/news-article', params: { headline: article.headline, source: article.source, publishedAt: String(article.publishedAt), symbols: article.relatedSymbols.join(','), category: article.category } })}>
               <View style={[styles.newsCategoryBadge, { backgroundColor: C.bg.tertiary }]}>
                 <Text style={styles.newsCategoryText}>{t(`cat_${article.category.toLowerCase()}`) !== `cat_${article.category.toLowerCase()}` ? t(`cat_${article.category.toLowerCase()}`) : article.category}</Text>
               </View>

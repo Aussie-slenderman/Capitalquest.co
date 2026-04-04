@@ -1445,6 +1445,9 @@ function RankingsTab() {
           isCurrentUser: true,
         });
       }
+      // Sort by gain descending and re-assign ranks
+      mapped.sort((a, b) => b.gainDollars - a.gainDollars);
+      mapped.forEach((e, i) => { e.rank = i + 1; });
       setEntries(mapped);
     } catch {}
     setLoading(false);
