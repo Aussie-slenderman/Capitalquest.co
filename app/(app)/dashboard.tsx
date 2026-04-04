@@ -13,6 +13,7 @@ import { formatRelativeTime } from '../../src/utils/formatters';
 import { getQuotes } from '../../src/services/stockApi';
 import { updateUser } from '../../src/services/auth';
 import { Colors, LightColors, FontSize, FontWeight, Spacing, Radius } from '../../src/constants/theme';
+import { useT } from '../../src/constants/translations';
 
 // ─── Market indices ───────────────────────────────────────────────────────────
 const MARKET_INDICES = [
@@ -103,6 +104,7 @@ export default function DashboardScreen() {
   } = useAppStore();
   const isLight = appColorMode === 'light';
   const C = isLight ? LightColors : Colors;
+  const t = useT();
 
   // Country picker state
   const [showCountryPicker, setShowCountryPicker] = useState(false);
@@ -226,11 +228,11 @@ export default function DashboardScreen() {
             colors={[`${tabColor}22`, `${tabColor}08`, "transparent"] as any}
             style={styles.heroSection}
           >
-            <Text style={[styles.heroSlogan, { color: C.text.primary }]}>Practice.</Text>
-            <Text style={[styles.heroSlogan, { color: C.text.primary }]}>Trade.</Text>
-            <Text style={[styles.heroSlogan, { color: tabColor }]}>Prosper.</Text>
+            <Text style={[styles.heroSlogan, { color: C.text.primary }]}>{t('practice')}</Text>
+            <Text style={[styles.heroSlogan, { color: C.text.primary }]}>{t('trade_word')}</Text>
+            <Text style={[styles.heroSlogan, { color: tabColor }]}>{t('prosper')}</Text>
             <Text style={[styles.heroSubtitle, { color: C.text.secondary }]}>
-              Master the markets risk-free — real prices, real strategies.
+              {t('hero_subtitle')}
             </Text>
 
             {/* Quick action buttons */}
@@ -240,30 +242,30 @@ export default function DashboardScreen() {
                 onPress={() => router.push('/(app)/home' as never)}
               >
                 <Text style={styles.quickBtnIcon}>📊</Text>
-                <Text style={[styles.quickBtnText, { color: tabColor }]}>Markets</Text>
+                <Text style={[styles.quickBtnText, { color: tabColor }]}>{t('markets')}</Text>
               </TouchableOpacity>
               <TouchableOpacity
                 style={[styles.quickBtn, { borderColor: Colors.brand.accent }]}
                 onPress={() => router.push('/(app)/portfolio' as never)}
               >
                 <Text style={styles.quickBtnIcon}>💼</Text>
-                <Text style={[styles.quickBtnText, { color: Colors.brand.accent }]}>Portfolio</Text>
+                <Text style={[styles.quickBtnText, { color: Colors.brand.accent }]}>{t('portfolio')}</Text>
               </TouchableOpacity>
               <TouchableOpacity
                 style={[styles.quickBtn, { borderColor: Colors.brand.gold }]}
                 onPress={() => router.push('/(app)/leaderboard' as never)}
               >
                 <Text style={styles.quickBtnIcon}>🏆</Text>
-                <Text style={[styles.quickBtnText, { color: Colors.brand.gold }]}>Rankings</Text>
+                <Text style={[styles.quickBtnText, { color: Colors.brand.gold }]}>{t('rankings')}</Text>
               </TouchableOpacity>
             </View>
           </LinearGradient>
 
           {/* ── News section ── */}
           <View style={styles.newsHeader}>
-            <Text style={[styles.newsTitle, { color: C.text.primary }]}>📰  Market News</Text>
+            <Text style={[styles.newsTitle, { color: C.text.primary }]}>{`📰  ${t('market_news')}`}</Text>
             <TouchableOpacity onPress={() => router.push('/(app)/home' as never)}>
-              <Text style={[styles.seeAll, { color: tabColor }]}>See all →</Text>
+              <Text style={[styles.seeAll, { color: tabColor }]}>{`${t('see_all')} →`}</Text>
             </TouchableOpacity>
           </View>
 

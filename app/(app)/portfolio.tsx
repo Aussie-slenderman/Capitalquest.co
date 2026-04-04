@@ -240,7 +240,7 @@ export default function PortfolioScreen() {
             />
           ) : (
             <View style={{ height: 200, alignItems: 'center', justifyContent: 'center' }}>
-              <Text style={{ color: C.text.tertiary, fontSize: 14 }}>No performance data this month</Text>
+              <Text style={{ color: C.text.tertiary, fontSize: 14 }}>{t('no_perf_data')}</Text>
             </View>
           )}
         </View>

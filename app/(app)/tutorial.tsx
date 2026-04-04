@@ -13,6 +13,7 @@ import { Colors, FontSize, FontWeight, Spacing, Radius, Shadow } from '../../src
 import AppHeader from '../../src/components/AppHeader';
 import Sidebar from '../../src/components/Sidebar';
 import { useAppStore } from '../../src/store/useAppStore';
+import { useT } from '../../src/constants/translations';
 
 // ─── Tutorial Data ─────────────────────────────────────────────────────────────
 
@@ -190,6 +191,7 @@ export default function TutorialScreen() {
   const [expandedSection, setExpandedSection] = useState<string | null>('what_is');
   const [expandedLesson, setExpandedLesson] = useState<string | null>(null);
   const { isSidebarOpen, setSidebarOpen } = useAppStore();
+  const t = useT();
   const [glossaryOpen, setGlossaryOpen] = useState(false);
   const [glossarySearch, setGlossarySearch] = useState('');
 
@@ -213,7 +215,7 @@ export default function TutorialScreen() {
   return (
     <View style={{ flex: 1 }}>
     <SafeAreaView style={styles.safe}>
-      <AppHeader title="Learn" />
+      <AppHeader title={t('learn')} />
       <ScrollView style={styles.scroll} showsVerticalScrollIndicator={false}>
         {/* Header */}
         <LinearGradient
@@ -221,16 +223,16 @@ export default function TutorialScreen() {
           style={styles.header}
         >
           <Text style={styles.headerEmoji}>🎓</Text>
-          <Text style={styles.headerTitle}>Stock Trading 101</Text>
+          <Text style={styles.headerTitle}>{t('stock_trading_101')}</Text>
           <Text style={styles.headerSubtitle}>
-            Everything you need to trade smarter — from the basics to reading the market like a pro.
+            {t('tutorial_subtitle')}
           </Text>
 
           {/* Progress pills */}
           <View style={styles.pillRow}>
-            <Pill label={`${SECTIONS.length} Topics`} color={Colors.brand.primary} />
-            <Pill label={`${SECTIONS.reduce((n, s) => n + s.lessons.length, 0)} Lessons`} color={Colors.brand.accent} />
-            <Pill label={`${GLOSSARY.length} Terms`} color={Colors.brand.gold} />
+            <Pill label={`${SECTIONS.length} ${t('topics')}`} color={Colors.brand.primary} />
+            <Pill label={`${SECTIONS.reduce((n, s) => n + s.lessons.length, 0)} ${t('lessons')}`} color={Colors.brand.accent} />
+            <Pill label={`${GLOSSARY.length} ${t('terms')}`} color={Colors.brand.gold} />
           </View>
         </LinearGradient>
 
@@ -250,8 +252,8 @@ export default function TutorialScreen() {
                     <Text style={styles.sectionIcon}>{section.icon}</Text>
                   </View>
                   <View style={styles.sectionTitleCol}>
-                    <Text style={styles.sectionTitle}>{section.title}</Text>
-                    <Text style={styles.sectionMeta}>{section.lessons.length} lessons</Text>
+                    <Text style={styles.sectionTitle}>{t(section.id === 'what_is' ? 'what_is_trading' : section.id === 'reading_market' ? 'reading_market' : section.id === 'key_terms' ? 'key_terms_metrics' : section.id === 'judging_stocks' ? 'how_to_judge' : 'risk_strategy')}</Text>
+                    <Text style={styles.sectionMeta}>{section.lessons.length} {t('lessons')}</Text>
                   </View>
                   <View style={[styles.chevron, isOpen && styles.chevronOpen]}>
                     <Text style={[styles.chevronText, { color: section.color }]}>
