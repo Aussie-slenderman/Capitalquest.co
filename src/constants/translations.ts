@@ -198,6 +198,13 @@ const en: Dict = {
   not_enough_shares: 'Not enough shares', about_company: 'About',
   wardrobe: 'Wardrobe', choose_animal: 'Choose Animal', background_colour: 'Background Colour',
   preview: 'Preview',
+  // XP Level titles
+  xp_to: 'XP to',
+  level_1: 'Beginner Trader', level_2: 'Novice Investor', level_3: 'Apprentice Trader',
+  level_4: 'Trader', level_5: 'Senior Trader', level_6: 'Portfolio Manager',
+  level_7: 'Market Analyst', level_8: 'Hedge Fund Manager', level_9: 'Market Legend',
+  level_10: 'Wolf of Wall Street',
+
   confirm: 'Confirm', save: 'Save', delete: 'Delete', error: 'Error',
   success: 'Success', back: 'Back', close: 'Close', about: 'About', you: 'YOU',
 };
@@ -271,6 +278,11 @@ const es: Dict = {
   not_enough_shares: 'Acciones insuficientes', about_company: 'Acerca de',
   wardrobe: 'Vestuario', choose_animal: 'Elegir Animal', background_colour: 'Color de Fondo',
   preview: 'Vista Previa',
+  xp_to: 'XP para',
+  level_1: 'Comerciante Principiante', level_2: 'Inversor Novato', level_3: 'Aprendiz de Comerciante',
+  level_4: 'Comerciante', level_5: 'Comerciante Senior', level_6: 'Gestor de Portafolio',
+  level_7: 'Analista de Mercado', level_8: 'Gestor de Fondos', level_9: 'Leyenda del Mercado',
+  level_10: 'Lobo de Wall Street',
   confirm: 'Confirmar', save: 'Guardar', delete: 'Eliminar', error: 'Error',
   success: 'Éxito', back: 'Atrás', close: 'Cerrar', about: 'Acerca de', you: 'TÚ',
 };
@@ -342,6 +354,11 @@ const fr: Dict = {
   not_enough_shares: 'Actions insuffisantes', about_company: 'À propos de',
   wardrobe: 'Garde-Robe', choose_animal: 'Choisir Animal', background_colour: 'Couleur de Fond',
   preview: 'Aperçu',
+  xp_to: 'XP pour',
+  level_1: 'Trader Débutant', level_2: 'Investisseur Novice', level_3: 'Apprenti Trader',
+  level_4: 'Trader', level_5: 'Trader Senior', level_6: 'Gestionnaire de Portefeuille',
+  level_7: 'Analyste de Marché', level_8: 'Gestionnaire de Fonds', level_9: 'Légende du Marché',
+  level_10: 'Loup de Wall Street',
   confirm: 'Confirmer', save: 'Enregistrer', delete: 'Supprimer', error: 'Erreur',
   success: 'Succès', back: 'Retour', close: 'Fermer', about: 'À propos', you: 'VOUS',
 };

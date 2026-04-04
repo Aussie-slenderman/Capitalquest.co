@@ -212,7 +212,7 @@ export default function ProfileScreen() {
         {/* XP Bar */}
         <View style={styles.xpContainer}>
           <View style={styles.xpLabelRow}>
-            <Text style={[styles.xpLabel, { color: C.text.secondary }]}>{xpInfo.current.title}</Text>
+            <Text style={[styles.xpLabel, { color: C.text.secondary }]}>{t(`level_${xpInfo.current.level}`) !== `level_${xpInfo.current.level}` ? t(`level_${xpInfo.current.level}`) : xpInfo.current.title}</Text>
             <Text style={[styles.xpValue, { color: C.text.secondary }]}>{user.xp} XP</Text>
           </View>
           <View style={styles.xpTrack}>
@@ -225,7 +225,7 @@ export default function ProfileScreen() {
           </View>
           {xpInfo.nextLevel && (
             <Text style={[styles.xpNext, { color: C.text.tertiary }]}>
-              {xpInfo.xpInLevel} / {xpInfo.xpNeeded} XP to {xpInfo.nextLevel.title}
+              {xpInfo.xpInLevel} / {xpInfo.xpNeeded} {t('xp_to')} {t(`level_${xpInfo.nextLevel.level}`) !== `level_${xpInfo.nextLevel.level}` ? t(`level_${xpInfo.nextLevel.level}`) : xpInfo.nextLevel.title}
             </Text>
           )}
         </View>
@@ -430,10 +430,10 @@ export default function ProfileScreen() {
               </View>
               <View style={styles.levelBody}>
                 <Text style={[styles.levelTitle, { color: C.text.primary }, !isUnlocked && styles.lockedText]}>
-                  {lvl.title}
+                  {t(`level_${lvl.level}`) !== `level_${lvl.level}` ? t(`level_${lvl.level}`) : lvl.title}
                 </Text>
                 <Text style={[styles.levelSubtitle, { color: C.text.tertiary }]}>
-                  {lvl.xpRequired === 0 ? 'Starting level' : `${lvl.xpRequired} XP`}
+                  {lvl.xpRequired === 0 ? t('starting') : `${lvl.xpRequired} XP`}
                 </Text>
               </View>
               <View style={styles.levelRight}>
@@ -475,14 +475,14 @@ export default function ProfileScreen() {
           <Text style={styles.deleteModalIcon}>⚠️</Text>
           <Text style={[styles.signOutTitle, { color: C.text.primary }]}>{t('delete_account')}</Text>
           <Text style={[styles.deleteModalMessage, { color: C.text.secondary }]}>
-            This will permanently delete your account, portfolio, and all progress. This cannot be undone.
+            {t('delete_confirm')}
           </Text>
           <View style={styles.signOutButtons}>
             <TouchableOpacity style={styles.signOutCancelBtn} onPress={() => setDeleteVisible(false)}>
               <Text style={[styles.signOutCancelText, { color: C.text.secondary }]}>{t('cancel')}</Text>
             </TouchableOpacity>
             <TouchableOpacity style={styles.deleteConfirmBtn} onPress={confirmDeleteAccount}>
-              <Text style={styles.signOutConfirmText}>Delete</Text>
+              <Text style={styles.signOutConfirmText}>{t('delete')}</Text>
             </TouchableOpacity>
           </View>
         </View>
