@@ -1,4 +1,6 @@
 import { create } from 'zustand';
+import { persist, createJSONStorage } from 'zustand/middleware';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import type {
   User, Portfolio, Stock, StockQuote,
   ChatRoom, AppNotification, LeaderboardEntry, Achievement, Club, ClubInvite,
@@ -89,7 +91,7 @@ interface AppState {
 
 }
 
-export const useAppStore = create<AppState>((set) => ({
+export const useAppStore = create<AppState>()(persist((set) => ({
   // Auth
   user: null,
   isAuthLoading: true,
@@ -284,4 +286,8 @@ export const useAppStore = create<AppState>((set) => ({
   newsLastRead: 0,
   setNewsLastRead: (newsLastRead) => set({ newsLastRead }),
 
+}), {
+  name: 'stockquest-store',
+  storage: createJSONStorage(() => AsyncStorage),
+  partialize: (state) => ({ watchlist: state.watchlist }),
 }));

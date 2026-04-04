@@ -26,62 +26,62 @@ export const IS_MOCK_STOCKS = FINNHUB_KEY === 'YOUR_FINNHUB_API_KEY';
 // Comprehensive mock stock database — 60+ tickers (prices: verified March 13 2026 close)
 // These are used as fallback when Yahoo Finance / Finnhub are unavailable.
 const MOCK_DB: Record<string, { name: string; price: number; changePercent: number; sector: string; exchange: string; marketCap: number }> = {
-  // US Big Tech
-  AAPL: { name: 'Apple Inc', price: 250.12, changePercent: -2.21, sector: 'Technology', exchange: 'NASDAQ', marketCap: 3780e9 },
-  MSFT: { name: 'Microsoft Corp', price: 395.55, changePercent: -1.57, sector: 'Technology', exchange: 'NASDAQ', marketCap: 2940e9 },
-  GOOGL: { name: 'Alphabet Inc', price: 302.28, changePercent: -1.04, sector: 'Technology', exchange: 'NASDAQ', marketCap: 3720e9 },
-  GOOG: { name: 'Alphabet Inc (C)', price: 303.47, changePercent: -1.02, sector: 'Technology', exchange: 'NASDAQ', marketCap: 3720e9 },
-  AMZN: { name: 'Amazon.com Inc', price: 207.67, changePercent: -1.33, sector: 'Consumer Discretionary', exchange: 'NASDAQ', marketCap: 2210e9 },
-  META: { name: 'Meta Platforms Inc', price: 613.71, changePercent: -3.83, sector: 'Technology', exchange: 'NASDAQ', marketCap: 1560e9 },
-  NVDA: { name: 'NVIDIA Corp', price: 180.25, changePercent: -1.58, sector: 'Technology', exchange: 'NASDAQ', marketCap: 4400e9 },
-  TSLA: { name: 'Tesla Inc', price: 391.20, changePercent: -0.96, sector: 'Consumer Discretionary', exchange: 'NASDAQ', marketCap: 1250e9 },
-  NFLX: { name: 'Netflix Inc', price: 95.31, changePercent: 1.06, sector: 'Communication Services', exchange: 'NASDAQ', marketCap: 422e9 },
-  INTC: { name: 'Intel Corp', price: 45.77, changePercent: 1.15, sector: 'Technology', exchange: 'NASDAQ', marketCap: 196e9 },
-  AMD: { name: 'Advanced Micro Devices', price: 193.39, changePercent: -2.20, sector: 'Technology', exchange: 'NASDAQ', marketCap: 313e9 },
-  ORCL: { name: 'Oracle Corp', price: 195.00, changePercent: -0.72, sector: 'Technology', exchange: 'NYSE', marketCap: 535e9 },
-  CRM: { name: 'Salesforce Inc', price: 295.44, changePercent: -1.08, sector: 'Technology', exchange: 'NYSE', marketCap: 285e9 },
-  ADBE: { name: 'Adobe Inc', price: 459.44, changePercent: -7.60, sector: 'Technology', exchange: 'NASDAQ', marketCap: 198e9 },
-  PYPL: { name: 'PayPal Holdings', price: 74.88, changePercent: -0.61, sector: 'Financials', exchange: 'NASDAQ', marketCap: 78e9 },
+  // US Big Tech — prices updated April 2 2026
+  AAPL: { name: 'Apple Inc', price: 255.43, changePercent: -0.08, sector: 'Technology', exchange: 'NASDAQ', marketCap: 3780e9 },
+  MSFT: { name: 'Microsoft Corp', price: 371.34, changePercent: 0.53, sector: 'Technology', exchange: 'NASDAQ', marketCap: 2940e9 },
+  GOOGL: { name: 'Alphabet Inc', price: 295.61, changePercent: -0.60, sector: 'Technology', exchange: 'NASDAQ', marketCap: 3720e9 },
+  GOOG: { name: 'Alphabet Inc (C)', price: 297.00, changePercent: -0.58, sector: 'Technology', exchange: 'NASDAQ', marketCap: 3720e9 },
+  AMZN: { name: 'Amazon.com Inc', price: 209.26, changePercent: -0.62, sector: 'Consumer Discretionary', exchange: 'NASDAQ', marketCap: 2210e9 },
+  META: { name: 'Meta Platforms Inc', price: 573.57, changePercent: -0.98, sector: 'Technology', exchange: 'NASDAQ', marketCap: 1560e9 },
+  NVDA: { name: 'NVIDIA Corp', price: 176.93, changePercent: 0.67, sector: 'Technology', exchange: 'NASDAQ', marketCap: 4400e9 },
+  TSLA: { name: 'Tesla Inc', price: 359.84, changePercent: -5.62, sector: 'Consumer Discretionary', exchange: 'NASDAQ', marketCap: 1250e9 },
+  NFLX: { name: 'Netflix Inc', price: 97.81, changePercent: 2.37, sector: 'Communication Services', exchange: 'NASDAQ', marketCap: 422e9 },
+  INTC: { name: 'Intel Corp', price: 49.91, changePercent: 3.90, sector: 'Technology', exchange: 'NASDAQ', marketCap: 196e9 },
+  AMD: { name: 'Advanced Micro Devices', price: 216.53, changePercent: 3.00, sector: 'Technology', exchange: 'NASDAQ', marketCap: 313e9 },
+  ORCL: { name: 'Oracle Corp', price: 145.93, changePercent: 0.48, sector: 'Technology', exchange: 'NYSE', marketCap: 535e9 },
+  CRM: { name: 'Salesforce Inc', price: 186.25, changePercent: 0.01, sector: 'Technology', exchange: 'NYSE', marketCap: 285e9 },
+  ADBE: { name: 'Adobe Inc', price: 242.46, changePercent: 0.45, sector: 'Technology', exchange: 'NASDAQ', marketCap: 198e9 },
+  PYPL: { name: 'PayPal Holdings', price: 45.23, changePercent: 1.34, sector: 'Financials', exchange: 'NASDAQ', marketCap: 78e9 },
   // US Finance
-  JPM: { name: 'JPMorgan Chase & Co', price: 283.44, changePercent: -1.12, sector: 'Financials', exchange: 'NYSE', marketCap: 812e9 },
-  BAC: { name: 'Bank of America Corp', price: 46.72, changePercent: -0.87, sector: 'Financials', exchange: 'NYSE', marketCap: 365e9 },
-  GS: { name: 'Goldman Sachs Group', price: 596.22, changePercent: -1.04, sector: 'Financials', exchange: 'NYSE', marketCap: 196e9 },
-  V: { name: 'Visa Inc', price: 307.14, changePercent: -0.55, sector: 'Financials', exchange: 'NYSE', marketCap: 626e9 },
-  MA: { name: 'Mastercard Inc', price: 558.33, changePercent: -0.41, sector: 'Financials', exchange: 'NYSE', marketCap: 525e9 },
-  BRK_B: { name: 'Berkshire Hathaway B', price: 507.22, changePercent: -0.18, sector: 'Financials', exchange: 'NYSE', marketCap: 1110e9 },
+  JPM: { name: 'JPMorgan Chase & Co', price: 294.39, changePercent: -0.34, sector: 'Financials', exchange: 'NYSE', marketCap: 812e9 },
+  BAC: { name: 'Bank of America Corp', price: 49.28, changePercent: 0.01, sector: 'Financials', exchange: 'NYSE', marketCap: 365e9 },
+  GS: { name: 'Goldman Sachs Group', price: 862.23, changePercent: 0.23, sector: 'Financials', exchange: 'NYSE', marketCap: 196e9 },
+  V: { name: 'Visa Inc', price: 301.36, changePercent: 0.95, sector: 'Financials', exchange: 'NYSE', marketCap: 626e9 },
+  MA: { name: 'Mastercard Inc', price: 493.97, changePercent: 0.47, sector: 'Financials', exchange: 'NYSE', marketCap: 525e9 },
+  BRK_B: { name: 'Berkshire Hathaway B', price: 476.76, changePercent: -0.36, sector: 'Financials', exchange: 'NYSE', marketCap: 1110e9 },
   // US Healthcare
-  JNJ: { name: 'Johnson & Johnson', price: 162.55, changePercent: 0.33, sector: 'Healthcare', exchange: 'NYSE', marketCap: 392e9 },
-  PFE: { name: 'Pfizer Inc', price: 25.44, changePercent: -0.55, sector: 'Healthcare', exchange: 'NYSE', marketCap: 144e9 },
-  UNH: { name: 'UnitedHealth Group', price: 521.44, changePercent: -0.33, sector: 'Healthcare', exchange: 'NYSE', marketCap: 481e9 },
-  ABBV: { name: 'AbbVie Inc', price: 201.77, changePercent: 0.44, sector: 'Healthcare', exchange: 'NYSE', marketCap: 356e9 },
-  MRK: { name: 'Merck & Co Inc', price: 89.88, changePercent: -0.77, sector: 'Healthcare', exchange: 'NYSE', marketCap: 228e9 },
+  JNJ: { name: 'Johnson & Johnson', price: 243.23, changePercent: -0.36, sector: 'Healthcare', exchange: 'NYSE', marketCap: 392e9 },
+  PFE: { name: 'Pfizer Inc', price: 28.39, changePercent: -0.56, sector: 'Healthcare', exchange: 'NYSE', marketCap: 144e9 },
+  UNH: { name: 'UnitedHealth Group', price: 275.68, changePercent: 0.62, sector: 'Healthcare', exchange: 'NYSE', marketCap: 481e9 },
+  ABBV: { name: 'AbbVie Inc', price: 209.15, changePercent: -2.71, sector: 'Healthcare', exchange: 'NYSE', marketCap: 356e9 },
+  MRK: { name: 'Merck & Co Inc', price: 120.18, changePercent: -0.55, sector: 'Healthcare', exchange: 'NYSE', marketCap: 228e9 },
   // US Consumer
-  WMT: { name: 'Walmart Inc', price: 93.22, changePercent: -0.33, sector: 'Consumer Staples', exchange: 'NYSE', marketCap: 746e9 },
-  AMZN_RETAIL: { name: 'Amazon Consumer', price: 207.67, changePercent: -1.33, sector: 'Consumer Discretionary', exchange: 'NASDAQ', marketCap: 2210e9 },
-  MCD: { name: "McDonald's Corp", price: 290.44, changePercent: 0.11, sector: 'Consumer Discretionary', exchange: 'NYSE', marketCap: 206e9 },
-  KO: { name: 'Coca-Cola Co', price: 69.88, changePercent: 0.44, sector: 'Consumer Staples', exchange: 'NYSE', marketCap: 301e9 },
-  PEP: { name: 'PepsiCo Inc', price: 140.33, changePercent: -0.22, sector: 'Consumer Staples', exchange: 'NASDAQ', marketCap: 192e9 },
-  NKE: { name: 'Nike Inc', price: 53.98, changePercent: -1.44, sector: 'Consumer Discretionary', exchange: 'NYSE', marketCap: 81e9 },
-  SBUX: { name: 'Starbucks Corp', price: 94.55, changePercent: 0.66, sector: 'Consumer Discretionary', exchange: 'NASDAQ', marketCap: 107e9 },
+  WMT: { name: 'Walmart Inc', price: 125.49, changePercent: 0.60, sector: 'Consumer Staples', exchange: 'NYSE', marketCap: 746e9 },
+  AMZN_RETAIL: { name: 'Amazon Consumer', price: 209.26, changePercent: -0.62, sector: 'Consumer Discretionary', exchange: 'NASDAQ', marketCap: 2210e9 },
+  MCD: { name: "McDonald's Corp", price: 307.35, changePercent: 0.02, sector: 'Consumer Discretionary', exchange: 'NYSE', marketCap: 206e9 },
+  KO: { name: 'Coca-Cola Co', price: 76.76, changePercent: 0.89, sector: 'Consumer Staples', exchange: 'NYSE', marketCap: 301e9 },
+  PEP: { name: 'PepsiCo Inc', price: 155.93, changePercent: 0.83, sector: 'Consumer Staples', exchange: 'NASDAQ', marketCap: 192e9 },
+  NKE: { name: 'Nike Inc', price: 43.91, changePercent: -1.62, sector: 'Consumer Discretionary', exchange: 'NYSE', marketCap: 81e9 },
+  SBUX: { name: 'Starbucks Corp', price: 90.48, changePercent: 0.06, sector: 'Consumer Discretionary', exchange: 'NASDAQ', marketCap: 107e9 },
   // US Energy
-  XOM: { name: 'Exxon Mobil Corp', price: 156.12, changePercent: 1.69, sector: 'Energy', exchange: 'NYSE', marketCap: 625e9 },
-  CVX: { name: 'Chevron Corp', price: 144.66, changePercent: -0.55, sector: 'Energy', exchange: 'NYSE', marketCap: 272e9 },
+  XOM: { name: 'Exxon Mobil Corp', price: 161.43, changePercent: 0.40, sector: 'Energy', exchange: 'NYSE', marketCap: 625e9 },
+  CVX: { name: 'Chevron Corp', price: 198.84, changePercent: 0.72, sector: 'Energy', exchange: 'NYSE', marketCap: 272e9 },
   // US Industrial / Other
-  BA: { name: 'Boeing Co', price: 178.33, changePercent: 0.88, sector: 'Industrials', exchange: 'NYSE', marketCap: 105e9 },
-  GE: { name: 'GE Aerospace', price: 204.77, changePercent: 0.55, sector: 'Industrials', exchange: 'NYSE', marketCap: 221e9 },
-  UBER: { name: 'Uber Technologies', price: 73.33, changePercent: 0.49, sector: 'Technology', exchange: 'NYSE', marketCap: 152e9 },
-  SPOT: { name: 'Spotify Technology', price: 628.55, changePercent: 1.33, sector: 'Communication Services', exchange: 'NYSE', marketCap: 126e9 },
-  SHOP: { name: 'Shopify Inc', price: 122.96, changePercent: -2.54, sector: 'Technology', exchange: 'NYSE', marketCap: 156e9 },
+  BA: { name: 'Boeing Co', price: 207.58, changePercent: 0.13, sector: 'Industrials', exchange: 'NYSE', marketCap: 105e9 },
+  GE: { name: 'GE Aerospace', price: 281.90, changePercent: -3.68, sector: 'Industrials', exchange: 'NYSE', marketCap: 221e9 },
+  UBER: { name: 'Uber Technologies', price: 71.70, changePercent: -0.01, sector: 'Technology', exchange: 'NYSE', marketCap: 152e9 },
+  SPOT: { name: 'Spotify Technology', price: 487.79, changePercent: 3.78, sector: 'Communication Services', exchange: 'NYSE', marketCap: 126e9 },
+  SHOP: { name: 'Shopify Inc', price: 118.39, changePercent: -0.11, sector: 'Technology', exchange: 'NYSE', marketCap: 156e9 },
   SQ: { name: 'Block Inc', price: 57.44, changePercent: -0.77, sector: 'Financials', exchange: 'NYSE', marketCap: 35e9 },
-  COIN: { name: 'Coinbase Global', price: 195.53, changePercent: 1.19, sector: 'Financials', exchange: 'NASDAQ', marketCap: 48e9 },
-  ARM: { name: 'Arm Holdings plc', price: 115.75, changePercent: -1.71, sector: 'Technology', exchange: 'NASDAQ', marketCap: 122e9 },
-  SMCI: { name: 'Super Micro Computer', price: 30.75, changePercent: -2.22, sector: 'Technology', exchange: 'NASDAQ', marketCap: 18e9 },
+  COIN: { name: 'Coinbase Global', price: 171.70, changePercent: -0.75, sector: 'Financials', exchange: 'NASDAQ', marketCap: 48e9 },
+  ARM: { name: 'Arm Holdings plc', price: 148.33, changePercent: -4.35, sector: 'Technology', exchange: 'NASDAQ', marketCap: 122e9 },
+  SMCI: { name: 'Super Micro Computer', price: 23.16, changePercent: 2.87, sector: 'Technology', exchange: 'NASDAQ', marketCap: 18e9 },
   // ETFs
-  SPY: { name: 'SPDR S&P 500 ETF', price: 662.29, changePercent: -1.50, sector: 'ETF', exchange: 'NYSE', marketCap: 620e9 },
-  QQQ: { name: 'Invesco QQQ Trust', price: 538.44, changePercent: -0.93, sector: 'ETF', exchange: 'NASDAQ', marketCap: 295e9 },
-  IWM: { name: 'iShares Russell 2000', price: 198.44, changePercent: -1.44, sector: 'ETF', exchange: 'NYSE', marketCap: 55e9 },
-  VTI: { name: 'Vanguard Total Stock ETF', price: 280.11, changePercent: -1.22, sector: 'ETF', exchange: 'NYSE', marketCap: 460e9 },
-  GLD: { name: 'SPDR Gold Shares', price: 284.22, changePercent: 0.88, sector: 'Commodity ETF', exchange: 'NYSE', marketCap: 76e9 },
+  SPY: { name: 'SPDR S&P 500 ETF', price: 654.64, changePercent: -0.09, sector: 'ETF', exchange: 'NYSE', marketCap: 620e9 },
+  QQQ: { name: 'Invesco QQQ Trust', price: 583.28, changePercent: -0.18, sector: 'ETF', exchange: 'NASDAQ', marketCap: 295e9 },
+  IWM: { name: 'iShares Russell 2000', price: 250.86, changePercent: 0.52, sector: 'ETF', exchange: 'NYSE', marketCap: 55e9 },
+  VTI: { name: 'Vanguard Total Stock ETF', price: 323.21, changePercent: -0.01, sector: 'ETF', exchange: 'NYSE', marketCap: 460e9 },
+  GLD: { name: 'SPDR Gold Shares', price: 429.63, changePercent: -1.87, sector: 'Commodity ETF', exchange: 'NYSE', marketCap: 76e9 },
   // UK / International
   HSBA: { name: 'HSBC Holdings plc', price: 9.12, changePercent: 0.33, sector: 'Financials', exchange: 'LSE', marketCap: 174e9 },
   VOD: { name: 'Vodafone Group plc', price: 0.72, changePercent: -0.28, sector: 'Communication Services', exchange: 'LSE', marketCap: 19e9 },
@@ -121,8 +121,8 @@ const MOCK_DB: Record<string, { name: string; price: number; changePercent: numb
   BARC: { name: 'Barclays plc', price: 2.44, changePercent: 1.22, sector: 'Financials', exchange: 'LSE', marketCap: 44e9 },
   RR: { name: 'Rolls-Royce Holdings', price: 6.88, changePercent: 1.55, sector: 'Industrials', exchange: 'LSE', marketCap: 63e9 },
   // Asian stocks (US-listed ADRs and direct)
-  TSM: { name: 'Taiwan Semiconductor', price: 184.22, changePercent: -1.44, sector: 'Technology', exchange: 'NYSE', marketCap: 953e9 },
-  BABA: { name: 'Alibaba Group', price: 135.88, changePercent: 2.33, sector: 'Consumer Discretionary', exchange: 'NYSE', marketCap: 332e9 },
+  TSM: { name: 'Taiwan Semiconductor', price: 339.05, changePercent: -0.72, sector: 'Technology', exchange: 'NYSE', marketCap: 953e9 },
+  BABA: { name: 'Alibaba Group', price: 121.80, changePercent: -1.56, sector: 'Consumer Discretionary', exchange: 'NYSE', marketCap: 332e9 },
   JD: { name: 'JD.com Inc', price: 44.22, changePercent: 1.55, sector: 'Consumer Discretionary', exchange: 'NASDAQ', marketCap: 68e9 },
   PDD: { name: 'PDD Holdings (Temu)', price: 122.44, changePercent: 0.88, sector: 'Consumer Discretionary', exchange: 'NASDAQ', marketCap: 171e9 },
   BIDU: { name: 'Baidu Inc', price: 88.55, changePercent: 1.22, sector: 'Technology', exchange: 'NASDAQ', marketCap: 31e9 },
@@ -149,31 +149,31 @@ const MOCK_DB: Record<string, { name: string; price: number; changePercent: numb
   MELI: { name: 'MercadoLibre Inc', price: 2188.44, changePercent: -1.33, sector: 'Consumer Discretionary', exchange: 'NASDAQ', marketCap: 110e9 },
   NU: { name: 'Nu Holdings Ltd', price: 12.88, changePercent: 1.11, sector: 'Financials', exchange: 'NYSE', marketCap: 62e9 },
   // Crypto-adjacent / high-interest
-  MSTR: { name: 'MicroStrategy Inc', price: 344.55, changePercent: -3.44, sector: 'Technology', exchange: 'NASDAQ', marketCap: 33e9 },
+  MSTR: { name: 'MicroStrategy Inc', price: 119.61, changePercent: -2.58, sector: 'Technology', exchange: 'NASDAQ', marketCap: 33e9 },
   MARA: { name: 'Marathon Digital Holdings', price: 14.22, changePercent: -4.55, sector: 'Technology', exchange: 'NASDAQ', marketCap: 3.5e9 },
   RIOT: { name: 'Riot Platforms Inc', price: 8.44, changePercent: -3.22, sector: 'Technology', exchange: 'NASDAQ', marketCap: 2.5e9 },
   // Additional popular US
-  PLTR: { name: 'Palantir Technologies', price: 93.44, changePercent: -2.11, sector: 'Technology', exchange: 'NYSE', marketCap: 213e9 },
+  PLTR: { name: 'Palantir Technologies', price: 147.62, changePercent: 0.77, sector: 'Technology', exchange: 'NYSE', marketCap: 213e9 },
   AI: { name: 'C3.ai Inc', price: 26.88, changePercent: -1.66, sector: 'Technology', exchange: 'NYSE', marketCap: 3.5e9 },
   PATH: { name: 'UiPath Inc', price: 12.44, changePercent: -1.11, sector: 'Technology', exchange: 'NYSE', marketCap: 7.2e9 },
-  SNOW: { name: 'Snowflake Inc', price: 144.33, changePercent: -2.33, sector: 'Technology', exchange: 'NYSE', marketCap: 49e9 },
-  DDOG: { name: 'Datadog Inc', price: 112.55, changePercent: -1.77, sector: 'Technology', exchange: 'NASDAQ', marketCap: 36e9 },
-  CRWD: { name: 'CrowdStrike Holdings', price: 388.22, changePercent: -0.55, sector: 'Technology', exchange: 'NASDAQ', marketCap: 94e9 },
-  ABNB: { name: 'Airbnb Inc', price: 128.44, changePercent: -0.88, sector: 'Consumer Discretionary', exchange: 'NASDAQ', marketCap: 81e9 },
+  SNOW: { name: 'Snowflake Inc', price: 152.48, changePercent: -0.42, sector: 'Technology', exchange: 'NYSE', marketCap: 49e9 },
+  DDOG: { name: 'Datadog Inc', price: 119.92, changePercent: 1.05, sector: 'Technology', exchange: 'NASDAQ', marketCap: 36e9 },
+  CRWD: { name: 'CrowdStrike Holdings', price: 396.42, changePercent: 0.79, sector: 'Technology', exchange: 'NASDAQ', marketCap: 94e9 },
+  ABNB: { name: 'Airbnb Inc', price: 124.72, changePercent: -0.38, sector: 'Consumer Discretionary', exchange: 'NASDAQ', marketCap: 81e9 },
   LYFT: { name: 'Lyft Inc', price: 14.88, changePercent: 0.54, sector: 'Technology', exchange: 'NASDAQ', marketCap: 6.4e9 },
   DASH: { name: 'DoorDash Inc', price: 177.44, changePercent: -0.33, sector: 'Technology', exchange: 'NYSE', marketCap: 74e9 },
-  HOOD: { name: 'Robinhood Markets', price: 44.33, changePercent: 1.88, sector: 'Financials', exchange: 'NASDAQ', marketCap: 38e9 },
-  SOFI: { name: 'SoFi Technologies', price: 12.88, changePercent: 1.22, sector: 'Financials', exchange: 'NASDAQ', marketCap: 13e9 },
-  GME: { name: 'GameStop Corp', price: 28.44, changePercent: -1.55, sector: 'Consumer Discretionary', exchange: 'NYSE', marketCap: 12e9 },
-  AMC: { name: 'AMC Entertainment', price: 3.22, changePercent: -2.44, sector: 'Communication Services', exchange: 'NYSE', marketCap: 1.3e9 },
-  RIVN: { name: 'Rivian Automotive', price: 12.44, changePercent: -2.88, sector: 'Consumer Discretionary', exchange: 'NASDAQ', marketCap: 13e9 },
+  HOOD: { name: 'Robinhood Markets', price: 68.98, changePercent: -1.61, sector: 'Financials', exchange: 'NASDAQ', marketCap: 38e9 },
+  SOFI: { name: 'SoFi Technologies', price: 15.79, changePercent: 0.99, sector: 'Financials', exchange: 'NASDAQ', marketCap: 13e9 },
+  GME: { name: 'GameStop Corp', price: 23.19, changePercent: 1.87, sector: 'Consumer Discretionary', exchange: 'NYSE', marketCap: 12e9 },
+  AMC: { name: 'AMC Entertainment', price: 1.08, changePercent: 5.05, sector: 'Communication Services', exchange: 'NYSE', marketCap: 1.3e9 },
+  RIVN: { name: 'Rivian Automotive', price: 15.37, changePercent: 2.88, sector: 'Consumer Discretionary', exchange: 'NASDAQ', marketCap: 13e9 },
   LCID: { name: 'Lucid Group Inc', price: 2.77, changePercent: -1.44, sector: 'Consumer Discretionary', exchange: 'NASDAQ', marketCap: 7.3e9 },
-  F: { name: 'Ford Motor Co', price: 9.88, changePercent: -0.50, sector: 'Consumer Discretionary', exchange: 'NYSE', marketCap: 39e9 },
-  GM: { name: 'General Motors Co', price: 49.22, changePercent: -0.81, sector: 'Consumer Discretionary', exchange: 'NYSE', marketCap: 44e9 },
+  F: { name: 'Ford Motor Co', price: 11.59, changePercent: -0.81, sector: 'Consumer Discretionary', exchange: 'NYSE', marketCap: 39e9 },
+  GM: { name: 'General Motors Co', price: 72.74, changePercent: -3.07, sector: 'Consumer Discretionary', exchange: 'NYSE', marketCap: 44e9 },
   // Pharma / Biotech
-  LLY: { name: 'Eli Lilly and Co', price: 788.44, changePercent: -1.22, sector: 'Healthcare', exchange: 'NYSE', marketCap: 748e9 },
-  NVO: { name: 'Novo Nordisk A/S', price: 71.88, changePercent: -1.55, sector: 'Healthcare', exchange: 'NYSE', marketCap: 322e9 },
-  AMGN: { name: 'Amgen Inc', price: 255.44, changePercent: -0.44, sector: 'Healthcare', exchange: 'NASDAQ', marketCap: 137e9 },
+  LLY: { name: 'Eli Lilly and Co', price: 935.11, changePercent: -2.03, sector: 'Healthcare', exchange: 'NYSE', marketCap: 748e9 },
+  NVO: { name: 'Novo Nordisk A/S', price: 36.76, changePercent: 0.75, sector: 'Healthcare', exchange: 'NYSE', marketCap: 322e9 },
+  AMGN: { name: 'Amgen Inc', price: 348.33, changePercent: -1.40, sector: 'Healthcare', exchange: 'NASDAQ', marketCap: 137e9 },
   GILD: { name: 'Gilead Sciences Inc', price: 99.88, changePercent: 0.33, sector: 'Healthcare', exchange: 'NASDAQ', marketCap: 123e9 },
   BIIB: { name: 'Biogen Inc', price: 133.22, changePercent: -1.77, sector: 'Healthcare', exchange: 'NASDAQ', marketCap: 19e9 },
   REGN: { name: 'Regeneron Pharmaceuticals', price: 636.44, changePercent: -0.88, sector: 'Healthcare', exchange: 'NASDAQ', marketCap: 68e9 },
@@ -183,13 +183,13 @@ const MOCK_DB: Record<string, { name: string; price: number; changePercent: numb
   XLF: { name: 'Financial Select Sector', price: 48.22, changePercent: -0.66, sector: 'ETF', exchange: 'NYSE', marketCap: 43e9 },
   XLE: { name: 'Energy Select Sector', price: 93.44, changePercent: 0.88, sector: 'ETF', exchange: 'NYSE', marketCap: 38e9 },
   SLV: { name: 'iShares Silver Trust', price: 28.88, changePercent: 1.11, sector: 'Commodity ETF', exchange: 'NYSE', marketCap: 13e9 },
-  // Market Indices (fallback values)
-  '^GSPC': { name: 'S&P 500', price: 5638.94, changePercent: -1.39, sector: 'Index', exchange: 'INDEX', marketCap: 0 },
-  '^IXIC': { name: 'NASDAQ Composite', price: 17468.32, changePercent: -1.71, sector: 'Index', exchange: 'INDEX', marketCap: 0 },
-  '^DJI': { name: 'Dow Jones Industrial Average', price: 41911.71, changePercent: -1.30, sector: 'Index', exchange: 'INDEX', marketCap: 0 },
-  '^FTSE': { name: 'FTSE 100', price: 8632.33, changePercent: -0.45, sector: 'Index', exchange: 'INDEX', marketCap: 0 },
-  '^GDAXI': { name: 'DAX', price: 22539.98, changePercent: -0.77, sector: 'Index', exchange: 'INDEX', marketCap: 0 },
-  '^N225': { name: 'Nikkei 225', price: 37155.33, changePercent: -0.92, sector: 'Index', exchange: 'INDEX', marketCap: 0 },
+  // Market Indices (fallback values — updated April 2 2026)
+  '^GSPC': { name: 'S&P 500', price: 6570.47, changePercent: -0.07, sector: 'Index', exchange: 'INDEX', marketCap: 0 },
+  '^IXIC': { name: 'NASDAQ Composite', price: 21815.90, changePercent: -0.11, sector: 'Index', exchange: 'INDEX', marketCap: 0 },
+  '^DJI': { name: 'Dow Jones Industrial Average', price: 46453.99, changePercent: -0.24, sector: 'Index', exchange: 'INDEX', marketCap: 0 },
+  '^FTSE': { name: 'FTSE 100', price: 10436.29, changePercent: 0.69, sector: 'Index', exchange: 'INDEX', marketCap: 0 },
+  '^GDAXI': { name: 'DAX', price: 23168.08, changePercent: -0.56, sector: 'Index', exchange: 'INDEX', marketCap: 0 },
+  '^N225': { name: 'Nikkei 225', price: 52463.27, changePercent: -2.38, sector: 'Index', exchange: 'INDEX', marketCap: 0 },
 };
 
 function mockSeededPrice(symbol: string, base: number): number {
@@ -382,26 +382,48 @@ async function ensureYahooSession(): Promise<void> {
   }
 }
 
-// CORS proxy — uses our own Cloudflare Worker (free, 100K req/day)
-async function fetchWithCorsProxy(url: string, timeout = 15_000): Promise<unknown> {
-  // Primary: our own Cloudflare Worker proxy
-  try {
-    const proxyUrl = `${CQ_PROXY}?url=${encodeURIComponent(url)}`;
-    const res = await axios.get(proxyUrl, { timeout });
-    if (res.data) return res.data;
-  } catch { /* fall through */ }
+// CORS proxies — try our own Worker first, then public fallbacks
+const CORS_PROXIES = [
+  (url: string) => `${CQ_PROXY}?url=${encodeURIComponent(url)}`,
+  (url: string) => `https://api.allorigins.win/raw?url=${encodeURIComponent(url)}`,
+  (url: string) => `https://corsproxy.io/?${encodeURIComponent(url)}`,
+];
 
-  // Also try query1 if query2 failed
+async function fetchWithCorsProxy(url: string, timeout = 15_000): Promise<unknown> {
+  const urls = [url];
   if (url.includes('query2.finance.yahoo.com')) {
-    const url1 = url.replace('query2.finance.yahoo.com', 'query1.finance.yahoo.com');
-    try {
-      const proxyUrl = `${CQ_PROXY}?url=${encodeURIComponent(url1)}`;
-      const res = await axios.get(proxyUrl, { timeout });
-      if (res.data) return res.data;
-    } catch { /* fall through */ }
+    urls.push(url.replace('query2.finance.yahoo.com', 'query1.finance.yahoo.com'));
+  } else if (url.includes('query1.finance.yahoo.com')) {
+    urls.push(url.replace('query1.finance.yahoo.com', 'query2.finance.yahoo.com'));
   }
 
-  throw new Error('CORS proxy failed');
+  for (const proxyFn of CORS_PROXIES) {
+    for (const u of urls) {
+      const proxyUrl = proxyFn(u);
+
+      // Try native fetch first (more reliable on web)
+      if (typeof globalThis.fetch === 'function') {
+        try {
+          const controller = new AbortController();
+          const timer = setTimeout(() => controller.abort(), timeout);
+          const res = await globalThis.fetch(proxyUrl, { signal: controller.signal });
+          clearTimeout(timer);
+          if (res.ok) {
+            const data = await res.json();
+            if (data) return data;
+          }
+        } catch { /* try next */ }
+      }
+
+      // Axios fallback
+      try {
+        const res = await axios.get(proxyUrl, { timeout });
+        if (res.data) return res.data;
+      } catch { /* try next */ }
+    }
+  }
+
+  throw new Error('All CORS proxies failed');
 }
 
 async function yahooFetch(path: string, params?: Record<string, string | number | boolean>): Promise<unknown> {
@@ -434,12 +456,10 @@ async function yahooFetch(path: string, params?: Record<string, string | number 
 // ─── Yahoo Finance helpers ────────────────────────────────────────────────────
 
 async function yahooGetQuote(symbol: string): Promise<StockQuote | null> {
-  // Try v8 chart endpoint first — works reliably without a crumb token
-  try {
-    const data = await yahooFetch(`/v8/finance/chart/${encodeURIComponent(symbol)}`, {
-      interval: '1m', range: '1d',
-    }) as Record<string, unknown>;
-    const chart = data?.chart as Record<string, unknown> | undefined;
+  // Helper to extract quote from v8 chart response
+  function parseQuoteFromChart(data: unknown): StockQuote | null {
+    const d = data as Record<string, unknown>;
+    const chart = d?.chart as Record<string, unknown> | undefined;
     const result = (chart?.result as Array<Record<string, unknown>> | undefined)?.[0];
     const meta = result?.meta as Record<string, unknown> | undefined;
     if (meta) {
@@ -451,23 +471,25 @@ async function yahooGetQuote(symbol: string): Promise<StockQuote | null> {
         return { symbol, price, change, changePercent, timestamp: Date.now() };
       }
     }
-  } catch { /* fall through to v7 endpoint */ }
+    return null;
+  }
 
-  // Fall back to v7 quote endpoint (requires crumb session)
+  // Try v8 chart endpoint via yahooFetch (direct on native, CORS proxy on web)
   try {
-    const data = await yahooFetch('/v7/finance/quote', { symbols: symbol }) as Record<string, unknown>;
-    const quotes = ((data?.quoteResponse as Record<string, unknown>)?.result as Record<string, unknown>[] | undefined);
-    const q = quotes?.[0];
-    if (q) {
-      const price = Number(q.regularMarketPrice ?? 0);
-      const prevClose = Number(q.regularMarketPreviousClose ?? price);
-      const change = parseFloat((price - prevClose).toFixed(2));
-      const changePercent = parseFloat(Number(q.regularMarketChangePercent ?? 0).toFixed(2));
-      if (price > 0) {
-        return { symbol, price, change, changePercent, timestamp: Date.now() };
-      }
-    }
-  } catch { /* fall through to null */ }
+    const data = await yahooFetch(`/v8/finance/chart/${encodeURIComponent(symbol)}`, {
+      interval: '1m', range: '1d',
+    });
+    const quote = parseQuoteFromChart(data);
+    if (quote) return quote;
+  } catch { /* fall through */ }
+
+  // CORS proxy fallback — works on ALL platforms (web + native)
+  try {
+    const chartUrl = `https://query1.finance.yahoo.com/v8/finance/chart/${encodeURIComponent(symbol)}?interval=1m&range=1d`;
+    const data = await fetchWithCorsProxy(chartUrl);
+    const quote = parseQuoteFromChart(data);
+    if (quote) return quote;
+  } catch { /* fall through */ }
 
   return null;
 }
@@ -553,9 +575,44 @@ async function yahooGetProfile(symbol: string): Promise<Stock | null> {
       description: String(profile?.longBusinessSummary || ''),
       isOpen: (meta as Record<string, unknown>).marketState === 'REGULAR',
     };
-  } catch {
-    return getMockStock(symbol);
-  }
+  } catch { /* fall through */ }
+
+  // CORS proxy fallback — works on ALL platforms
+  try {
+    const chartUrl = `https://query1.finance.yahoo.com/v8/finance/chart/${encodeURIComponent(symbol)}?interval=1d&range=5d`;
+    const data = await fetchWithCorsProxy(chartUrl) as Record<string, unknown>;
+    const chart = data?.chart as Record<string, unknown> | undefined;
+    const result = (chart?.result as Array<Record<string, unknown>> | undefined)?.[0];
+    const meta = result?.meta as Record<string, unknown> | undefined;
+    if (meta) {
+      const price = Number(meta.regularMarketPrice ?? 0);
+      const prevClose = Number(meta.chartPreviousClose ?? meta.previousClose ?? price);
+      if (price > 0) {
+        const mockEntry = MOCK_DB[symbol.toUpperCase()];
+        return {
+          symbol,
+          name: String(meta.shortName || meta.symbol || mockEntry?.name || symbol),
+          exchange: String(meta.exchangeName || meta.exchange || mockEntry?.exchange || ''),
+          country: (meta.currency === 'GBp' || meta.currency === 'GBX') ? 'GB' : 'US',
+          currency: (meta.currency === 'GBp' || meta.currency === 'GBX') ? 'GBP' : String(meta.currency || 'USD'),
+          price,
+          previousClose: prevClose,
+          change: parseFloat((price - prevClose).toFixed(2)),
+          changePercent: prevClose ? parseFloat(((price - prevClose) / prevClose * 100).toFixed(2)) : 0,
+          volume: Number(meta.regularMarketVolume ?? 0),
+          marketCap: mockEntry?.marketCap ?? 0,
+          high52w: Number(meta.fiftyTwoWeekHigh ?? 0),
+          low52w: Number(meta.fiftyTwoWeekLow ?? 0),
+          sector: mockEntry?.sector ?? '',
+          logoUrl: '',
+          description: '',
+          isOpen: meta.marketState === 'REGULAR',
+        };
+      }
+    }
+  } catch { /* fall through */ }
+
+  return getMockStock(symbol);
 }
 
 async function yahooSearch(query: string): Promise<SearchResult[]> {
@@ -599,50 +656,33 @@ function parseYahooChartResponse(data: unknown): ChartDataPoint[] {
 }
 
 async function yahooGetChartData(symbol: string, period: ChartPeriod): Promise<ChartDataPoint[]> {
-  // Fetch granular data, then thin to target point counts:
-  // 1D: ~300 points (most detail) → 1W: ~200 → 1M: ~150 → 1Y: ~100 → 5Y: ~60 (least)
-  const rangeMap: Record<ChartPeriod, { interval: string; range: string; maxPoints: number }> = {
-    '1D': { interval: '1m',  range: '1d',  maxPoints: 300 },
-    '1W': { interval: '5m',  range: '5d',  maxPoints: 200 },
-    '1M': { interval: '30m', range: '1mo', maxPoints: 150 },
-    '1Y': { interval: '1d',  range: '1y',  maxPoints: 100 },
-    '5Y': { interval: '1wk', range: '5y',  maxPoints: 60 },
+  // Fetch real Yahoo Finance data — keep ALL data points for maximum chart detail.
+  // Yahoo returns: 1D ~390pts, 1W ~390pts, 1M ~300pts, 1Y ~252pts, 5Y ~262pts
+  const rangeMap: Record<ChartPeriod, { interval: string; range: string }> = {
+    '1D': { interval: '5m',   range: '1d' },
+    '1W': { interval: '15m',  range: '5d' },
+    '1M': { interval: '1h',   range: '1mo' },
+    '1Y': { interval: '1d',   range: '1y' },
+    '5Y': { interval: '1wk',  range: '5y' },
   };
-  const { interval, range, maxPoints } = rangeMap[period];
+  const { interval, range } = rangeMap[period];
 
-  // Helper: thin data to maxPoints by evenly sampling
-  function thinData(pts: ChartDataPoint[]): ChartDataPoint[] {
-    if (pts.length <= maxPoints) return pts;
-    const step = (pts.length - 1) / (maxPoints - 1);
-    const result: ChartDataPoint[] = [];
-    for (let i = 0; i < maxPoints - 1; i++) {
-      result.push(pts[Math.round(i * step)]);
-    }
-    result.push(pts[pts.length - 1]); // always include last point
-    return result;
-  }
-
-  // Try through yahooFetch (uses CORS proxies)
+  // Try through yahooFetch (uses CORS proxy with fetch + axios fallback)
   try {
     const data = await yahooFetch(`/v8/finance/chart/${encodeURIComponent(symbol)}`, {
       interval, range, includePrePost: false,
     });
     const points = parseYahooChartResponse(data);
-    if (points.length > 0) return thinData(points);
+    if (points.length > 0) return points;
   } catch { /* fall through */ }
 
-  // Direct attempt with Cloudflare Worker proxy (without crumb — v8 chart works without it)
-  const bases = ['https://query1.finance.yahoo.com', 'https://query2.finance.yahoo.com'];
-  const qs = `?interval=${interval}&range=${range}&includePrePost=false`;
-  for (const base of bases) {
-    const chartUrl = `${base}/v8/finance/chart/${encodeURIComponent(symbol)}${qs}`;
-    try {
-      const proxyUrl = `${CQ_PROXY}?url=${encodeURIComponent(chartUrl)}`;
-      const res = await axios.get(proxyUrl, { timeout: 15_000 });
-      const points = parseYahooChartResponse(res.data);
-      if (points.length > 0) return thinData(points);
-    } catch { /* try next base */ }
-  }
+  // Direct attempt via CORS proxy (tries both query1 and query2, fetch + axios)
+  const chartUrl = `https://query1.finance.yahoo.com/v8/finance/chart/${encodeURIComponent(symbol)}?interval=${interval}&range=${range}&includePrePost=false`;
+  try {
+    const data = await fetchWithCorsProxy(chartUrl);
+    const points = parseYahooChartResponse(data);
+    if (points.length > 0) return points;
+  } catch { /* fall through */ }
 
   return [];
 }
@@ -801,11 +841,19 @@ export async function getStockProfile(symbol: string): Promise<Stock | null> {
 
 export async function getChartData(
   symbol: string,
-  period: ChartPeriod
+  period: ChartPeriod,
+  currentPrice?: number
 ): Promise<ChartDataPoint[]> {
   // Try Yahoo Finance first (real data — same as Apple Stocks app)
-  const yahooData = await yahooGetChartData(symbol, period);
-  if (yahooData.length > 0) return yahooData;
+  try {
+    const yahooData = await yahooGetChartData(symbol, period);
+    if (yahooData.length > 0) {
+      console.log(`[StockAPI] ${symbol} ${period}: Yahoo Finance OK, ${yahooData.length} points`);
+      return yahooData;
+    }
+  } catch (e) {
+    console.warn(`[StockAPI] ${symbol} ${period}: Yahoo Finance failed`, e);
+  }
 
   // Try Finnhub as fallback if key is configured
   if (!IS_MOCK_STOCKS) {
@@ -830,7 +878,8 @@ export async function getChartData(
   }
 
   // Generate realistic mock chart data based on actual price
-  return generateRealisticChart(symbol, period);
+  console.warn(`[StockAPI] ${symbol} ${period}: All APIs failed, using generated chart data`);
+  return generateRealisticChart(symbol, period, currentPrice);
 }
 
 /**
@@ -838,18 +887,23 @@ export async function getChartData(
  * The chart ends at the stock's current price and works backwards with
  * realistic volatility scaled to the time period.
  */
-function generateRealisticChart(symbol: string, period: ChartPeriod): ChartDataPoint[] {
+function generateRealisticChart(symbol: string, period: ChartPeriod, priceHint?: number): ChartDataPoint[] {
   const entry = MOCK_DB[symbol.toUpperCase()];
-  const currentPrice = entry ? mockSeededPrice(symbol.toUpperCase(), entry.price) : 100;
-  const dailyVol = entry ? Math.abs(entry.changePercent) / 100 + 0.012 : 0.02; // daily volatility
+  // Use: priceHint (live price from caller) → cached quote → mock DB → 100
+  const cachedQuote = quoteCache.get(symbol);
+  const currentPrice = priceHint
+    ?? (cachedQuote?.data?.price && cachedQuote.data.price > 0 ? cachedQuote.data.price : null)
+    ?? (entry ? mockSeededPrice(symbol.toUpperCase(), entry.price) : 100);
+  const dailyVol = entry ? Math.abs(entry.changePercent) / 100 + 0.015 : 0.025; // daily volatility
 
   // Period config: { points, stepMs, volScale }
+  // volScale controls how much price can move per step — higher = more realistic variation
   const config: Record<ChartPeriod, { points: number; stepMs: number; volScale: number }> = {
-    '1D':  { points: 78,  stepMs: 5 * 60_000,       volScale: 0.15 },   // 5-min bars, ~6.5 hrs
-    '1W':  { points: 65,  stepMs: 30 * 60_000,      volScale: 0.25 },   // 30-min bars
-    '1M':  { points: 22,  stepMs: 24 * 3600_000,    volScale: 1.0 },    // daily bars
-    '1Y':  { points: 52,  stepMs: 7 * 24 * 3600_000, volScale: 2.2 },   // weekly bars
-    '5Y':  { points: 60,  stepMs: 30 * 24 * 3600_000, volScale: 4.5 },  // monthly bars
+    '1D':  { points: 78,  stepMs: 5 * 60_000,       volScale: 0.35 },   // 5-min bars, ~6.5 hrs
+    '1W':  { points: 130, stepMs: 15 * 60_000,      volScale: 0.6 },    // 15-min bars
+    '1M':  { points: 150, stepMs: 60 * 60_000,      volScale: 1.2 },    // hourly bars
+    '1Y':  { points: 252, stepMs: 24 * 3600_000,    volScale: 3.0 },    // daily bars
+    '5Y':  { points: 260, stepMs: 7 * 24 * 3600_000, volScale: 6.0 },   // weekly bars
   };
   const { points, stepMs, volScale } = config[period];
   const vol = dailyVol * volScale;

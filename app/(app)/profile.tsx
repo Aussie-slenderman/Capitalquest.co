@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import {
   View, Text, StyleSheet, ScrollView,
-  TouchableOpacity, Switch, Modal, Dimensions,
+  TouchableOpacity, Modal, Dimensions,
 } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { router } from 'expo-router';
@@ -95,7 +95,6 @@ export default function ProfileScreen() {
   const screenBg = isLight ? '#F5F0FF' : '#4A1898';
   const gc = (a: string, b: string, c: string) => [a,b,c] as any;
   const gcFull = (a: string, b: string, c: string, d: string) => [a,b,c,d] as any;
-  const [isDark] = useState(true);
   const [signOutVisible, setSignOutVisible] = useState(false);
   const [deleteVisible, setDeleteVisible] = useState(false);
 
@@ -234,14 +233,6 @@ export default function ProfileScreen() {
       {/* Settings */}
       <SectionHeader title="Settings" icon="⚙️" />
       <View style={[styles.settingsContainer, { backgroundColor: C.bg.secondary, borderColor: C.border.default }]}>
-        <SettingsRow
-          label="Dark Mode"
-          right={<Switch value={isDark} trackColor={{ true: Colors.brand.primary }} thumbColor="#fff" />}
-        />
-        <SettingsRow
-          label="Push Notifications"
-          right={<Switch value={true} trackColor={{ true: Colors.brand.primary }} thumbColor="#fff" />}
-        />
         <SettingsRow
           label="Account Number"
           right={<Text style={[styles.settingsValue, { color: C.text.secondary }]}>{formatAccountNumber(user.accountNumber)}</Text>}

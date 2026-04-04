@@ -57,7 +57,7 @@ export default function AppLayout() {
     if (!user?.id) return;
     import('../../src/services/firebase').then(({ loadWatchlist }) => {
       loadWatchlist(user.id).then((symbols) => {
-        if (symbols && symbols.length > 0) {
+        if (Array.isArray(symbols)) {
           useAppStore.getState().setWatchlist(symbols);
         }
       }).catch(() => {});

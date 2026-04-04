@@ -34,12 +34,12 @@ import {
 // Source: stockanalysis.com, cnbc.com (March 13 2026 close, 4:00 PM EDT)
 
 const MARKET_INDICES = [
-  { symbol: '^GSPC', name: 'S&P 500',   price: 6672.62, change: -101.27, changePercent: -1.50 },
-  { symbol: '^IXIC', name: 'NASDAQ',    price: 22105.36, change: -207.68, changePercent: -0.93 },
-  { symbol: '^DJI',  name: 'Dow Jones', price: 46958.47, change: -737.43, changePercent: -1.55 },
-  { symbol: '^FTSE', name: 'FTSE 100',  price: 10261.15, change: -44.12, changePercent: -0.43 },
-  { symbol: '^GDAXI',name: 'DAX',       price: 23447.29, change: -141.48, changePercent: -0.60 },
-  { symbol: '^N225', name: 'Nikkei',    price: 53819.61, change: -630.71, changePercent: -1.16 },
+  { symbol: '^GSPC', name: 'S&P 500',   price: 6570.47, change: -4.85, changePercent: -0.07 },
+  { symbol: '^IXIC', name: 'NASDAQ',    price: 21815.90, change: -25.05, changePercent: -0.11 },
+  { symbol: '^DJI',  name: 'Dow Jones', price: 46453.99, change: -111.75, changePercent: -0.24 },
+  { symbol: '^FTSE', name: 'FTSE 100',  price: 10436.29, change: 71.50, changePercent: 0.69 },
+  { symbol: '^GDAXI',name: 'DAX',       price: 23168.08, change: -130.81, changePercent: -0.56 },
+  { symbol: '^N225', name: 'Nikkei',    price: 52463.27, change: -1276.41, changePercent: -2.38 },
 ];
 
 // Name lookup for market mover display
@@ -145,7 +145,8 @@ export default function HomeScreen() {
     const moverSymbols = movers
       ? [...movers.gainers, ...movers.losers, ...movers.active].map(q => q.symbol)
       : [];
-    const allSymbols = [...new Set([...watchlist, ...moverSymbols])];
+    const indexSymbols = MARKET_INDICES.map(idx => idx.symbol);
+    const allSymbols = [...new Set([...watchlist, ...moverSymbols, ...indexSymbols])];
     if (allSymbols.length === 0) return;
 
     const fetchQuotes = async () => {

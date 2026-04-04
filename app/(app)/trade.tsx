@@ -63,27 +63,36 @@ function generateSeededChartData(
     const x = Math.sin(seed + i * 9301 + 49297) * 233280;
     return x - Math.floor(x);
   };
+  // Box-Muller for more natural price movements
+  const normalRng = (i: number) => {
+    const u1 = rng(i * 2) || 0.001;
+    const u2 = rng(i * 2 + 1);
+    return Math.sqrt(-2 * Math.log(u1)) * Math.cos(2 * Math.PI * u2);
+  };
+  const vol = 0.015; // ~1.5% per step for realistic intraday movement
   return Array.from({ length: points }, (_, i) => {
-    const change = (rng(i) - 0.48) * price * 0.02;
-    price = Math.max(price * 0.5, price + change);
-    const open = price;
-    const high = price * (1 + rng(i + 100) * 0.005);
-    const low = price * (1 - rng(i + 200) * 0.005);
-    const close = price;
+    const shock = normalRng(i) * vol;
+    const drift = 0.0001; // slight upward bias
+    price = price * Math.exp(drift + shock);
+    price = Math.max(price * 0.3, price); // floor
+    const intraVol = price * vol * 0.4;
+    const open = price + (rng(i + 100) - 0.5) * intraVol;
+    const high = Math.max(open, price) + rng(i + 200) * intraVol * 0.5;
+    const low = Math.min(open, price) - rng(i + 300) * intraVol * 0.5;
     return {
       timestamp: now - (points - i) * intervalMs,
-      open,
-      high,
-      low,
-      close,
-      volume: Math.floor(rng(i + 300) * 10_000_000),
+      open: parseFloat(open.toFixed(2)),
+      high: parseFloat(high.toFixed(2)),
+      low: parseFloat(low.toFixed(2)),
+      close: parseFloat(price.toFixed(2)),
+      volume: Math.floor(rng(i + 400) * 10_000_000),
     };
   });
 }
 
 function chartPointsForPeriod(period: ChartPeriod, basePrice: number): ChartDataPoint[] {
   const countMap: Record<ChartPeriod, number> = {
-    '1D': 78, '1W': 98, '1M': 60, '3M': 90, '6M': 120, '1Y': 52, '5Y': 60,
+    '1D': 78, '1W': 130, '1M': 150, '3M': 180, '6M': 200, '1Y': 252, '5Y': 260,
   };
   const seed = basePrice * 1000;
   return generateSeededChartData(basePrice, countMap[period], seed);
@@ -243,11 +252,11 @@ export default function TradeScreen() {
     setIsLoadingChart(true);
     let cancelled = false;
     (async () => {
-      const apiData = await getChartData(stock.symbol, chartPeriod);
+      const apiData = await getChartData(stock.symbol, chartPeriod, stock.price);
       if (cancelled) return;
-      const data = apiData.length > 0
-        ? apiData
-        : chartPointsForPeriod(chartPeriod, stock.price);
+      const isReal = apiData.length > 0;
+      const data = isReal ? apiData : chartPointsForPeriod(chartPeriod, stock.price);
+      console.log(`[Chart] ${stock.symbol} ${chartPeriod}: ${isReal ? 'REAL Yahoo data' : 'FALLBACK mock data'}, ${data.length} points, range: $${Math.min(...data.map(p=>p.close)).toFixed(2)} - $${Math.max(...data.map(p=>p.close)).toFixed(2)}`);
       setChartData(data);
       setIsLoadingChart(false);
     })();
@@ -256,15 +265,39 @@ export default function TradeScreen() {
 
   // ─── Derived chart values ──────────────────────────────────────────────────
 
+  // Pre-normalize data: subtract the baseline so the chart line fills the
+  // full vertical area instead of being squished at the top.
+  const chartBaseline = useMemo(() => {
+    if (!chartData.length) return 0;
+    const closes = chartData.map(p => p.close);
+    const min = Math.min(...closes);
+    const max = Math.max(...closes);
+    const range = max - min || max * 0.01;
+    return min - range * 0.08; // 8% padding below min
+  }, [chartData]);
+
   const chartLineData = useMemo(
-    () => chartData.map(p => ({ value: p.close })),
-    [chartData]
+    () => chartData.map(p => ({ value: p.close - chartBaseline })),
+    [chartData, chartBaseline]
   );
 
-  const chartMin = useMemo(
-    () => chartData.length ? Math.min(...chartData.map(p => p.close)) * 0.998 : 0,
-    [chartData]
-  );
+  const chartTopValue = useMemo(() => {
+    if (!chartData.length) return 100;
+    const closes = chartData.map(p => p.close);
+    const max = Math.max(...closes);
+    const min = Math.min(...closes);
+    const range = max - min || max * 0.01;
+    return (max + range * 0.08) - chartBaseline;
+  }, [chartData, chartBaseline]);
+
+  const yAxisLabelFormatter = useCallback((val: string) => {
+    const n = Number(val) + chartBaseline;
+    if (n >= 10000) return `$${(n / 1000).toFixed(0)}k`;
+    if (n >= 1000) return `$${(n / 1000).toFixed(1)}k`;
+    if (n >= 100) return `$${n.toFixed(0)}`;
+    if (n >= 10) return `$${n.toFixed(1)}`;
+    return `$${n.toFixed(2)}`;
+  }, [chartBaseline]);
 
   const chartColor = chartData.length && chartData[chartData.length - 1].close >= chartData[0].close
     ? Colors.market.gain
@@ -527,27 +560,29 @@ export default function TradeScreen() {
                 ) : chartLineData.length > 0 ? (
                   <LineChart
                     data={chartLineData}
-                    width={CHART_WIDTH - Spacing.base * 2}
-                    height={160}
+                    width={CHART_WIDTH - Spacing.base * 2 - 50}
+                    height={200}
                     color={chartColor}
-                    thickness={2}
+                    thickness={1.5}
                     hideDataPoints
                     areaChart
                     startFillColor={chartColor}
                     endFillColor={Colors.bg.primary}
-                    startOpacity={0.25}
+                    startOpacity={0.2}
                     endOpacity={0}
                     backgroundColor={Colors.bg.secondary}
                     yAxisColor="transparent"
                     xAxisColor={Colors.border.default}
                     rulesColor={Colors.chart.grid}
                     rulesType="solid"
-                    hideYAxisText
+                    yAxisTextStyle={{ color: Colors.text.tertiary, fontSize: 9 }}
+                    formatYLabel={yAxisLabelFormatter}
+                    yAxisLabelWidth={46}
                     xAxisLabelTextStyle={{ color: Colors.text.tertiary, fontSize: 9 }}
-                    minValue={chartMin}
+                    maxValue={chartTopValue}
                     noOfSections={4}
-                    curved
-                    isAnimated
+                    adjustToWidth
+                    disableScroll
                   />
                 ) : (
                   <View style={styles.chartPlaceholder}>
