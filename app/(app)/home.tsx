@@ -216,7 +216,7 @@ export default function HomeScreen() {
       >
         {/* Market Indices Row */}
         <View style={styles.sectionHeader}>
-          <Text style={[styles.sectionTitle, { color: C.text.primary }]}>{t('markets')}</Text>
+          <Text style={[styles.sectionTitle, { color: C.text.primary }]}>Buy and Sell: search for the stock you want to buy or sell</Text>
         </View>
         <ScrollView
           horizontal
