@@ -24,9 +24,9 @@ export default function AppHeader({ title }: AppHeaderProps) {
 
   return (
     <View style={[styles.header, { backgroundColor: C.bg.primary, borderBottomColor: C.border.default }]}>
-      {/* Left: screen title — taps go to dashboard */}
+      {/* Left: app name — taps go to dashboard */}
       <TouchableOpacity onPress={() => router.push('/(app)/dashboard' as never)} activeOpacity={0.7} style={{ flex: 1 }}>
-        <Text style={[styles.title, { color: C.text.primary }]} numberOfLines={1}>{title}</Text>
+        <Text style={[styles.title, { color: C.text.primary }]} numberOfLines={1}>CapitalQuest</Text>
       </TouchableOpacity>
 
       {/* Right: bell → hamburger */}
