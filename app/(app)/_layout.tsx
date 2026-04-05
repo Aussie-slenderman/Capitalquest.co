@@ -273,8 +273,8 @@ const styles = StyleSheet.create({
   // Notification badge
   badge: {
     position: 'absolute',
-    top: 4,
-    right: 12,
+    top: 7,
+    right: 11,
     backgroundColor: Colors.market.loss,
     borderRadius: 9,
     minWidth: 18,
