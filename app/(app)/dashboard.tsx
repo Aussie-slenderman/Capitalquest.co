@@ -361,7 +361,7 @@ const styles = StyleSheet.create({
     backgroundColor: 'rgba(255,255,255,0.04)',
     gap: 10,
     minWidth: 0,
-    minHeight: 120,
+    minHeight: 200,
   },
   quickBtnIcon: { fontSize: 28 },
   quickBtnText: { fontSize: FontSize.sm, fontWeight: FontWeight.semibold },
