@@ -320,11 +320,11 @@ const styles = StyleSheet.create({
   // Hero
   heroSection: {
     flex: 1,
-    paddingVertical: Spacing['2xl'],
+    paddingTop: 48,
+    paddingBottom: Spacing['2xl'],
     paddingHorizontal: Spacing.xl,
     borderRadius: Radius.xl,
     alignItems: 'center',
-    justifyContent: 'center',
     borderWidth: 1,
     borderColor: Colors.border.default,
   },
@@ -347,13 +347,14 @@ const styles = StyleSheet.create({
   quickActions: {
     flexDirection: 'row',
     gap: Spacing.sm,
-    marginTop: Spacing.xl,
+    marginTop: 'auto',
     width: '100%',
   },
   quickBtn: {
     flex: 1,
     alignItems: 'center',
-    paddingVertical: 14,
+    justifyContent: 'center',
+    paddingVertical: 28,
     paddingHorizontal: 10,
     borderRadius: Radius.lg,
     borderWidth: 1.5,
