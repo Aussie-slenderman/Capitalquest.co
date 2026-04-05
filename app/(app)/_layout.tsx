@@ -1,6 +1,14 @@
 import React, { useEffect, useRef } from 'react';
-import { View, Text, StyleSheet, TouchableOpacity, Platform, AppState } from 'react-native';
+import { View, Text, Image, StyleSheet, TouchableOpacity, Platform, AppState } from 'react-native';
 import { Tabs, router } from 'expo-router';
+
+const TAB_ICONS = {
+  learn: require('../../assets/tabs/learn.png'),
+  buySell: require('../../assets/tabs/buy-sell.png'),
+  portfolio: require('../../assets/tabs/portfolio.png'),
+  social: require('../../assets/tabs/social.png'),
+  awards: require('../../assets/tabs/awards.png'),
+};
 import { useAppStore } from '../../src/store/useAppStore';
 import {
   listenToPortfolio,
@@ -153,26 +161,26 @@ export default function AppLayout() {
         tabBarItemStyle: styles.tabItem,
       }}
     >
-      {/* ── LEFT of Home: 5 tabs ── */}
+      {/* ── Visible tabs ── */}
       <Tabs.Screen
         name="tutorial"
         options={{
           title: t('learn'),
-          tabBarIcon: ({ focused }) => <TabIcon icon="🎓" focused={focused} bgColor="rgba(210, 150, 255, 0.35)" />,
+          tabBarIcon: ({ focused }) => <TabImageIcon source={TAB_ICONS.learn} focused={focused} />,
         }}
       />
       <Tabs.Screen
         name="home"
         options={{
-          title: t('markets'),
-          tabBarIcon: ({ focused }) => <TabIcon icon="📊" focused={focused} bgColor="rgba(120, 180, 255, 0.35)" />,
+          title: 'Buy & Sell',
+          tabBarIcon: ({ focused }) => <TabImageIcon source={TAB_ICONS.buySell} focused={focused} />,
         }}
       />
       <Tabs.Screen
         name="portfolio"
         options={{
           title: t('portfolio'),
-          tabBarIcon: ({ focused }) => <TabIcon icon="💼" focused={focused} bgColor="rgba(100, 240, 160, 0.35)" />,
+          tabBarIcon: ({ focused }) => <TabImageIcon source={TAB_ICONS.portfolio} focused={focused} />,
         }}
       />
       <Tabs.Screen name="leaderboard" options={{ href: null }} />
@@ -181,14 +189,13 @@ export default function AppLayout() {
       {/* ── Dashboard (hidden — accessible via CapitalQuest title tap) ── */}
       <Tabs.Screen name="dashboard" options={{ href: null }} />
 
-      {/* ── RIGHT of Home: 5 tabs ── */}
       <Tabs.Screen
         name="social"
         options={{
           title: t('social'),
           tabBarIcon: ({ focused }) => (
             <View>
-              <TabIcon icon="💬" focused={focused} bgColor="rgba(255, 160, 200, 0.35)" />
+              <TabImageIcon source={TAB_ICONS.social} focused={focused} />
               {unreadCount > 0 && (
                 <View style={styles.badge}>
                   <Text style={styles.badgeText}>{unreadCount > 9 ? '9+' : unreadCount}</Text>
@@ -201,8 +208,8 @@ export default function AppLayout() {
       <Tabs.Screen
         name="trophy-road"
         options={{
-          title: t('trophy'),
-          tabBarIcon: ({ focused }) => <TabIcon icon="🎖️" focused={focused} bgColor="rgba(255, 200, 120, 0.35)" />,
+          title: 'Awards',
+          tabBarIcon: ({ focused }) => <TabImageIcon source={TAB_ICONS.awards} focused={focused} />,
         }}
       />
       <Tabs.Screen name="shop" options={{ href: null }} />
@@ -220,36 +227,19 @@ export default function AppLayout() {
   );
 }
 
-function TabIcon({
-  icon,
+function TabImageIcon({
+  source,
   focused,
-  bgColor,
 }: {
-  icon: string;
+  source: any;
   focused: boolean;
-  bgColor: string;   // expects a full rgba() string
 }) {
   return (
-    <View style={[styles.tabIconWrap, focused && { backgroundColor: bgColor }]}>
-      <Text style={[styles.tabIconEmoji, { opacity: focused ? 1 : 0.70 }]}>{icon}</Text>
-    </View>
-  );
-}
-
-function CenterTabButton({ onPress, accessibilityState }: any) {
-  const t = useT();
-  const focused = accessibilityState?.selected;
-  return (
-    <TouchableOpacity
-      onPress={onPress}
-      style={styles.centerTabOuter}
-      activeOpacity={0.85}
-    >
-      <View style={[styles.centerTabBox, focused && styles.centerTabBoxActive]}>
-        <Text style={styles.centerTabIcon}>🏠</Text>
-        <Text style={[styles.centerTabLabel, { color: focused ? '#fff' : Colors.text.tertiary }]}>{t('home')}</Text>
-      </View>
-    </TouchableOpacity>
+    <Image
+      source={source}
+      style={[styles.tabImage, { opacity: focused ? 1 : 0.5 }]}
+      resizeMode="contain"
+    />
   );
 }
 
@@ -258,9 +248,9 @@ const styles = StyleSheet.create({
     backgroundColor: Colors.bg.secondary,
     borderTopColor: 'rgba(255,255,255,0.15)',
     borderTopWidth: 1.5,
-    height: 72,
-    paddingBottom: 10,
-    paddingTop: 6,
+    height: 80,
+    paddingBottom: 8,
+    paddingTop: 4,
   },
   tabItem: {
     paddingHorizontal: 0,
@@ -270,32 +260,13 @@ const styles = StyleSheet.create({
     fontSize: 10,
     fontWeight: FontWeight.medium,
   },
-  // Center home tab — sits inside the bar, no overlap
-  centerTabOuter: {
-    flex: 1,
-    alignItems: 'center',
-    justifyContent: 'center',
+  // Tab image icon
+  tabImage: {
+    width: 40,
+    height: 40,
+    borderRadius: 8,
   },
-  centerTabBox: {
-    backgroundColor: Colors.bg.tertiary,
-    borderRadius: 12,
-    borderWidth: 1.5,
-    borderColor: Colors.border.default,
-    paddingHorizontal: 10,
-    paddingVertical: 4,
-    alignItems: 'center',
-    minWidth: 52,
-  },
-  centerTabBoxActive: {
-    backgroundColor: Colors.brand.primary,
-    borderColor: Colors.brand.primary,
-  },
-  centerTabIcon: { fontSize: 20 },
-  centerTabLabel: {
-    fontSize: 10,
-    fontWeight: FontWeight.bold,
-    marginTop: 1,
-  },
+  // Notification badge
   badge: {
     position: 'absolute',
     top: -4,
@@ -309,13 +280,4 @@ const styles = StyleSheet.create({
     paddingHorizontal: 3,
   },
   badgeText: { color: '#fff', fontSize: 9, fontWeight: FontWeight.bold },
-  // Per-tab colour pill
-  tabIconWrap: {
-    borderRadius: 8,
-    paddingHorizontal: 5,
-    paddingVertical: 2,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  tabIconEmoji: { fontSize: 20 },
 });
