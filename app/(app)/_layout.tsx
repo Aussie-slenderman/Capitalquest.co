@@ -328,9 +328,7 @@ function TabImageIcon({
 const styles = StyleSheet.create({
   tabBar: {
     position: 'relative' as const,
-    backgroundColor: '#000000',
     borderTopWidth: 1,
-    borderTopColor: '#1A1A1A',
     elevation: 0,
     height: 110,
     paddingBottom: 10,
