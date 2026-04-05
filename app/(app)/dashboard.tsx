@@ -172,7 +172,6 @@ export default function DashboardScreen() {
         </ScrollView>
       </SafeAreaView>
 
-      <Sidebar visible={isSidebarOpen} onClose={() => setSidebarOpen(false)} />
 
       {/* ── One-time Welcome Popup ── */}
       <Modal

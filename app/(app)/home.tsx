@@ -481,7 +481,6 @@ export default function HomeScreen() {
         <View style={styles.bottomPadding} />
       </ScrollView>
     </SafeAreaView>
-    <Sidebar visible={isSidebarOpen} onClose={() => setSidebarOpen(false)} />
     </View>
   );
 }

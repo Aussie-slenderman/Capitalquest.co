@@ -315,7 +315,6 @@ export default function TrophyRoadScreen() {
           <Text style={[styles.locateMeText, { color: levelColor }]}>FIND ME</Text>
         </TouchableOpacity>
       </View>
-      <Sidebar visible={isSidebarOpen} onClose={() => setSidebarOpen(false)} />
     </View>
   );
 }

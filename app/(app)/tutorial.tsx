@@ -435,7 +435,6 @@ export default function TutorialScreen() {
         </View>
       </ScrollView>
     </SafeAreaView>
-    <Sidebar visible={isSidebarOpen} onClose={() => setSidebarOpen(false)} />
     </View>
   );
 }

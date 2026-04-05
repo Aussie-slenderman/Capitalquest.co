@@ -216,7 +216,6 @@ export default function SettingsScreen() {
         <View style={{ height: 40 }} />
       </ScrollView>
     </SafeAreaView>
-    <Sidebar visible={isSidebarOpen} onClose={() => setSidebarOpen(false)} />
     </View>
   );
 }

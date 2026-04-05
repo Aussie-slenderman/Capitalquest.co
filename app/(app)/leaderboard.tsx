@@ -480,7 +480,6 @@ export default function LeaderboardScreen() {
         <View style={{ height: Spacing['3xl'] }} />
       </ScrollView>
     </SafeAreaView>
-    <Sidebar visible={isSidebarOpen} onClose={() => setSidebarOpen(false)} />
     </View>
   );
 }

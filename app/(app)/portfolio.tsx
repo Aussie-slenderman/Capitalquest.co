@@ -436,7 +436,6 @@ export default function PortfolioScreen() {
         <View style={styles.bottomPadding} />
       </ScrollView>
     </SafeAreaView>
-    <Sidebar visible={isSidebarOpen} onClose={() => setSidebarOpen(false)} />
     </View>
   );
 }

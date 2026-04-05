@@ -627,7 +627,6 @@ export default function ProfileScreen() {
         </View>
       </View>
     </Modal>
-    <Sidebar visible={isSidebarOpen} onClose={() => setSidebarOpen(false)} />
     </View>
   );
 }

@@ -23,6 +23,7 @@ import { Colors, FontSize, FontWeight } from '../../src/constants/theme';
 import { useT } from '../../src/constants/translations';
 import type { Portfolio, ChatRoom } from '../../src/types';
 import AchievementToast from '../../src/components/AchievementToast';
+import Sidebar from '../../src/components/Sidebar';
 
 export default function AppLayout() {
   const t = useT();
@@ -31,6 +32,7 @@ export default function AppLayout() {
     portfolio, setQuote,
     appAccentColor, appColorMode,
     clubInvites,
+    isSidebarOpen, setSidebarOpen,
   } = useAppStore();
 
   const socialBadgeCount = (unreadCount ?? 0) + (clubInvites?.length ?? 0);
@@ -224,6 +226,7 @@ export default function AppLayout() {
       <Tabs.Screen name="news-article"  options={{ href: null }} />
     </Tabs>
     <AchievementToast />
+    <Sidebar visible={isSidebarOpen} onClose={() => setSidebarOpen(false)} />
     </View>
   );
 }
@@ -270,8 +273,8 @@ const styles = StyleSheet.create({
   // Notification badge
   badge: {
     position: 'absolute',
-    top: 0,
-    right: -2,
+    top: -6,
+    right: -6,
     backgroundColor: Colors.market.loss,
     borderRadius: 12,
     minWidth: 22,

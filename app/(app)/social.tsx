@@ -37,6 +37,8 @@ import {
   sendClubInvite,
   sendFriendRequest,
   getLeaderboard,
+  getUserById,
+  fetchPendingInvites,
 } from '../../src/services/auth';
 import AppHeader from '../../src/components/AppHeader';
 import Sidebar from '../../src/components/Sidebar';
@@ -530,6 +532,77 @@ function MessagesTab() {
   const [chatModalVisible, setChatModalVisible] = useState(false);
   const [joiningInviteId, setJoiningInviteId] = useState<string | null>(null);
 
+  // Fetch pending invites directly from Firestore when this tab mounts
+  useEffect(() => {
+    if (!user?.id) return;
+    console.log('[MessagesTab] Fetching invites for user:', user.id);
+    fetchPendingInvites(user.id).then((invites) => {
+      const typed = invites as Array<{ id: string; type?: string; clubId?: string; clubName?: string; fromUserId: string; fromUsername: string; sentAt: number }>;
+      console.log('[MessagesTab] Got invites:', typed.length);
+      // Always set state (even if empty) to ensure fresh data
+      useAppStore.setState({
+        clubInvites: typed.map(inv => ({
+          id: inv.id,
+          type: (inv.type === 'friend_request' ? 'friend_request' : 'club_invite') as 'club_invite' | 'friend_request',
+          clubId: inv.clubId,
+          clubName: inv.clubName,
+          fromUserId: inv.fromUserId,
+          fromUsername: inv.fromUsername,
+          sentAt: inv.sentAt,
+        })),
+      });
+    }).catch((err) => {
+      console.error('[MessagesTab] Failed to fetch invites:', err);
+    });
+  }, [user?.id]);
+
+  // DEBUG: Test Firestore read/write for invites
+  const debugTestInvites = async () => {
+    if (!user?.id) {
+      Alert.alert('Debug', 'No user logged in');
+      return;
+    }
+    try {
+      const { isMockMode } = await import('../../src/services/auth');
+      const { db: fireDb, IS_MOCK_FIREBASE } = await import('../../src/services/firebase');
+      const { addDoc, collection, getDocs, query, where } = await import('firebase/firestore');
+
+      // Step 1: Write a test invite
+      const testData = {
+        toUserId: user.id,
+        type: 'friend_request',
+        fromUserId: 'test_debug_user',
+        fromUsername: 'DebugTest',
+        status: 'pending',
+        sentAt: Date.now(),
+      };
+      const docRef = await addDoc(collection(fireDb, 'clubInvites'), testData);
+
+      // Step 2: Read it back
+      const q = query(collection(fireDb, 'clubInvites'), where('toUserId', '==', user.id));
+      const snap = await getDocs(q);
+      const docs = snap.docs.map(d => ({ id: d.id, ...d.data() }));
+      const pending = docs.filter((d: Record<string, unknown>) => d.status === 'pending');
+
+      Alert.alert(
+        'Debug Results',
+        `IS_MOCK_FIREBASE: ${IS_MOCK_FIREBASE}\n` +
+        `isMockMode: ${isMockMode}\n` +
+        `User ID: ${user.id}\n` +
+        `Test write ID: ${docRef.id}\n` +
+        `Total docs for user: ${docs.length}\n` +
+        `Pending docs: ${pending.length}\n` +
+        `Store clubInvites: ${clubInvites.length}`
+      );
+
+      // Clean up: delete the test doc
+      const { deleteDoc, doc } = await import('firebase/firestore');
+      await deleteDoc(doc(fireDb, 'clubInvites', docRef.id));
+    } catch (err) {
+      Alert.alert('Debug Error', String(err));
+    }
+  };
+
   const openRoom = (room: ChatRoom) => {
     setActiveChatRoom(room);
     setChatModalVisible(true);
@@ -564,6 +637,9 @@ function MessagesTab() {
       } else if (invite.type === 'friend_request') {
         const { addFriend } = await import('../../src/services/auth');
         await addFriend(user.id, invite.fromUserId);
+        // Update local user state so friends list refreshes
+        const { setUser } = useAppStore.getState();
+        setUser({ ...user, friendIds: [...(user.friendIds || []), invite.fromUserId] });
       }
       // Update invite status in Firestore
       try {
@@ -578,8 +654,12 @@ function MessagesTab() {
     }
   };
 
-  const handleDeclineInvite = (invite: ClubInvite) => {
+  const handleDeclineInvite = async (invite: ClubInvite) => {
     removeClubInvite(invite.id);
+    try {
+      const { updateInviteStatus } = await import('../../src/services/auth');
+      await updateInviteStatus(invite.id, 'declined');
+    } catch {}
   };
 
   const renderRoom = ({ item }: { item: ChatRoom }) => {
@@ -613,6 +693,14 @@ function MessagesTab() {
 
   return (
     <ScrollView style={styles.tabContent} contentContainerStyle={{ paddingBottom: 32 }}>
+
+      {/* ── Debug Button (remove after testing) ── */}
+      <TouchableOpacity
+        onPress={debugTestInvites}
+        style={{ backgroundColor: '#FF6B00', padding: 12, margin: 12, borderRadius: 8, alignItems: 'center' }}
+      >
+        <Text style={{ color: '#fff', fontWeight: 'bold' }}>DEBUG: Test Firestore Invites</Text>
+      </TouchableOpacity>
 
       {/* ── Pending Invites ── */}
         <View style={[styles.inviteSection, { borderBottomColor: MC.border.default }]}>
@@ -1132,6 +1220,35 @@ function FindFriendsTab() {
   const [addingFriend, setAddingFriend] = useState(false);
   const [addFriendFeedback, setAddFriendFeedback] = useState<string | null>(null);
 
+  // ── Load friends list ──
+  const [friends, setFriends] = useState<UserResult[]>([]);
+  const [loadingFriends, setLoadingFriends] = useState(false);
+
+  useEffect(() => {
+    if (!user?.friendIds?.length) {
+      setFriends([]);
+      return;
+    }
+    let cancelled = false;
+    setLoadingFriends(true);
+    Promise.all(
+      user.friendIds.map(async (fid) => {
+        try {
+          const u = await getUserById(fid);
+          return u as UserResult | null;
+        } catch {
+          return null;
+        }
+      })
+    ).then((results) => {
+      if (!cancelled) {
+        setFriends(results.filter(Boolean) as UserResult[]);
+        setLoadingFriends(false);
+      }
+    });
+    return () => { cancelled = true; };
+  }, [user?.friendIds]);
+
   const handleAddFriend = async () => {
     if (!user || !friendAccountNum.trim() || friendAccountNum.trim().length !== 8) {
       setAddFriendFeedback('Enter a valid 8-digit account number');
@@ -1139,17 +1256,23 @@ function FindFriendsTab() {
     }
     setAddingFriend(true);
     setAddFriendFeedback(null);
-    const result = await sendFriendRequest(
-      user.id,
-      user.username ?? user.displayName ?? 'A player',
-      friendAccountNum.trim(),
-    );
-    if (result.success) {
-      setAddFriendFeedback('✓ Friend request sent!');
-      setFriendAccountNum('');
-      setTimeout(() => { setAddFriendModalVisible(false); setAddFriendFeedback(null); }, 1200);
-    } else {
-      setAddFriendFeedback(result.error ?? 'Player not found');
+    try {
+      const result = await sendFriendRequest(
+        user.id,
+        user.username ?? user.displayName ?? 'A player',
+        friendAccountNum.trim(),
+      );
+      console.log('[AddFriend] Result:', JSON.stringify(result), 'from:', user.id, 'to account:', friendAccountNum.trim());
+      if (result.success) {
+        setAddFriendFeedback('✓ Friend request sent!');
+        setFriendAccountNum('');
+        setTimeout(() => { setAddFriendModalVisible(false); setAddFriendFeedback(null); }, 1200);
+      } else {
+        setAddFriendFeedback(result.error ?? 'Player not found');
+      }
+    } catch (err) {
+      console.error('[AddFriend] Error:', err);
+      setAddFriendFeedback('Error: ' + String(err));
     }
     setAddingFriend(false);
   };
@@ -1199,11 +1322,16 @@ function FindFriendsTab() {
 
   const handleSendFriendRequest = async (targetUser: UserResult) => {
     if (!user) return;
-    await sendFriendRequest(
+    const result = await sendFriendRequest(
       user.id,
       user.username ?? user.displayName ?? 'A player',
       targetUser.accountNumber,
     );
+    if (result.success) {
+      Alert.alert('Sent', `Friend request sent to ${targetUser.displayName}!`);
+    } else {
+      Alert.alert('Error', result.error ?? 'Failed to send friend request');
+    }
   };
 
   const handleRespondToProposal = async (
@@ -1300,6 +1428,39 @@ function FindFriendsTab() {
 
       {searchQuery && !searching && searchResults.length === 0 && (
         <Text style={[styles.emptyText, { color: FC.text.tertiary }]}>{t('no_users_found')}</Text>
+      )}
+
+      {/* ── Friends List ── */}
+      <Text style={[styles.sectionLabel, { marginTop: Spacing.lg, color: FC.text.secondary }]}>
+        Friends ({friends.length})
+      </Text>
+      {loadingFriends ? (
+        <ActivityIndicator size="small" color={Colors.brand.primary} style={{ marginVertical: Spacing.base }} />
+      ) : friends.length === 0 ? (
+        <Text style={[styles.emptyText, { color: FC.text.tertiary }]}>No friends yet. Search for players or enter their account number to add them!</Text>
+      ) : (
+        friends.map((f) => (
+          <View key={f.id} style={[styles.userCard, { backgroundColor: FC.bg.secondary, borderColor: FC.border.default }]}>
+            <InitialsAvatar name={f.displayName} color={Colors.brand.accent} />
+            <View style={styles.userCardInfo}>
+              <View style={styles.userCardNameRow}>
+                <Text style={[styles.userDisplayName, { color: FC.text.primary }]}>{f.displayName}</Text>
+                {f.level > 0 && (
+                  <View style={[styles.levelBadge, { backgroundColor: getLevelColor(f.level) + '22' }]}>
+                    <Text style={[styles.levelBadgeText, { color: getLevelColor(f.level) }]}>Lv {f.level}</Text>
+                  </View>
+                )}
+              </View>
+              <Text style={[styles.userUsername, { color: FC.text.secondary }]}>@{f.username}</Text>
+            </View>
+            <TouchableOpacity
+              style={styles.sendMsgBtn}
+              onPress={() => handleSendMessage(f)}
+            >
+              <Text style={styles.sendMsgBtnText}>{t('message')}</Text>
+            </TouchableOpacity>
+          </View>
+        ))
       )}
 
       <Text style={[styles.sectionLabel, { marginTop: Spacing.lg, color: FC.text.secondary }]}>
@@ -1633,7 +1794,6 @@ export default function SocialScreen() {
       {/* Tab Content */}
       <View style={{ flex: 1 }}>{renderContent()}</View>
     </SafeAreaView>
-    <Sidebar visible={isSidebarOpen} onClose={() => setSidebarOpen(false)} />
     </View>
   );
 }

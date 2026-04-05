@@ -448,7 +448,6 @@ export default function ShopScreen() {
       </Modal>
 
     </SafeAreaView>
-    <Sidebar visible={isSidebarOpen} onClose={() => setSidebarOpen(false)} />
     </View>
   );
 }
