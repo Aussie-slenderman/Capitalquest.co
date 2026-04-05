@@ -17,52 +17,23 @@ import { useAppStore } from '../../src/store/useAppStore';
 import { getXPProgress } from '../../src/constants/achievements';
 import { Colors, FontSize, FontWeight, Spacing, Radius } from '../../src/constants/theme';
 import { formatCurrency } from '../../src/utils/formatters';
-import {
-  rewardAtGain,
-  type TrophyReward,
-} from '../../src/constants/trophyRewards';
 
-// Fixed accent color replacing all zone-based accent colors
+// Fixed accent color
 const FIXED_ACCENT = Colors.brand.primary;
 
-// ─── Road constants ──────────────────────────────────────────────────────────
-
-const MAX_GAIN_DOLLARS = 50000;
-const XP_PER_100 = 20; // 20 XP per $100 milestone = 100 XP per $500 = same level pace
-
-/** All $100 milestone steps from $0 to $50,000. */
-const MILESTONES = Array.from(
-  { length: MAX_GAIN_DOLLARS / 100 + 1 },
-  (_, i) => i * 100,
-); // [0, 100, 200, …, 50000]
-
-/** Level names for the first 10 defined levels + generic fallback. */
-const LEVEL_NAMES: Record<number, string> = {
-  1: 'Beginner Trader',
-  2: 'Novice Investor',
-  3: 'Apprentice Trader',
-  4: 'Trader',
-  5: 'Senior Trader',
-  6: 'Portfolio Manager',
-  7: 'Market Analyst',
-  8: 'Hedge Fund Manager',
-  9: 'Market Legend',
-  10: 'Wolf of Wall Street',
-};
-
-function getLevelName(level: number): string {
-  return LEVEL_NAMES[level] ?? `Elite Trader Lv.${level}`;
-}
-
-function getLevelColor(level: number): string {
-  const COLORS = [
-    '#94A3B8', '#60A5FA', '#34D399', '#F59E0B', '#F97316',
-    '#EF4444', '#8B5CF6', '#EC4899', '#F5C518', '#00D4AA',
-    '#06B6D4', '#84CC16', '#F43F5E', '#A855F7', '#0EA5E9',
-    '#22C55E', '#EAB308', '#FB923C', '#6366F1', '#14B8A6',
-  ];
-  return COLORS[(level - 1) % COLORS.length];
-}
+// ─── 10 evenly-spaced milestones (up to $50,000) ─────────────────────────────
+const MILESTONES = [
+  { gain: 0,     label: 'Start',     color: '#94A3B8' },
+  { gain: 5000,  label: '+$5,000',   color: '#60A5FA' },
+  { gain: 10000, label: '+$10,000',  color: '#34D399' },
+  { gain: 15000, label: '+$15,000',  color: '#F59E0B' },
+  { gain: 20000, label: '+$20,000',  color: '#F97316' },
+  { gain: 25000, label: '+$25,000',  color: '#EF4444' },
+  { gain: 30000, label: '+$30,000',  color: '#8B5CF6' },
+  { gain: 35000, label: '+$35,000',  color: '#EC4899' },
+  { gain: 40000, label: '+$40,000',  color: '#F5C518' },
+  { gain: 50000, label: '+$50,000',  color: '#00D4AA' },
+];
 
 // ─── Pulsing dot (current position) ─────────────────────────────────────────
 
@@ -80,71 +51,6 @@ function PulsingDot({ color }: { color: string }) {
 }
 
 
-// ─── Single-reward card ──────────────────────────────────────────────────────
-
-interface RewardCardProps {
-  reward: TrophyReward;
-  unlocked: boolean;
-}
-
-function RewardCard({ reward, unlocked }: RewardCardProps) {
-  const isAvatar = reward.type === 'avatar';
-  const typeColor = isAvatar ? Colors.brand.primary : Colors.brand.accent;
-
-  return (
-    <View style={[styles.rewardCard, !unlocked && styles.rewardCardLocked]}>
-      <LinearGradient
-        colors={unlocked ? [reward.color, `${reward.color}44`] : ['#1A2235', '#111827']}
-        style={styles.rewardGradient}
-        start={{ x: 0, y: 0 }}
-        end={{ x: 1, y: 1 }}
-      >
-        {/* Header row: gain threshold + type pill */}
-        <View style={styles.rewardHeader}>
-          <View style={[styles.gainTag, { backgroundColor: unlocked ? reward.color : Colors.bg.tertiary }]}>
-            <Text style={styles.gainTagText}>
-              {reward.gainThreshold === 0 ? 'START' : `+$${reward.gainThreshold.toLocaleString()}`}
-            </Text>
-          </View>
-          <View style={[styles.typePill, { backgroundColor: `${typeColor}22` }]}>
-            <Text style={[styles.typePillText, { color: typeColor }]}>
-              {isAvatar ? 'AVATAR' : 'PET'}
-            </Text>
-          </View>
-        </View>
-
-        {/* Reward item */}
-        <View style={styles.rewardSingle}>
-          <View style={[styles.rewardFrame, { borderColor: unlocked ? reward.color : `${reward.color}40` }]}>
-            <Text style={[styles.rewardEmoji, !unlocked && { opacity: 0.45 }]}>
-              {reward.emoji}
-            </Text>
-            {!unlocked && (
-              <View style={styles.rewardLockOverlay}>
-                <Text style={styles.rewardLockIcon}>—</Text>
-              </View>
-            )}
-          </View>
-          <Text style={[styles.rewardName, !unlocked && styles.lockedText]}>
-            {reward.name}
-          </Text>
-          {!unlocked && (
-            <Text style={styles.rewardTypeHint}>
-              {reward.type === 'avatar' ? 'Avatar' : 'Pet'}
-            </Text>
-          )}
-        </View>
-
-        {!unlocked && (
-          <Text style={styles.unlockHint}>
-            Earn +${reward.gainThreshold.toLocaleString()} to unlock
-          </Text>
-        )}
-      </LinearGradient>
-    </View>
-  );
-}
-
 // ─── Main screen ─────────────────────────────────────────────────────────────
 
 export default function TrophyRoadScreen() {
@@ -154,31 +60,31 @@ export default function TrophyRoadScreen() {
   const currentGainDollars = portfolio?.totalGainLoss ?? 0;
   const currentLevel       = user?.level ?? 1;
   const xpInfo             = getXPProgress(user?.xp ?? 0);
-  const levelColor         = getLevelColor(currentLevel);
+  const levelColor         = MILESTONES[Math.min(currentLevel - 1, MILESTONES.length - 1)].color;
+
+  // Highest milestone first (top = $45k, bottom = Start)
+  const reversed = [...MILESTONES].reverse();
+
+  // Find which milestone the user is currently at
+  const currentMilestoneIdx = (() => {
+    for (let i = MILESTONES.length - 1; i >= 0; i--) {
+      if (currentGainDollars >= MILESTONES[i].gain) return i;
+    }
+    return 0;
+  })();
+  const currentGain = MILESTONES[currentMilestoneIdx].gain;
 
   const scrollToMe = useCallback(() => {
-    // For $0 gains just jump straight to the bottom (the Start node)
-    if (currentGainDollars <= 0) {
-      scrollRef.current?.scrollToEnd({ animated: true });
-      return;
-    }
-    const idx = [...MILESTONES].reverse()
-      .findIndex(m => currentGainDollars >= m && currentGainDollars < m + 100);
-    const ROW_H = SEGMENT_H * 2 + NODE_SIZE; // ≈ 116px per row
-    // Reward-card rows (every $1,000) are ~180px taller; account for those above idx
-    const rewardRowsAbove = Math.floor((MAX_GAIN_DOLLARS - currentGainDollars) / 1000);
-    const targetY = Math.max(0, (idx - 2) * ROW_H + rewardRowsAbove * 180);
+    const idx = reversed.findIndex(m => m.gain === currentGain);
+    const ROW_H = SEGMENT_H * 2 + NODE_SIZE;
+    const targetY = Math.max(0, (idx - 1) * ROW_H);
     scrollRef.current?.scrollTo({ y: targetY, animated: true });
-  }, [currentGainDollars]);
+  }, [currentGain]);
 
-  // Scroll to current position on mount
   useEffect(() => {
     const timer = setTimeout(scrollToMe, 400);
     return () => clearTimeout(timer);
   }, [scrollToMe]);
-
-  // Build reversed milestone list with zone-transition markers
-  const reversedMilestones = [...MILESTONES].reverse();
 
   return (
     <View style={styles.container}>
@@ -189,7 +95,7 @@ export default function TrophyRoadScreen() {
         colors={['#0D1830', '#0A1225', Colors.bg.primary]}
         style={styles.header}
       >
-        <Text style={styles.headerSub}>Grow your portfolio to unlock rewards</Text>
+        <Text style={styles.headerSub}>Grow your portfolio to unlock milestones</Text>
 
         {/* Current status card */}
         <View style={styles.statusCard}>
@@ -201,7 +107,6 @@ export default function TrophyRoadScreen() {
             <View style={[styles.levelPill, { backgroundColor: levelColor }]}>
               <Text style={styles.levelPillText}>Level {currentLevel}</Text>
             </View>
-            <Text style={styles.statusName}>{getLevelName(currentLevel)}</Text>
             <Text style={styles.statusGain}>
               Gains: {currentGainDollars >= 0 ? '+' : ''}{formatCurrency(currentGainDollars)}
             </Text>
@@ -224,7 +129,7 @@ export default function TrophyRoadScreen() {
         </View>
       </LinearGradient>
 
-      {/* ── Road + floating button ── */}
+      {/* ── Road with 10 milestones ── */}
       <View style={{ flex: 1 }}>
         <ScrollView
           ref={scrollRef}
@@ -232,20 +137,21 @@ export default function TrophyRoadScreen() {
           contentContainerStyle={styles.roadContent}
           showsVerticalScrollIndicator={false}
         >
-          {reversedMilestones.map((gainDollars, revIdx) => {
-            const isAchieved  = currentGainDollars >= gainDollars;
-            const isCurrent   = currentGainDollars >= gainDollars && currentGainDollars < gainDollars + 100;
-            // reward cards removed
-            const isFirst     = revIdx === MILESTONES.length - 1;
-            const isLast      = revIdx === 0;
+          {reversed.map((ms, idx) => {
+            const isAchieved = currentGainDollars >= ms.gain;
+            const isCurrent  = ms.gain === currentGain;
+            const isFirst    = idx === reversed.length - 1; // bottom node ($0)
+            const isLast     = idx === 0; // top node ($45k)
 
-            // Spine colours using fixed accent
             const segmentColor  = isAchieved ? FIXED_ACCENT : `${FIXED_ACCENT}20`;
-            const nodeBorderCol = isCurrent ? levelColor : isAchieved ? FIXED_ACCENT : `${FIXED_ACCENT}35`;
-            const nodeBgCol     = isCurrent ? `${levelColor}33` : isAchieved ? `${FIXED_ACCENT}22` : Colors.bg.secondary;
+            const nodeBorderCol = isCurrent ? ms.color : isAchieved ? FIXED_ACCENT : `${FIXED_ACCENT}35`;
+            const nodeBgCol     = isCurrent ? `${ms.color}33` : isAchieved ? `${FIXED_ACCENT}22` : Colors.bg.secondary;
+
+            // Milestone number (1-10, bottom to top)
+            const msNumber = MILESTONES.length - idx;
 
             return (
-              <React.Fragment key={gainDollars}>
+              <React.Fragment key={ms.gain}>
                 <View style={styles.milestoneRow}>
 
                   {/* Road spine */}
@@ -259,10 +165,10 @@ export default function TrophyRoadScreen() {
                       isCurrent && styles.nodeCurrent,
                     ]}>
                       {isCurrent
-                        ? <PulsingDot color={levelColor} />
-                        : <Text style={[styles.nodeCheck, { color: FIXED_ACCENT, opacity: isAchieved ? 1 : 0.2 }]}>
-                            {isAchieved ? '✓' : ''}
-                          </Text>
+                        ? <PulsingDot color={ms.color} />
+                        : isAchieved
+                          ? <Text style={[styles.nodeCheck, { color: FIXED_ACCENT }]}>✓</Text>
+                          : <Text style={[styles.nodeLevelNum, { color: `${ms.color}55` }]}>{msNumber}</Text>
                       }
                     </View>
                     {!isFirst && (
@@ -272,32 +178,21 @@ export default function TrophyRoadScreen() {
 
                   {/* Milestone label */}
                   <View style={styles.milestoneInfo}>
-                    <View style={isAchieved && !isCurrent
-                      ? [styles.gainPill, { backgroundColor: `${FIXED_ACCENT}20`, borderColor: `${FIXED_ACCENT}40` }]
-                      : undefined}>
-                      <Text style={[
-                        styles.milestonePct,
-                        isAchieved ? [styles.milestonePctDone, { color: isCurrent ? levelColor : FIXED_ACCENT }] : styles.milestonePctLocked,
-                        isCurrent && { fontWeight: FontWeight.extrabold },
-                      ]}>
-                        {gainDollars === 0 ? 'Start' : `+$${gainDollars.toLocaleString()}`}
-                      </Text>
-                    </View>
-                    {gainDollars > 0 && (
-                      <View style={[styles.xpPill, { backgroundColor: `${FIXED_ACCENT}20`, borderColor: `${FIXED_ACCENT}40` }]}>
-                        <Text style={[styles.milestoneXP, { color: FIXED_ACCENT, opacity: isAchieved ? 1 : 0.35 }]}>
-                          +{XP_PER_100} XP
-                        </Text>
-                      </View>
-                    )}
+                    <Text style={[
+                      styles.levelTitle,
+                      isAchieved
+                        ? { color: isCurrent ? ms.color : FIXED_ACCENT }
+                        : styles.milestonePctLocked,
+                      isCurrent && { fontWeight: FontWeight.extrabold },
+                    ]}>
+                      {ms.label}
+                    </Text>
                     {isCurrent && (
-                      <View style={[styles.hereBadge, { backgroundColor: levelColor }]}>
+                      <View style={[styles.hereBadge, { backgroundColor: ms.color }]}>
                         <Text style={styles.hereText}>YOU ARE HERE</Text>
                       </View>
                     )}
                   </View>
-
-                  {/* Reward cards removed */}
                 </View>
               </React.Fragment>
             );
@@ -321,7 +216,7 @@ export default function TrophyRoadScreen() {
 
 // ─── Styles ──────────────────────────────────────────────────────────────────
 
-const NODE_SIZE  = 32;
+const NODE_SIZE  = 44;
 const SEGMENT_H  = 42;
 
 const styles = StyleSheet.create({
@@ -374,7 +269,6 @@ const styles = StyleSheet.create({
     marginBottom: 2,
   },
   levelPillText: { color: '#fff', fontSize: FontSize.xs, fontWeight: FontWeight.bold },
-  statusName: { fontSize: FontSize.sm, fontWeight: FontWeight.bold, color: Colors.text.primary },
   statusGain: { fontSize: FontSize.xs, color: Colors.brand.accent },
   statusNext: { fontSize: FontSize.xs, color: Colors.text.tertiary },
 
@@ -455,6 +349,8 @@ const styles = StyleSheet.create({
     borderRadius: 6,
   },
   nodeCheck: { fontSize: 14, color: Colors.brand.primary, fontWeight: FontWeight.bold },
+  nodeIcon: { fontSize: 22 },
+  nodeLevelNum: { fontSize: FontSize.sm, fontWeight: FontWeight.bold },
 
   // Milestone text
   milestoneInfo: {
@@ -462,6 +358,7 @@ const styles = StyleSheet.create({
     flex: 1,
     gap: 2,
   },
+  levelTitle: { fontSize: FontSize.base, fontWeight: FontWeight.bold },
   milestonePct: { fontSize: FontSize.sm, fontWeight: FontWeight.bold },
   milestonePctDone: { color: Colors.text.primary },
   milestonePctLocked: { color: Colors.text.tertiary },
@@ -479,73 +376,6 @@ const styles = StyleSheet.create({
     color: '#fff',
     letterSpacing: 0.8,
   },
-
-  // Reward card
-  rewardCol: { flex: 2, paddingTop: SEGMENT_H - 6 },
-  rewardCard: {
-    borderRadius: Radius.lg,
-    overflow: 'hidden',
-    borderWidth: 1,
-    borderColor: Colors.border.default,
-    marginBottom: 8,
-  },
-  rewardCardLocked: { opacity: 0.7 },
-  rewardGradient: { padding: 10, gap: 8 },
-
-  rewardHeader: { flexDirection: 'row', alignItems: 'center', gap: 6 },
-  gainTag: {
-    paddingHorizontal: 7,
-    paddingVertical: 2,
-    borderRadius: Radius.full,
-  },
-  gainTagText: { color: '#fff', fontSize: 10, fontWeight: FontWeight.bold },
-  typePill: {
-    paddingHorizontal: 7,
-    paddingVertical: 2,
-    borderRadius: Radius.full,
-    flex: 1,
-    alignItems: 'center',
-  },
-  typePillText: { fontSize: 10, fontWeight: FontWeight.bold },
-
-  rewardSingle: { alignItems: 'center', gap: 4 },
-  rewardFrame: {
-    width: 52,
-    height: 52,
-    borderRadius: 26,
-    borderWidth: 2,
-    backgroundColor: Colors.bg.secondary,
-    alignItems: 'center',
-    justifyContent: 'center',
-    position: 'relative',
-  },
-  rewardLockOverlay: {
-    position: 'absolute',
-    bottom: -4,
-    right: -4,
-    width: 18,
-    height: 18,
-    borderRadius: 9,
-    backgroundColor: Colors.bg.primary,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  rewardLockIcon: { fontSize: 10 },
-  rewardEmoji: { fontSize: 26 },
-  rewardName: {
-    fontSize: FontSize.xs,
-    color: Colors.text.primary,
-    fontWeight: FontWeight.semibold,
-    textAlign: 'center',
-  },
-  rewardTypeHint: {
-    fontSize: 9,
-    color: Colors.text.tertiary,
-    textAlign: 'center',
-    fontStyle: 'italic',
-  },
-  lockedText: { color: Colors.text.secondary },
-  unlockHint: { fontSize: FontSize.xs, color: Colors.text.tertiary, textAlign: 'center', fontStyle: 'italic' },
 
   // Scroll-to-me FAB
   locateMeBtn: {
