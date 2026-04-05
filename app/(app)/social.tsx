@@ -52,7 +52,7 @@ const { width: SCREEN_WIDTH } = Dimensions.get('window');
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
-type SocialTab = 'messages' | 'clubs' | 'friends' | 'rankings';
+type SocialTab = 'messages' | 'clubs' | 'friends';
 
 interface UserResult {
   id: string;
@@ -1567,151 +1567,6 @@ function FindFriendsTab() {
   );
 }
 
-// ─── Virtual Trading Tab ──────────────────────────────────────────────────────
-
-function RankingsTab() {
-  const t = useT();
-  const { user, portfolio, appColorMode } = useAppStore();
-  const RC = appColorMode === 'light' ? LightColors : Colors;
-  const [entries, setEntries] = useState<LeaderboardEntry[]>([]);
-  const [loading, setLoading] = useState(true);
-
-  const loadRankings = useCallback(async () => {
-    setLoading(true);
-    try {
-      const data = await getLeaderboard('global');
-      let mapped = Array.isArray(data) && data.length > 0
-        ? (data as LeaderboardEntry[]).map(e => ({
-            ...e,
-            gainDollars: e.gainDollars ?? (e.currentValue - e.startingBalance),
-            isCurrentUser: e.userId === user?.id,
-          }))
-        : [];
-
-      // Ensure the current user always appears in the rankings
-      if (user && !mapped.some(e => e.userId === user.id)) {
-        const startBal = portfolio?.startingBalance ?? user.startingBalance ?? 10000;
-        const curVal = portfolio?.totalValue ?? startBal;
-        const gain = curVal - startBal;
-        mapped.push({
-          rank: mapped.length + 1,
-          userId: user.id,
-          username: user.username ?? 'Player',
-          displayName: user.displayName ?? user.username ?? 'Player',
-          level: user.level ?? 1,
-          country: user.country ?? '',
-          startingBalance: startBal,
-          currentValue: curVal,
-          gainDollars: gain,
-          isCurrentUser: true,
-        });
-      }
-      // Sort by gain descending and re-assign ranks
-      mapped.sort((a, b) => b.gainDollars - a.gainDollars);
-      mapped.forEach((e, i) => { e.rank = i + 1; });
-      setEntries(mapped);
-    } catch {}
-    setLoading(false);
-  }, [user?.id, portfolio?.totalValue]);
-
-  useEffect(() => { loadRankings(); }, []);
-
-  const getInitials = (name: string) =>
-    name.split(' ').map(n => n[0]).join('').toUpperCase().slice(0, 2);
-
-  const RANK_MEDALS: Record<number, string> = { 1: '\u{1F947}', 2: '\u{1F948}', 3: '\u{1F949}' };
-
-  if (loading) {
-    return (
-      <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center', paddingVertical: 60 }}>
-        <ActivityIndicator color={Colors.brand.primary} size="large" />
-        <Text style={{ color: RC.text.secondary, marginTop: 12, fontSize: FontSize.base }}>{t('loading_rankings')}</Text>
-      </View>
-    );
-  }
-
-  if (entries.length === 0) {
-    return (
-      <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center', paddingVertical: 60 }}>
-        <Text style={{ fontSize: 48, marginBottom: 12 }}>{'\u{1F3C6}'}</Text>
-        <Text style={{ color: RC.text.primary, fontSize: FontSize.lg, fontWeight: FontWeight.bold }}>{t('no_rankings')}</Text>
-        <Text style={{ color: RC.text.secondary, fontSize: FontSize.base, textAlign: 'center', marginTop: 8 }}>
-          {t('rankings_will_appear')}
-        </Text>
-      </View>
-    );
-  }
-
-  return (
-    <ScrollView style={styles.tabContent} contentContainerStyle={{ paddingBottom: 32 }}>
-      <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: Spacing.md }}>
-        <Text style={[styles.sectionLabel, { color: RC.text.secondary, marginBottom: 0 }]}>
-          {t('global_rankings')}
-        </Text>
-        <TouchableOpacity onPress={loadRankings} style={{ paddingHorizontal: 12, paddingVertical: 6, backgroundColor: RC.bg.secondary, borderRadius: Radius.md, borderWidth: 1, borderColor: RC.border.default }}>
-          <Text style={{ color: RC.text.secondary, fontSize: FontSize.sm }}>{'\u21BB'} {t('refresh')}</Text>
-        </TouchableOpacity>
-      </View>
-      {entries.map(entry => {
-        const isGain = entry.gainDollars >= 0;
-        const gainColor = isGain ? Colors.market.gain : Colors.market.loss;
-        const levelColor = Colors.levels[(Math.max(1, entry.level ?? 1) - 1) % Colors.levels.length];
-        return (
-          <View
-            key={entry.userId + entry.rank}
-            style={{
-              flexDirection: 'row',
-              alignItems: 'center',
-              backgroundColor: RC.bg.secondary,
-              borderRadius: Radius.lg,
-              paddingVertical: Spacing.md,
-              paddingHorizontal: Spacing.base,
-              marginBottom: Spacing.xs,
-              borderWidth: 1,
-              borderColor: entry.isCurrentUser ? Colors.brand.primary + '55' : RC.border.default,
-              ...(entry.isCurrentUser ? { backgroundColor: 'rgba(0,179,230,0.06)' } : {}),
-            }}
-          >
-            {/* Rank */}
-            <View style={{ width: 40, height: 40, borderRadius: Radius.md, alignItems: 'center', justifyContent: 'center', marginRight: Spacing.sm, backgroundColor: entry.rank <= 3 ? 'rgba(245,197,24,0.12)' : 'transparent' }}>
-              {entry.rank <= 3 ? (
-                <Text style={{ fontSize: 22 }}>{RANK_MEDALS[entry.rank]}</Text>
-              ) : (
-                <Text style={{ fontSize: FontSize.sm, fontWeight: FontWeight.bold, color: RC.text.secondary }}>#{entry.rank}</Text>
-              )}
-            </View>
-            {/* Avatar */}
-            <View style={{ width: 40, height: 40, borderRadius: 20, alignItems: 'center', justifyContent: 'center', marginRight: Spacing.sm, backgroundColor: levelColor + '33', borderWidth: 1, borderColor: levelColor + '55' }}>
-              <Text style={{ fontSize: FontSize.base, fontWeight: FontWeight.bold, color: levelColor }}>{getInitials(entry.displayName)}</Text>
-            </View>
-            {/* Name */}
-            <View style={{ flex: 1, marginRight: Spacing.sm }}>
-              <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
-                <Text style={{ fontSize: FontSize.base, fontWeight: FontWeight.semibold, color: RC.text.primary, flexShrink: 1 }} numberOfLines={1}>{entry.displayName}</Text>
-                {entry.isCurrentUser && (
-                  <View style={{ backgroundColor: Colors.brand.primary, paddingHorizontal: 6, paddingVertical: 1, borderRadius: 999 }}>
-                    <Text style={{ fontSize: 9, fontWeight: FontWeight.extrabold, color: '#fff', letterSpacing: 0.5 }}>{t('you')}</Text>
-                  </View>
-                )}
-              </View>
-              <Text style={{ fontSize: FontSize.xs, color: RC.text.tertiary, marginTop: 2 }}>@{entry.username}</Text>
-            </View>
-            {/* Stats */}
-            <View style={{ alignItems: 'flex-end', gap: 4 }}>
-              <Text style={{ fontSize: FontSize.base, fontWeight: FontWeight.bold, color: gainColor }}>
-                {isGain ? '+' : ''}{formatCurrency(entry.gainDollars, 'USD', true)}
-              </Text>
-              <View style={{ borderWidth: 1, paddingHorizontal: 6, paddingVertical: 1, borderRadius: 999, borderColor: levelColor + '66' }}>
-                <Text style={{ fontSize: FontSize.xs, fontWeight: FontWeight.semibold, color: levelColor }}>Lv {entry.level}</Text>
-              </View>
-            </View>
-          </View>
-        );
-      })}
-    </ScrollView>
-  );
-}
-
 // ─── Main Social Screen ───────────────────────────────────────────────────────
 
 export default function SocialScreen() {
@@ -1729,7 +1584,6 @@ export default function SocialScreen() {
     { key: 'messages', label: t('messages') },
     { key: 'clubs', label: t('clubs') },
     { key: 'friends', label: t('friends') },
-    { key: 'rankings', label: t('rankings') },
   ];
 
   const renderContent = () => {
@@ -1740,8 +1594,6 @@ export default function SocialScreen() {
         return <ClubsTab />;
       case 'friends':
         return <FindFriendsTab />;
-      case 'rankings':
-        return <RankingsTab />;
     }
   };
 
