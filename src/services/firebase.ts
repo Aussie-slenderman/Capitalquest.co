@@ -619,6 +619,25 @@ export async function sendClubInviteToUser(
   }
 }
 
+export async function sendFriendRequestToUser(
+  toUserId: string,
+  from: { fromUserId: string; fromUsername: string },
+): Promise<{ success: boolean; error?: string }> {
+  try {
+    await addDoc(collection(db, 'clubInvites'), {
+      toUserId,
+      type: 'friend_request',
+      fromUserId: from.fromUserId,
+      fromUsername: from.fromUsername,
+      status: 'pending',
+      sentAt: Date.now(),
+    });
+    return { success: true };
+  } catch (e: unknown) {
+    return { success: false, error: (e as Error).message ?? 'Failed to send friend request' };
+  }
+}
+
 export function listenToClubInvites(
   userId: string,
   callback: (invites: unknown[]) => void

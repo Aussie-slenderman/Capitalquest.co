@@ -225,13 +225,10 @@ export async function sendFriendRequest(
   try {
     const target = await FB.findUserByAccountNumber(toAccountNumber);
     if (!target) return { success: false, error: 'Player not found' };
-    await FB.sendNotificationToUser((target as { id: string }).id, {
-      type: 'friend_request',
-      title: `Friend request from ${fromUsername}`,
-      body: `${fromUsername} wants to be your friend`,
-      data: { fromUserId, fromUsername },
+    return await FB.sendFriendRequestToUser((target as { id: string }).id, {
+      fromUserId,
+      fromUsername,
     });
-    return { success: true };
   } catch {
     return { success: false, error: 'Failed to send request' };
   }
