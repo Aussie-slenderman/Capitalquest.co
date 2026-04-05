@@ -16,6 +16,8 @@ import { useAppStore } from '../store/useAppStore';
 import { Colors, LightColors, FontSize, FontWeight, Spacing, Radius } from '../constants/theme';
 import { formatAccountNumber } from '../utils/formatters';
 import { LANGUAGES, useT } from '../constants/translations';
+import { updateUser } from '../services/auth';
+import type { AvatarConfig } from '../types';
 
 const SIDEBAR_WIDTH = 300;
 
@@ -40,6 +42,18 @@ const TAB_COLOR_OPTIONS = [
   { label: 'Profile', tab: 'profile',     defaultColor: '#7C3AED', icon: '👤' },
 ];
 
+const WARDROBE_ANIMALS = [
+  '🐶','🐱','🐻','🐼','🦊','🐨','🐯','🦁','🐮','🐷','🐸','🐵',
+  '🐔','🐧','🐦','🦅','🦉','🐴','🦄','🐲','🐙','🦋','🐢','🐬',
+  '🦈','🐠','🦜','🦩','🐺','🦝','🐹','🐰',
+];
+
+const WARDROBE_COLORS = [
+  '#FF6B6B','#F59E0B','#22C55E','#00B3E6','#7C3AED','#EC4899',
+  '#00D4AA','#6366F1','#F5C518','#EF4444','#06B6D4','#FF6B6B',
+  '#1A2235','#111827','#0A0E1A','#334155',
+];
+
 // ─── Sidebar Component ────────────────────────────────────────────────────────
 
 interface SidebarProps {
@@ -54,7 +68,7 @@ export default function Sidebar({ visible, onClose }: SidebarProps) {
   const t = useT();
 
   const {
-    user,
+    user, setUser,
     appColorMode, setAppColorMode,
     appAccentColor, setAppAccentColor,
     appTileStyle, setAppTileStyle,
@@ -67,6 +81,11 @@ export default function Sidebar({ visible, onClose }: SidebarProps) {
 
   const [langPickerVisible, setLangPickerVisible] = useState(false);
   const [langSearch, setLangSearch] = useState('');
+  const [wardrobeVisible, setWardrobeVisible] = useState(false);
+  const [selectedAnimal, setSelectedAnimal] = useState(user?.avatarConfig?.animal ?? '🐶');
+  const [selectedBgColor, setSelectedBgColor] = useState(user?.avatarConfig?.bgColor ?? Colors.bg.tertiary);
+  const [emailModalVisible, setEmailModalVisible] = useState(false);
+  const [emailInput, setEmailInput] = useState('');
   const filteredLangs = useMemo(() => {
     if (!langSearch.trim()) return LANGUAGES;
     const q = langSearch.toLowerCase();
@@ -75,6 +94,23 @@ export default function Sidebar({ visible, onClose }: SidebarProps) {
     );
   }, [langSearch]);
   const currentLang = LANGUAGES.find(l => l.code === appLanguage) ?? LANGUAGES[0];
+
+  const handleSaveAvatar = async () => {
+    if (!user) return;
+    const newConfig: AvatarConfig = { animal: selectedAnimal, bgColor: selectedBgColor };
+    setUser({ ...user, avatarConfig: newConfig });
+    setWardrobeVisible(false);
+    try { await updateUser(user.id, { avatarConfig: newConfig }); } catch {}
+  };
+
+  const handleSaveEmail = async () => {
+    if (!user || !emailInput.trim()) return;
+    const trimmed = emailInput.trim();
+    setUser({ ...user, email: trimmed });
+    setEmailModalVisible(false);
+    setEmailInput('');
+    try { await updateUser(user.id, { email: trimmed }); } catch {}
+  };
 
   // ─── Slide animation ────────────────────────────────────────────────────────
   useEffect(() => {
@@ -144,6 +180,47 @@ export default function Sidebar({ visible, onClose }: SidebarProps) {
           showsVerticalScrollIndicator={false}
           contentContainerStyle={{ paddingBottom: Spacing['2xl'] }}
         >
+          {/* ── User Profile ── */}
+          <View style={{ alignItems: 'center', paddingVertical: Spacing.lg }}>
+            {user?.avatarConfig ? (
+              <View style={{ width: 60, height: 60, borderRadius: 30, backgroundColor: user.avatarConfig.bgColor ?? Colors.bg.tertiary, alignItems: 'center', justifyContent: 'center', borderWidth: 2, borderColor: Colors.brand.primary }}>
+                <Text style={{ fontSize: 32 }}>{user.avatarConfig.animal ?? '🐶'}</Text>
+              </View>
+            ) : (
+              <View style={{ width: 60, height: 60, borderRadius: 30, backgroundColor: Colors.brand.primary + '33', borderWidth: 2, borderColor: Colors.brand.primary, alignItems: 'center', justifyContent: 'center' }}>
+                <Text style={{ fontSize: 24, fontWeight: FontWeight.bold, color: Colors.brand.primary }}>{(user?.username ?? '?')[0].toUpperCase()}</Text>
+              </View>
+            )}
+            <Text style={{ fontSize: FontSize.lg, fontWeight: FontWeight.bold, color: C.text.primary, marginTop: Spacing.sm }}>{user?.displayName ?? '—'}</Text>
+            <Text style={{ fontSize: FontSize.sm, color: C.text.secondary }}>@{user?.username ?? '—'}</Text>
+          </View>
+
+          {/* ── Wardrobe Button ── */}
+          <TouchableOpacity
+            style={[styles.wardrobeBtn, { backgroundColor: Colors.brand.accent }]}
+            onPress={() => setWardrobeVisible(true)}
+          >
+            <Text style={{ fontSize: 18 }}>👕</Text>
+            <Text style={{ color: '#fff', fontSize: FontSize.base, fontWeight: FontWeight.bold }}>{t('wardrobe')}</Text>
+          </TouchableOpacity>
+
+          {/* ── Add Email Button ── */}
+          <TouchableOpacity
+            style={[styles.emailBtn, { backgroundColor: C.bg.tertiary, borderColor: C.border.default }]}
+            onPress={() => { setEmailInput(user?.email?.includes('@capitalquest.app') ? '' : user?.email ?? ''); setEmailModalVisible(true); }}
+          >
+            <Text style={{ fontSize: 18 }}>✉️</Text>
+            <View style={{ flex: 1 }}>
+              <Text style={{ fontSize: FontSize.base, fontWeight: FontWeight.semibold, color: C.text.primary }}>
+                {user?.email && !user.email.includes('@capitalquest.app') ? user.email : 'Add Email'}
+              </Text>
+              {(!user?.email || user.email.includes('@capitalquest.app')) && (
+                <Text style={{ fontSize: FontSize.xs, color: C.text.tertiary, marginTop: 1 }}>Link an email to your account</Text>
+              )}
+            </View>
+            <Text style={{ fontSize: 12, color: C.text.tertiary }}>▶</Text>
+          </TouchableOpacity>
+
           {/* ── Account Number ── */}
           <View style={[styles.settingsSection, { borderTopColor: C.border.default }]}>
             <Text style={[styles.sectionTitle, { color: C.text.primary }]}>{t('account_number')}</Text>
@@ -263,6 +340,106 @@ export default function Sidebar({ visible, onClose }: SidebarProps) {
           </View>
         </View>
       </Modal>
+
+      {/* ── Wardrobe Modal ── */}
+      <Modal visible={wardrobeVisible} animationType="slide" transparent>
+        <View style={{ flex: 1, backgroundColor: 'rgba(0,0,0,0.7)', justifyContent: 'flex-end' }}>
+          <View style={{ backgroundColor: C.bg.secondary, borderTopLeftRadius: Radius.xl, borderTopRightRadius: Radius.xl, maxHeight: '85%', paddingBottom: 40 }}>
+            <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', padding: Spacing.base, borderBottomWidth: 1, borderBottomColor: C.border.default }}>
+              <Text style={{ fontSize: FontSize.lg, fontWeight: FontWeight.bold, color: C.text.primary }}>{`👕 ${t('wardrobe')}`}</Text>
+              <TouchableOpacity onPress={() => setWardrobeVisible(false)}>
+                <Text style={{ fontSize: 20, color: C.text.tertiary, padding: 4 }}>✕</Text>
+              </TouchableOpacity>
+            </View>
+            <ScrollView style={{ padding: Spacing.base }} showsVerticalScrollIndicator={false}>
+              {/* Preview */}
+              <View style={{ alignItems: 'center', marginBottom: Spacing.lg }}>
+                <View style={{ width: 80, height: 80, borderRadius: 40, backgroundColor: selectedBgColor, alignItems: 'center', justifyContent: 'center', borderWidth: 2, borderColor: Colors.brand.primary }}>
+                  <Text style={{ fontSize: 44 }}>{selectedAnimal}</Text>
+                </View>
+                <Text style={{ color: C.text.secondary, fontSize: FontSize.sm, marginTop: Spacing.sm }}>{t('preview')}</Text>
+              </View>
+              {/* Animal Selection */}
+              <Text style={{ fontSize: FontSize.base, fontWeight: FontWeight.semibold, color: C.text.primary, marginBottom: Spacing.sm }}>{t('choose_animal')}</Text>
+              <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: Spacing.sm, marginBottom: Spacing.lg }}>
+                {WARDROBE_ANIMALS.map(animal => (
+                  <TouchableOpacity
+                    key={animal}
+                    onPress={() => setSelectedAnimal(animal)}
+                    style={{
+                      width: 48, height: 48, borderRadius: Radius.md,
+                      alignItems: 'center', justifyContent: 'center',
+                      backgroundColor: animal === selectedAnimal ? Colors.brand.primary + '22' : C.bg.tertiary,
+                      borderWidth: animal === selectedAnimal ? 2 : 1,
+                      borderColor: animal === selectedAnimal ? Colors.brand.primary : C.border.default,
+                    }}
+                  >
+                    <Text style={{ fontSize: 26 }}>{animal}</Text>
+                  </TouchableOpacity>
+                ))}
+              </View>
+              {/* Background Color */}
+              <Text style={{ fontSize: FontSize.base, fontWeight: FontWeight.semibold, color: C.text.primary, marginBottom: Spacing.sm }}>{t('background_colour')}</Text>
+              <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: Spacing.sm, marginBottom: Spacing.xl }}>
+                {WARDROBE_COLORS.map((color, i) => (
+                  <TouchableOpacity
+                    key={color + i}
+                    onPress={() => setSelectedBgColor(color)}
+                    style={{
+                      width: 40, height: 40, borderRadius: 20,
+                      backgroundColor: color,
+                      borderWidth: color === selectedBgColor ? 3 : 1,
+                      borderColor: color === selectedBgColor ? Colors.brand.primary : C.border.default,
+                      alignItems: 'center', justifyContent: 'center',
+                    }}
+                  >
+                    {color === selectedBgColor && <Text style={{ color: '#fff', fontSize: 16, fontWeight: FontWeight.bold }}>✓</Text>}
+                  </TouchableOpacity>
+                ))}
+              </View>
+              {/* Save */}
+              <TouchableOpacity
+                style={{ backgroundColor: Colors.brand.primary, borderRadius: Radius.lg, paddingVertical: 14, alignItems: 'center', marginBottom: Spacing.base }}
+                onPress={handleSaveAvatar}
+              >
+                <Text style={{ color: '#fff', fontSize: FontSize.md, fontWeight: FontWeight.bold }}>{t('save')}</Text>
+              </TouchableOpacity>
+            </ScrollView>
+          </View>
+        </View>
+      </Modal>
+
+      {/* ── Add Email Modal ── */}
+      <Modal visible={emailModalVisible} animationType="fade" transparent>
+        <View style={{ flex: 1, backgroundColor: 'rgba(0,0,0,0.7)', alignItems: 'center', justifyContent: 'center', paddingHorizontal: Spacing.xl }}>
+          <View style={{ width: '100%', backgroundColor: C.bg.secondary, borderRadius: Radius.xl, padding: Spacing.xl, borderWidth: 1, borderColor: C.border.default }}>
+            <Text style={{ fontSize: FontSize.lg, fontWeight: FontWeight.bold, color: C.text.primary, marginBottom: Spacing.md }}>✉️  Add Email</Text>
+            <Text style={{ fontSize: FontSize.sm, color: C.text.secondary, marginBottom: Spacing.md }}>Link a real email to your account for recovery and notifications.</Text>
+            <TextInput
+              style={{ backgroundColor: C.bg.tertiary, borderRadius: Radius.md, padding: 14, fontSize: FontSize.base, color: C.text.primary, borderWidth: 1, borderColor: C.border.default, marginBottom: Spacing.md }}
+              placeholder="your@email.com"
+              placeholderTextColor={C.text.tertiary}
+              value={emailInput}
+              onChangeText={setEmailInput}
+              keyboardType="email-address"
+              autoCapitalize="none"
+              autoCorrect={false}
+            />
+            <TouchableOpacity
+              style={{ backgroundColor: Colors.brand.primary, borderRadius: Radius.lg, paddingVertical: 14, alignItems: 'center', marginBottom: Spacing.sm }}
+              onPress={handleSaveEmail}
+            >
+              <Text style={{ color: '#fff', fontSize: FontSize.base, fontWeight: FontWeight.bold }}>Save Email</Text>
+            </TouchableOpacity>
+            <TouchableOpacity
+              style={{ paddingVertical: 10, alignItems: 'center' }}
+              onPress={() => { setEmailModalVisible(false); setEmailInput(''); }}
+            >
+              <Text style={{ color: C.text.tertiary, fontWeight: FontWeight.semibold }}>Cancel</Text>
+            </TouchableOpacity>
+          </View>
+        </View>
+      </Modal>
     </>
   );
 }
@@ -349,6 +526,30 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     paddingHorizontal: Spacing.base,
     paddingVertical: 12,
+  },
+
+  // Wardrobe button
+  wardrobeBtn: {
+    marginHorizontal: Spacing.base,
+    borderRadius: Radius.full,
+    paddingVertical: 12,
+    alignItems: 'center',
+    flexDirection: 'row',
+    justifyContent: 'center',
+    gap: 8,
+  },
+
+  // Email button
+  emailBtn: {
+    marginHorizontal: Spacing.base,
+    marginTop: Spacing.sm,
+    borderRadius: Radius.lg,
+    borderWidth: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: Spacing.base,
+    paddingVertical: 12,
+    gap: 10,
   },
 
   // Language button
