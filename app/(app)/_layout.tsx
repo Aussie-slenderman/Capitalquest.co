@@ -7,6 +7,7 @@ import {
   listenToChatRooms,
   listenToTradeProposals,
   listenToClubInvites,
+  fetchPendingInvites,
 } from '../../src/services/auth';
 import { refreshPortfolioPrices } from '../../src/services/tradingEngine';
 import { subscribeToPrices } from '../../src/services/stockApi';
@@ -87,23 +88,40 @@ export default function AppLayout() {
   // Listen to club invites from Firestore (replaces local state entirely)
   useEffect(() => {
     if (!user?.id) return;
-    const { clearClubInvites } = useAppStore.getState() as { clearClubInvites?: () => void };
-    const unsub = listenToClubInvites(user.id, (invites) => {
-      const typed = invites as Array<{ id: string; clubId?: string; clubName?: string; fromUserId: string; fromUsername: string; sentAt: number }>;
-      // Replace all invites with what Firestore says (clears stale local invites)
-      useAppStore.setState({
-        clubInvites: typed.map(inv => ({
-          id: inv.id,
-          type: 'club_invite' as const,
-          clubId: inv.clubId,
-          clubName: inv.clubName,
-          fromUserId: inv.fromUserId,
-          fromUsername: inv.fromUsername,
-          sentAt: inv.sentAt,
-        })),
+
+    const mapInvites = (invites: Array<{ id: string; type?: string; clubId?: string; clubName?: string; fromUserId: string; fromUsername: string; sentAt: number }>) =>
+      invites.map(inv => ({
+        id: inv.id,
+        type: (inv.type === 'friend_request' ? 'friend_request' : 'club_invite') as 'club_invite' | 'friend_request',
+        clubId: inv.clubId,
+        clubName: inv.clubName,
+        fromUserId: inv.fromUserId,
+        fromUsername: inv.fromUsername,
+        sentAt: inv.sentAt,
+      }));
+
+    // Real-time listener
+    let unsub: (() => void) | undefined;
+    try {
+      unsub = listenToClubInvites(user.id, (invites) => {
+        const typed = invites as Array<{ id: string; type?: string; clubId?: string; clubName?: string; fromUserId: string; fromUsername: string; sentAt: number }>;
+        useAppStore.setState({ clubInvites: mapInvites(typed) });
       });
+    } catch (err) {
+      console.error('Failed to start invite listener:', err);
+    }
+
+    // Also do a one-time fetch as backup in case the listener fails silently
+    fetchPendingInvites(user.id).then((invites) => {
+      const typed = invites as Array<{ id: string; type?: string; clubId?: string; clubName?: string; fromUserId: string; fromUsername: string; sentAt: number }>;
+      if (typed.length > 0) {
+        useAppStore.setState({ clubInvites: mapInvites(typed) });
+      }
+    }).catch((err) => {
+      console.error('Failed to fetch invites:', err);
     });
-    return unsub as () => void;
+
+    return () => { if (unsub) unsub(); };
   }, [user?.id]);
 
   // Listen to trade proposals
@@ -160,14 +178,8 @@ export default function AppLayout() {
       <Tabs.Screen name="leaderboard" options={{ href: null }} />
       <Tabs.Screen name="advisor" options={{ href: null }} />
 
-      {/* ── Centre: Home ── */}
-      <Tabs.Screen
-        name="dashboard"
-        options={{
-          title: t('home'),
-          tabBarButton: (props) => <CenterTabButton {...props} />,
-        }}
-      />
+      {/* ── Dashboard (hidden — accessible via CapitalQuest title tap) ── */}
+      <Tabs.Screen name="dashboard" options={{ href: null }} />
 
       {/* ── RIGHT of Home: 5 tabs ── */}
       <Tabs.Screen

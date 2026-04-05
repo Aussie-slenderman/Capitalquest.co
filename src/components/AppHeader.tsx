@@ -24,8 +24,10 @@ export default function AppHeader({ title }: AppHeaderProps) {
 
   return (
     <View style={[styles.header, { backgroundColor: C.bg.primary, borderBottomColor: C.border.default }]}>
-      {/* Left: screen title */}
-      <Text style={[styles.title, { color: C.text.primary }]} numberOfLines={1}>{title}</Text>
+      {/* Left: screen title — taps go to dashboard */}
+      <TouchableOpacity onPress={() => router.push('/(app)/dashboard' as never)} activeOpacity={0.7} style={{ flex: 1 }}>
+        <Text style={[styles.title, { color: C.text.primary }]} numberOfLines={1}>{title}</Text>
+      </TouchableOpacity>
 
       {/* Right: bell → hamburger */}
       <View style={styles.right}>
