@@ -199,11 +199,9 @@ export default function AppLayout() {
           tabBarIcon: ({ focused }) => (
             <View>
               <TabImageIcon source={TAB_ICONS.social} focused={focused} />
-              {socialBadgeCount > 0 && (
-                <View style={styles.badge}>
-                  <Text style={styles.badgeText}>{socialBadgeCount > 9 ? '9+' : socialBadgeCount}</Text>
-                </View>
-              )}
+              <View style={styles.badge}>
+                <Text style={styles.badgeText}>{socialBadgeCount > 9 ? '9+' : socialBadgeCount}</Text>
+              </View>
             </View>
           ),
         }}
