@@ -237,7 +237,7 @@ export default function AppLayout() {
       screenOptions={{
         headerShown: false,
         contentStyle: { backgroundColor: screenBg },
-        tabBarStyle: [styles.tabBar, { backgroundColor: 'transparent', borderTopWidth: 0, display: isSidebarOpen ? 'none' : 'flex' }],
+        tabBarStyle: [styles.tabBar, { display: isSidebarOpen ? 'none' : 'flex' }],
         tabBarActiveTintColor: appAccentColor,
         tabBarInactiveTintColor: Colors.text.tertiary,
         tabBarShowLabel: false,
@@ -327,12 +327,9 @@ function TabImageIcon({
 
 const styles = StyleSheet.create({
   tabBar: {
-    position: 'absolute',
-    bottom: 0,
-    left: 0,
-    right: 0,
-    backgroundColor: 'transparent',
-    borderTopWidth: 0,
+    backgroundColor: '#000000',
+    borderTopWidth: 1,
+    borderTopColor: '#1A1A1A',
     elevation: 0,
     height: 110,
     paddingBottom: 10,
