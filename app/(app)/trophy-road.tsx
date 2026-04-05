@@ -235,7 +235,7 @@ export default function TrophyRoadScreen() {
           {reversedMilestones.map((gainDollars, revIdx) => {
             const isAchieved  = currentGainDollars >= gainDollars;
             const isCurrent   = currentGainDollars >= gainDollars && currentGainDollars < gainDollars + 100;
-            const reward      = rewardAtGain(gainDollars);
+            // reward cards removed
             const isFirst     = revIdx === MILESTONES.length - 1;
             const isLast      = revIdx === 0;
 
@@ -297,12 +297,7 @@ export default function TrophyRoadScreen() {
                     )}
                   </View>
 
-                  {/* Reward card (when available) */}
-                  {reward && (
-                    <View style={styles.rewardCol}>
-                      <RewardCard reward={reward} unlocked={currentGainDollars >= reward.gainThreshold} />
-                    </View>
-                  )}
+                  {/* Reward cards removed */}
                 </View>
               </React.Fragment>
             );
