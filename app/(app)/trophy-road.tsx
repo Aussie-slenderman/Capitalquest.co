@@ -1,16 +1,14 @@
 /**
- * Awards Screen
+ * Trophy Road
  *
- * Three sub-tabs:
- *  1. Trophy Road  – 10 circular milestones (every $5k up to $50k)
- *  2. Achievements – placeholder (blank for now)
- *  3. Ranked       – global leaderboard (moved from social)
+ * Vertical progression road — milestones every $100 gain (up to +$50,000).
+ * Every $1,000 a reward card appears: alternating avatar or pet, never both at once.
+ * Level 1 avatar (Seedling) is always unlocked and used as the player's profile icon.
  */
 
-import React, { useRef, useEffect, useCallback, useState } from 'react';
+import React, { useRef, useEffect, useCallback } from 'react';
 import {
   View, Text, StyleSheet, ScrollView, Animated, TouchableOpacity,
-  ActivityIndicator,
 } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import AppHeader from '../../src/components/AppHeader';
@@ -19,28 +17,52 @@ import { useAppStore } from '../../src/store/useAppStore';
 import { getXPProgress } from '../../src/constants/achievements';
 import { Colors, FontSize, FontWeight, Spacing, Radius } from '../../src/constants/theme';
 import { formatCurrency } from '../../src/utils/formatters';
-import { getLeaderboard } from '../../src/services/firebase';
-import type { LeaderboardEntry } from '../../src/types';
+import {
+  rewardAtGain,
+  type TrophyReward,
+} from '../../src/constants/trophyRewards';
 
-// Fixed accent color
+// Fixed accent color replacing all zone-based accent colors
 const FIXED_ACCENT = Colors.brand.primary;
 
-// ─── Sub-tab type ────────────────────────────────────────────────────────────
-type AwardsTab = 'trophy-road' | 'achievements' | 'ranked';
+// ─── Road constants ──────────────────────────────────────────────────────────
 
-// ─── 10 evenly-spaced milestones (up to $50,000) ─────────────────────────────
-const MILESTONES = [
-  { gain: 0,     label: 'Start',     color: '#94A3B8' },
-  { gain: 5000,  label: '+$5,000',   color: '#60A5FA' },
-  { gain: 10000, label: '+$10,000',  color: '#34D399' },
-  { gain: 15000, label: '+$15,000',  color: '#F59E0B' },
-  { gain: 20000, label: '+$20,000',  color: '#F97316' },
-  { gain: 25000, label: '+$25,000',  color: '#EF4444' },
-  { gain: 30000, label: '+$30,000',  color: '#8B5CF6' },
-  { gain: 35000, label: '+$35,000',  color: '#EC4899' },
-  { gain: 40000, label: '+$40,000',  color: '#F5C518' },
-  { gain: 50000, label: '+$50,000',  color: '#00D4AA' },
-];
+const MAX_GAIN_DOLLARS = 50000;
+const XP_PER_100 = 20; // 20 XP per $100 milestone = 100 XP per $500 = same level pace
+
+/** All $100 milestone steps from $0 to $50,000. */
+const MILESTONES = Array.from(
+  { length: MAX_GAIN_DOLLARS / 100 + 1 },
+  (_, i) => i * 100,
+); // [0, 100, 200, …, 50000]
+
+/** Level names for the first 10 defined levels + generic fallback. */
+const LEVEL_NAMES: Record<number, string> = {
+  1: 'Beginner Trader',
+  2: 'Novice Investor',
+  3: 'Apprentice Trader',
+  4: 'Trader',
+  5: 'Senior Trader',
+  6: 'Portfolio Manager',
+  7: 'Market Analyst',
+  8: 'Hedge Fund Manager',
+  9: 'Market Legend',
+  10: 'Wolf of Wall Street',
+};
+
+function getLevelName(level: number): string {
+  return LEVEL_NAMES[level] ?? `Elite Trader Lv.${level}`;
+}
+
+function getLevelColor(level: number): string {
+  const COLORS = [
+    '#94A3B8', '#60A5FA', '#34D399', '#F59E0B', '#F97316',
+    '#EF4444', '#8B5CF6', '#EC4899', '#F5C518', '#00D4AA',
+    '#06B6D4', '#84CC16', '#F43F5E', '#A855F7', '#0EA5E9',
+    '#22C55E', '#EAB308', '#FB923C', '#6366F1', '#14B8A6',
+  ];
+  return COLORS[(level - 1) % COLORS.length];
+}
 
 // ─── Pulsing dot (current position) ─────────────────────────────────────────
 
@@ -57,48 +79,119 @@ function PulsingDot({ color }: { color: string }) {
   return <Animated.View style={[styles.pulseDot, { backgroundColor: color, transform: [{ scale }] }]} />;
 }
 
-// ─── Trophy Road Tab Content ─────────────────────────────────────────────────
 
-function TrophyRoadTab() {
-  const { user, portfolio } = useAppStore();
+// ─── Single-reward card ──────────────────────────────────────────────────────
+
+interface RewardCardProps {
+  reward: TrophyReward;
+  unlocked: boolean;
+}
+
+function RewardCard({ reward, unlocked }: RewardCardProps) {
+  const isAvatar = reward.type === 'avatar';
+  const typeColor = isAvatar ? Colors.brand.primary : Colors.brand.accent;
+
+  return (
+    <View style={[styles.rewardCard, !unlocked && styles.rewardCardLocked]}>
+      <LinearGradient
+        colors={unlocked ? [reward.color, `${reward.color}44`] : ['#1A2235', '#111827']}
+        style={styles.rewardGradient}
+        start={{ x: 0, y: 0 }}
+        end={{ x: 1, y: 1 }}
+      >
+        {/* Header row: gain threshold + type pill */}
+        <View style={styles.rewardHeader}>
+          <View style={[styles.gainTag, { backgroundColor: unlocked ? reward.color : Colors.bg.tertiary }]}>
+            <Text style={styles.gainTagText}>
+              {reward.gainThreshold === 0 ? 'START' : `+$${reward.gainThreshold.toLocaleString()}`}
+            </Text>
+          </View>
+          <View style={[styles.typePill, { backgroundColor: `${typeColor}22` }]}>
+            <Text style={[styles.typePillText, { color: typeColor }]}>
+              {isAvatar ? 'AVATAR' : 'PET'}
+            </Text>
+          </View>
+        </View>
+
+        {/* Reward item */}
+        <View style={styles.rewardSingle}>
+          <View style={[styles.rewardFrame, { borderColor: unlocked ? reward.color : `${reward.color}40` }]}>
+            <Text style={[styles.rewardEmoji, !unlocked && { opacity: 0.45 }]}>
+              {reward.emoji}
+            </Text>
+            {!unlocked && (
+              <View style={styles.rewardLockOverlay}>
+                <Text style={styles.rewardLockIcon}>—</Text>
+              </View>
+            )}
+          </View>
+          <Text style={[styles.rewardName, !unlocked && styles.lockedText]}>
+            {reward.name}
+          </Text>
+          {!unlocked && (
+            <Text style={styles.rewardTypeHint}>
+              {reward.type === 'avatar' ? 'Avatar' : 'Pet'}
+            </Text>
+          )}
+        </View>
+
+        {!unlocked && (
+          <Text style={styles.unlockHint}>
+            Earn +${reward.gainThreshold.toLocaleString()} to unlock
+          </Text>
+        )}
+      </LinearGradient>
+    </View>
+  );
+}
+
+// ─── Main screen ─────────────────────────────────────────────────────────────
+
+export default function TrophyRoadScreen() {
+  const { user, portfolio, isSidebarOpen, setSidebarOpen } = useAppStore();
   const scrollRef = useRef<ScrollView>(null);
 
   const currentGainDollars = portfolio?.totalGainLoss ?? 0;
   const currentLevel       = user?.level ?? 1;
   const xpInfo             = getXPProgress(user?.xp ?? 0);
-  const levelColor         = MILESTONES[Math.min(currentLevel - 1, MILESTONES.length - 1)].color;
-
-  const reversed = [...MILESTONES].reverse();
-
-  const currentMilestoneIdx = (() => {
-    for (let i = MILESTONES.length - 1; i >= 0; i--) {
-      if (currentGainDollars >= MILESTONES[i].gain) return i;
-    }
-    return 0;
-  })();
-  const currentGain = MILESTONES[currentMilestoneIdx].gain;
+  const levelColor         = getLevelColor(currentLevel);
 
   const scrollToMe = useCallback(() => {
-    const idx = reversed.findIndex(m => m.gain === currentGain);
-    const ROW_H = SEGMENT_H * 2 + NODE_SIZE;
-    const targetY = Math.max(0, (idx - 1) * ROW_H);
+    // For $0 gains just jump straight to the bottom (the Start node)
+    if (currentGainDollars <= 0) {
+      scrollRef.current?.scrollToEnd({ animated: true });
+      return;
+    }
+    const idx = [...MILESTONES].reverse()
+      .findIndex(m => currentGainDollars >= m && currentGainDollars < m + 100);
+    const ROW_H = SEGMENT_H * 2 + NODE_SIZE; // ≈ 116px per row
+    // Reward-card rows (every $1,000) are ~180px taller; account for those above idx
+    const rewardRowsAbove = Math.floor((MAX_GAIN_DOLLARS - currentGainDollars) / 1000);
+    const targetY = Math.max(0, (idx - 2) * ROW_H + rewardRowsAbove * 180);
     scrollRef.current?.scrollTo({ y: targetY, animated: true });
-  }, [currentGain]);
+  }, [currentGainDollars]);
 
+  // Scroll to current position on mount
   useEffect(() => {
     const timer = setTimeout(scrollToMe, 400);
     return () => clearTimeout(timer);
   }, [scrollToMe]);
 
+  // Build reversed milestone list with zone-transition markers
+  const reversedMilestones = [...MILESTONES].reverse();
+
   return (
-    <View style={{ flex: 1 }}>
+    <View style={styles.container}>
+      <AppHeader title="Trophy Road" />
+
       {/* ── Status Header ── */}
       <LinearGradient
         colors={['#0D1830', '#0A1225', Colors.bg.primary]}
         style={styles.header}
       >
-        <Text style={styles.headerSub}>Grow your portfolio to unlock milestones</Text>
+        <Text style={styles.headerSub}>Grow your portfolio to unlock rewards</Text>
 
+        {/* Current status card */}
         <View style={styles.statusCard}>
           <View style={[styles.levelCircle, { backgroundColor: levelColor }]}>
             <Text style={styles.levelCircleText}>{currentLevel}</Text>
@@ -108,6 +201,7 @@ function TrophyRoadTab() {
             <View style={[styles.levelPill, { backgroundColor: levelColor }]}>
               <Text style={styles.levelPillText}>Level {currentLevel}</Text>
             </View>
+            <Text style={styles.statusName}>{getLevelName(currentLevel)}</Text>
             <Text style={styles.statusGain}>
               Gains: {currentGainDollars >= 0 ? '+' : ''}{formatCurrency(currentGainDollars)}
             </Text>
@@ -119,6 +213,7 @@ function TrophyRoadTab() {
           </View>
         </View>
 
+        {/* XP bar */}
         <View style={styles.xpBarOuter}>
           <Animated.View
             style={[
@@ -129,7 +224,7 @@ function TrophyRoadTab() {
         </View>
       </LinearGradient>
 
-      {/* ── Road with 10 milestones ── */}
+      {/* ── Road + floating button ── */}
       <View style={{ flex: 1 }}>
         <ScrollView
           ref={scrollRef}
@@ -137,20 +232,23 @@ function TrophyRoadTab() {
           contentContainerStyle={styles.roadContent}
           showsVerticalScrollIndicator={false}
         >
-          {reversed.map((ms, idx) => {
-            const isAchieved = currentGainDollars >= ms.gain;
-            const isCurrent  = ms.gain === currentGain;
-            const isFirst    = idx === reversed.length - 1;
-            const isLast     = idx === 0;
+          {reversedMilestones.map((gainDollars, revIdx) => {
+            const isAchieved  = currentGainDollars >= gainDollars;
+            const isCurrent   = currentGainDollars >= gainDollars && currentGainDollars < gainDollars + 100;
+            // reward cards removed
+            const isFirst     = revIdx === MILESTONES.length - 1;
+            const isLast      = revIdx === 0;
 
+            // Spine colours using fixed accent
             const segmentColor  = isAchieved ? FIXED_ACCENT : `${FIXED_ACCENT}20`;
-            const nodeBorderCol = isCurrent ? ms.color : isAchieved ? FIXED_ACCENT : `${FIXED_ACCENT}35`;
-            const nodeBgCol     = isCurrent ? `${ms.color}33` : isAchieved ? `${FIXED_ACCENT}22` : Colors.bg.secondary;
-            const msNumber = MILESTONES.length - idx;
+            const nodeBorderCol = isCurrent ? levelColor : isAchieved ? FIXED_ACCENT : `${FIXED_ACCENT}35`;
+            const nodeBgCol     = isCurrent ? `${levelColor}33` : isAchieved ? `${FIXED_ACCENT}22` : Colors.bg.secondary;
 
             return (
-              <React.Fragment key={ms.gain}>
+              <React.Fragment key={gainDollars}>
                 <View style={styles.milestoneRow}>
+
+                  {/* Road spine */}
                   <View style={styles.spineCol}>
                     {!isLast && (
                       <View style={[styles.segment, { backgroundColor: segmentColor }]} />
@@ -161,10 +259,10 @@ function TrophyRoadTab() {
                       isCurrent && styles.nodeCurrent,
                     ]}>
                       {isCurrent
-                        ? <PulsingDot color={ms.color} />
-                        : isAchieved
-                          ? <Text style={[styles.nodeCheck, { color: FIXED_ACCENT }]}>✓</Text>
-                          : <Text style={[styles.nodeLevelNum, { color: `${ms.color}55` }]}>{msNumber}</Text>
+                        ? <PulsingDot color={levelColor} />
+                        : <Text style={[styles.nodeCheck, { color: FIXED_ACCENT, opacity: isAchieved ? 1 : 0.2 }]}>
+                            {isAchieved ? '✓' : ''}
+                          </Text>
                       }
                     </View>
                     {!isFirst && (
@@ -172,22 +270,34 @@ function TrophyRoadTab() {
                     )}
                   </View>
 
+                  {/* Milestone label */}
                   <View style={styles.milestoneInfo}>
-                    <Text style={[
-                      styles.levelTitle,
-                      isAchieved
-                        ? { color: isCurrent ? ms.color : FIXED_ACCENT }
-                        : styles.milestonePctLocked,
-                      isCurrent && { fontWeight: FontWeight.extrabold },
-                    ]}>
-                      {ms.label}
-                    </Text>
+                    <View style={isAchieved && !isCurrent
+                      ? [styles.gainPill, { backgroundColor: `${FIXED_ACCENT}20`, borderColor: `${FIXED_ACCENT}40` }]
+                      : undefined}>
+                      <Text style={[
+                        styles.milestonePct,
+                        isAchieved ? [styles.milestonePctDone, { color: isCurrent ? levelColor : FIXED_ACCENT }] : styles.milestonePctLocked,
+                        isCurrent && { fontWeight: FontWeight.extrabold },
+                      ]}>
+                        {gainDollars === 0 ? 'Start' : `+$${gainDollars.toLocaleString()}`}
+                      </Text>
+                    </View>
+                    {gainDollars > 0 && (
+                      <View style={[styles.xpPill, { backgroundColor: `${FIXED_ACCENT}20`, borderColor: `${FIXED_ACCENT}40` }]}>
+                        <Text style={[styles.milestoneXP, { color: FIXED_ACCENT, opacity: isAchieved ? 1 : 0.35 }]}>
+                          +{XP_PER_100} XP
+                        </Text>
+                      </View>
+                    )}
                     {isCurrent && (
-                      <View style={[styles.hereBadge, { backgroundColor: ms.color }]}>
+                      <View style={[styles.hereBadge, { backgroundColor: levelColor }]}>
                         <Text style={styles.hereText}>YOU ARE HERE</Text>
                       </View>
                     )}
                   </View>
+
+                  {/* Reward cards removed */}
                 </View>
               </React.Fragment>
             );
@@ -196,6 +306,7 @@ function TrophyRoadTab() {
           <View style={styles.bottomPad} />
         </ScrollView>
 
+        {/* ── Scroll-to-me FAB ── */}
         <TouchableOpacity
           style={[styles.locateMeBtn, { borderColor: `${levelColor}66`, backgroundColor: `${levelColor}18` }]}
           onPress={scrollToMe}
@@ -208,261 +319,29 @@ function TrophyRoadTab() {
   );
 }
 
-// ─── Achievements Tab Content (blank placeholder) ────────────────────────────
-
-function AchievementsTab() {
-  return (
-    <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center', paddingVertical: 60 }}>
-      <Text style={{ fontSize: 48, marginBottom: 12 }}>🏅</Text>
-      <Text style={{ color: Colors.text.primary, fontSize: FontSize.lg, fontWeight: FontWeight.bold }}>
-        Achievements
-      </Text>
-      <Text style={{ color: Colors.text.secondary, fontSize: FontSize.base, textAlign: 'center', marginTop: 8, paddingHorizontal: 32 }}>
-        Coming soon!
-      </Text>
-    </View>
-  );
-}
-
-// ─── Ranked Tab Content (moved from social) ──────────────────────────────────
-
-function RankedTab() {
-  const { user, portfolio } = useAppStore();
-  const [entries, setEntries] = useState<LeaderboardEntry[]>([]);
-  const [loading, setLoading] = useState(true);
-
-  const loadRankings = useCallback(async () => {
-    setLoading(true);
-    try {
-      const data = await getLeaderboard('global');
-      let mapped = Array.isArray(data) && data.length > 0
-        ? (data as LeaderboardEntry[]).map(e => ({
-            ...e,
-            gainDollars: e.gainDollars ?? (e.currentValue - e.startingBalance),
-            isCurrentUser: e.userId === user?.id,
-          }))
-        : [];
-
-      if (user && !mapped.some(e => e.userId === user.id)) {
-        const startBal = portfolio?.startingBalance ?? user.startingBalance ?? 10000;
-        const curVal = portfolio?.totalValue ?? startBal;
-        const gain = curVal - startBal;
-        mapped.push({
-          rank: mapped.length + 1,
-          userId: user.id,
-          username: user.username ?? 'Player',
-          displayName: user.displayName ?? user.username ?? 'Player',
-          level: user.level ?? 1,
-          country: user.country ?? '',
-          startingBalance: startBal,
-          currentValue: curVal,
-          gainDollars: gain,
-          isCurrentUser: true,
-        });
-      }
-      mapped.sort((a, b) => b.gainDollars - a.gainDollars);
-      mapped.forEach((e, i) => { e.rank = i + 1; });
-      setEntries(mapped);
-    } catch {}
-    setLoading(false);
-  }, [user?.id, portfolio?.totalValue]);
-
-  useEffect(() => { loadRankings(); }, []);
-
-  const getInitials = (name: string) =>
-    name.split(' ').map(n => n[0]).join('').toUpperCase().slice(0, 2);
-
-  const RANK_MEDALS: Record<number, string> = { 1: '🥇', 2: '🥈', 3: '🥉' };
-
-  if (loading) {
-    return (
-      <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center', paddingVertical: 60 }}>
-        <ActivityIndicator color={Colors.brand.primary} size="large" />
-        <Text style={{ color: Colors.text.secondary, marginTop: 12, fontSize: FontSize.base }}>Loading rankings...</Text>
-      </View>
-    );
-  }
-
-  if (entries.length === 0) {
-    return (
-      <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center', paddingVertical: 60 }}>
-        <Text style={{ fontSize: 48, marginBottom: 12 }}>🏆</Text>
-        <Text style={{ color: Colors.text.primary, fontSize: FontSize.lg, fontWeight: FontWeight.bold }}>No rankings yet</Text>
-        <Text style={{ color: Colors.text.secondary, fontSize: FontSize.base, textAlign: 'center', marginTop: 8 }}>
-          Rankings will appear once players start trading.
-        </Text>
-      </View>
-    );
-  }
-
-  return (
-    <ScrollView style={{ flex: 1 }} contentContainerStyle={{ padding: Spacing.base, paddingBottom: 32 }}>
-      <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: Spacing.md }}>
-        <Text style={{ fontSize: FontSize.sm, fontWeight: FontWeight.semibold, color: Colors.text.secondary, textTransform: 'uppercase', letterSpacing: 1 }}>
-          Global Rankings
-        </Text>
-        <TouchableOpacity onPress={loadRankings} style={{ paddingHorizontal: 12, paddingVertical: 6, backgroundColor: Colors.bg.secondary, borderRadius: Radius.md, borderWidth: 1, borderColor: Colors.border.default }}>
-          <Text style={{ color: Colors.text.secondary, fontSize: FontSize.sm }}>↻ Refresh</Text>
-        </TouchableOpacity>
-      </View>
-      {entries.map(entry => {
-        const isGain = entry.gainDollars >= 0;
-        const gainColor = isGain ? Colors.market.gain : Colors.market.loss;
-        const levelColor = Colors.levels[(Math.max(1, entry.level ?? 1) - 1) % Colors.levels.length];
-        return (
-          <View
-            key={entry.userId + entry.rank}
-            style={{
-              flexDirection: 'row',
-              alignItems: 'center',
-              backgroundColor: Colors.bg.secondary,
-              borderRadius: Radius.lg,
-              paddingVertical: Spacing.md,
-              paddingHorizontal: Spacing.base,
-              marginBottom: Spacing.xs,
-              borderWidth: 1,
-              borderColor: entry.isCurrentUser ? Colors.brand.primary + '55' : Colors.border.default,
-              ...(entry.isCurrentUser ? { backgroundColor: 'rgba(0,179,230,0.06)' } : {}),
-            }}
-          >
-            {/* Rank */}
-            <View style={{ width: 40, height: 40, borderRadius: Radius.md, alignItems: 'center', justifyContent: 'center', marginRight: Spacing.sm, backgroundColor: entry.rank <= 3 ? 'rgba(245,197,24,0.12)' : 'transparent' }}>
-              {entry.rank <= 3 ? (
-                <Text style={{ fontSize: 22 }}>{RANK_MEDALS[entry.rank]}</Text>
-              ) : (
-                <Text style={{ fontSize: FontSize.sm, fontWeight: FontWeight.bold, color: Colors.text.secondary }}>#{entry.rank}</Text>
-              )}
-            </View>
-            {/* Avatar */}
-            <View style={{ width: 40, height: 40, borderRadius: 20, alignItems: 'center', justifyContent: 'center', marginRight: Spacing.sm, backgroundColor: levelColor + '33', borderWidth: 1, borderColor: levelColor + '55' }}>
-              <Text style={{ fontSize: FontSize.base, fontWeight: FontWeight.bold, color: levelColor }}>{getInitials(entry.displayName)}</Text>
-            </View>
-            {/* Name */}
-            <View style={{ flex: 1, marginRight: Spacing.sm }}>
-              <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
-                <Text style={{ fontSize: FontSize.base, fontWeight: FontWeight.semibold, color: Colors.text.primary, flexShrink: 1 }} numberOfLines={1}>{entry.displayName}</Text>
-                {entry.isCurrentUser && (
-                  <View style={{ backgroundColor: Colors.brand.primary, paddingHorizontal: 6, paddingVertical: 1, borderRadius: 999 }}>
-                    <Text style={{ fontSize: 9, fontWeight: FontWeight.extrabold, color: '#fff', letterSpacing: 0.5 }}>YOU</Text>
-                  </View>
-                )}
-              </View>
-              <Text style={{ fontSize: FontSize.xs, color: Colors.text.tertiary, marginTop: 2 }}>@{entry.username}</Text>
-            </View>
-            {/* Stats */}
-            <View style={{ alignItems: 'flex-end', gap: 4 }}>
-              <Text style={{ fontSize: FontSize.base, fontWeight: FontWeight.bold, color: gainColor }}>
-                {isGain ? '+' : ''}{formatCurrency(entry.gainDollars, 'USD', true)}
-              </Text>
-              <View style={{ borderWidth: 1, paddingHorizontal: 6, paddingVertical: 1, borderRadius: 999, borderColor: levelColor + '66' }}>
-                <Text style={{ fontSize: FontSize.xs, fontWeight: FontWeight.semibold, color: levelColor }}>Lv {entry.level}</Text>
-              </View>
-            </View>
-          </View>
-        );
-      })}
-    </ScrollView>
-  );
-}
-
-// ─── Main screen ─────────────────────────────────────────────────────────────
-
-export default function TrophyRoadScreen() {
-  const [activeTab, setActiveTab] = useState<AwardsTab>('trophy-road');
-
-  const tabs: { key: AwardsTab; label: string }[] = [
-    { key: 'trophy-road',   label: 'Trophy Road' },
-    { key: 'achievements',  label: 'Achievements' },
-    { key: 'ranked',        label: 'Ranked' },
-  ];
-
-  const renderContent = () => {
-    switch (activeTab) {
-      case 'trophy-road':  return <TrophyRoadTab />;
-      case 'achievements': return <AchievementsTab />;
-      case 'ranked':       return <RankedTab />;
-    }
-  };
-
-  return (
-    <View style={styles.container}>
-      <AppHeader title="Awards" />
-
-      {/* ── Sub-tab bar ── */}
-      <View style={styles.tabBar}>
-        {tabs.map((tab) => (
-          <TouchableOpacity
-            key={tab.key}
-            style={[styles.tabItem, activeTab === tab.key && styles.tabItemActive]}
-            onPress={() => setActiveTab(tab.key)}
-          >
-            <Text
-              style={[
-                styles.tabItemText,
-                activeTab === tab.key && styles.tabItemTextActive,
-              ]}
-            >
-              {tab.label}
-            </Text>
-          </TouchableOpacity>
-        ))}
-      </View>
-
-      {/* ── Tab content ── */}
-      <View style={{ flex: 1 }}>{renderContent()}</View>
-    </View>
-  );
-}
-
 // ─── Styles ──────────────────────────────────────────────────────────────────
 
-const NODE_SIZE  = 44;
+const NODE_SIZE  = 32;
 const SEGMENT_H  = 42;
 
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: '#0A0E1A' },
 
-  // Sub-tab bar
-  tabBar: {
-    flexDirection: 'row',
-    backgroundColor: Colors.bg.tertiary,
-    borderBottomWidth: 1,
-    borderBottomColor: Colors.border.default,
-    paddingHorizontal: Spacing.sm,
-    paddingTop: Spacing.sm,
-    gap: 6,
-  },
-  tabItem: {
-    flex: 1,
-    paddingVertical: 12,
-    alignItems: 'center',
-    borderRadius: Radius.md,
-    backgroundColor: 'transparent',
-  },
-  tabItemActive: {
-    backgroundColor: `${Colors.brand.primary}20`,
-    borderBottomWidth: 2,
-    borderBottomColor: Colors.brand.primary,
-  },
-  tabItemText: {
-    fontSize: FontSize.base,
-    fontWeight: FontWeight.semibold,
-    color: Colors.text.secondary,
-  },
-  tabItemTextActive: {
-    color: Colors.brand.primary,
-    fontWeight: FontWeight.bold,
-  },
-
   // Header
   header: {
-    paddingTop: 12,
+    paddingTop: 54,
     paddingBottom: Spacing.lg,
     paddingHorizontal: Spacing.base,
     gap: 4,
     alignItems: 'center',
   },
 
+
+  headerTitle: {
+    fontSize: FontSize.xl,
+    fontWeight: FontWeight.extrabold,
+    color: Colors.text.primary,
+  },
   headerSub: { fontSize: FontSize.sm, color: Colors.text.secondary, marginBottom: 8 },
 
   statusCard: {
@@ -495,8 +374,10 @@ const styles = StyleSheet.create({
     marginBottom: 2,
   },
   levelPillText: { color: '#fff', fontSize: FontSize.xs, fontWeight: FontWeight.bold },
+  statusName: { fontSize: FontSize.sm, fontWeight: FontWeight.bold, color: Colors.text.primary },
   statusGain: { fontSize: FontSize.xs, color: Colors.brand.accent },
   statusNext: { fontSize: FontSize.xs, color: Colors.text.tertiary },
+
 
   xpBarOuter: {
     width: '100%',
@@ -519,6 +400,25 @@ const styles = StyleSheet.create({
     gap: 8,
   },
 
+  // Pill wrapper for achieved milestone labels
+  gainPill: {
+    alignSelf: 'flex-start',
+    borderRadius: Radius.full,
+    borderWidth: 1,
+    paddingHorizontal: 6,
+    paddingVertical: 1,
+    marginBottom: 1,
+  },
+
+  // Pill wrapper for XP labels
+  xpPill: {
+    alignSelf: 'flex-start',
+    borderRadius: Radius.full,
+    borderWidth: 1,
+    paddingHorizontal: 6,
+    paddingVertical: 1,
+  },
+
   // Spine
   spineCol: { alignItems: 'center', width: NODE_SIZE, flexShrink: 0 },
   segment: {
@@ -527,6 +427,7 @@ const styles = StyleSheet.create({
     backgroundColor: Colors.bg.tertiary,
     borderRadius: 2,
   },
+  segmentDone: { backgroundColor: Colors.brand.primary },
   node: {
     width: NODE_SIZE,
     height: NODE_SIZE,
@@ -537,6 +438,10 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     flexShrink: 0,
+  },
+  nodeDone: {
+    borderColor: Colors.brand.primary,
+    backgroundColor: `${Colors.brand.primary}22`,
   },
   nodeCurrent: {
     shadowOffset: { width: 0, height: 0 },
@@ -550,7 +455,6 @@ const styles = StyleSheet.create({
     borderRadius: 6,
   },
   nodeCheck: { fontSize: 14, color: Colors.brand.primary, fontWeight: FontWeight.bold },
-  nodeLevelNum: { fontSize: FontSize.sm, fontWeight: FontWeight.bold },
 
   // Milestone text
   milestoneInfo: {
@@ -558,8 +462,10 @@ const styles = StyleSheet.create({
     flex: 1,
     gap: 2,
   },
-  levelTitle: { fontSize: FontSize.base, fontWeight: FontWeight.bold },
+  milestonePct: { fontSize: FontSize.sm, fontWeight: FontWeight.bold },
+  milestonePctDone: { color: Colors.text.primary },
   milestonePctLocked: { color: Colors.text.tertiary },
+  milestoneXP: { fontSize: FontSize.xs, color: Colors.brand.accent },
   hereBadge: {
     alignSelf: 'flex-start',
     paddingHorizontal: 8,
@@ -573,6 +479,73 @@ const styles = StyleSheet.create({
     color: '#fff',
     letterSpacing: 0.8,
   },
+
+  // Reward card
+  rewardCol: { flex: 2, paddingTop: SEGMENT_H - 6 },
+  rewardCard: {
+    borderRadius: Radius.lg,
+    overflow: 'hidden',
+    borderWidth: 1,
+    borderColor: Colors.border.default,
+    marginBottom: 8,
+  },
+  rewardCardLocked: { opacity: 0.7 },
+  rewardGradient: { padding: 10, gap: 8 },
+
+  rewardHeader: { flexDirection: 'row', alignItems: 'center', gap: 6 },
+  gainTag: {
+    paddingHorizontal: 7,
+    paddingVertical: 2,
+    borderRadius: Radius.full,
+  },
+  gainTagText: { color: '#fff', fontSize: 10, fontWeight: FontWeight.bold },
+  typePill: {
+    paddingHorizontal: 7,
+    paddingVertical: 2,
+    borderRadius: Radius.full,
+    flex: 1,
+    alignItems: 'center',
+  },
+  typePillText: { fontSize: 10, fontWeight: FontWeight.bold },
+
+  rewardSingle: { alignItems: 'center', gap: 4 },
+  rewardFrame: {
+    width: 52,
+    height: 52,
+    borderRadius: 26,
+    borderWidth: 2,
+    backgroundColor: Colors.bg.secondary,
+    alignItems: 'center',
+    justifyContent: 'center',
+    position: 'relative',
+  },
+  rewardLockOverlay: {
+    position: 'absolute',
+    bottom: -4,
+    right: -4,
+    width: 18,
+    height: 18,
+    borderRadius: 9,
+    backgroundColor: Colors.bg.primary,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  rewardLockIcon: { fontSize: 10 },
+  rewardEmoji: { fontSize: 26 },
+  rewardName: {
+    fontSize: FontSize.xs,
+    color: Colors.text.primary,
+    fontWeight: FontWeight.semibold,
+    textAlign: 'center',
+  },
+  rewardTypeHint: {
+    fontSize: 9,
+    color: Colors.text.tertiary,
+    textAlign: 'center',
+    fontStyle: 'italic',
+  },
+  lockedText: { color: Colors.text.secondary },
+  unlockHint: { fontSize: FontSize.xs, color: Colors.text.tertiary, textAlign: 'center', fontStyle: 'italic' },
 
   // Scroll-to-me FAB
   locateMeBtn: {
