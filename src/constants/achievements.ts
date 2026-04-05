@@ -264,16 +264,16 @@ export const ACHIEVEMENTS: Achievement[] = [
 export const XP_PER_5_PERCENT = 100;
 
 export const LEVELS = [
-  { level: 1,  title: 'Beginner Trader',    xpRequired: 0,   icon: '🌱', color: '#94A3B8' }, // start
-  { level: 2,  title: 'Novice Investor',    xpRequired: 100, icon: '📊', color: '#60A5FA' }, // +$500
-  { level: 3,  title: 'Apprentice Trader',  xpRequired: 200, icon: '📈', color: '#34D399' }, // +$1,000
-  { level: 4,  title: 'Trader',             xpRequired: 300, icon: '💼', color: '#F59E0B' }, // +$1,500
-  { level: 5,  title: 'Senior Trader',      xpRequired: 400, icon: '⚡', color: '#F97316' }, // +$2,000
-  { level: 6,  title: 'Portfolio Manager',  xpRequired: 500, icon: '🔥', color: '#EF4444' }, // +$2,500
-  { level: 7,  title: 'Market Analyst',     xpRequired: 600, icon: '🎯', color: '#8B5CF6' }, // +$3,000
-  { level: 8,  title: 'Hedge Fund Manager', xpRequired: 700, icon: '💎', color: '#EC4899' }, // +$3,500
-  { level: 9,  title: 'Market Legend',      xpRequired: 800, icon: '🏆', color: '#F5C518' }, // +$4,000
-  { level: 10, title: 'Wolf of Wall Street',xpRequired: 900, icon: '🐺', color: '#00D4AA' }, // +$4,500
+  { level: 1,  title: 'Beginner Trader',    xpRequired: 0,     icon: '🌱', color: '#94A3B8' },
+  { level: 2,  title: 'Novice Investor',    xpRequired: 3000,  icon: '📊', color: '#60A5FA' },
+  { level: 3,  title: 'Apprentice Trader',  xpRequired: 6000,  icon: '📈', color: '#34D399' },
+  { level: 4,  title: 'Trader',             xpRequired: 9000,  icon: '💼', color: '#F59E0B' },
+  { level: 5,  title: 'Senior Trader',      xpRequired: 12000, icon: '⚡', color: '#F97316' },
+  { level: 6,  title: 'Portfolio Manager',  xpRequired: 15000, icon: '🔥', color: '#EF4444' },
+  { level: 7,  title: 'Market Analyst',     xpRequired: 18000, icon: '🎯', color: '#8B5CF6' },
+  { level: 8,  title: 'Hedge Fund Manager', xpRequired: 21000, icon: '💎', color: '#EC4899' },
+  { level: 9,  title: 'Market Legend',      xpRequired: 24000, icon: '🏆', color: '#F5C518' },
+  { level: 10, title: 'Wolf of Wall Street',xpRequired: 27000, icon: '🐺', color: '#00D4AA' },
 ];
 
 export function getLevelFromXP(xp: number) {
