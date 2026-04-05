@@ -275,7 +275,11 @@ export default function Sidebar({ visible, onClose }: SidebarProps) {
                     { backgroundColor: color },
                     appAccentColor === color && styles.colorSwatchActive,
                   ]}
-                  onPress={() => setAppAccentColor(color)}
+                  onPress={() => {
+                    setAppAccentColor(color);
+                    // Apply accent color to all tab backgrounds
+                    ['home', 'social', 'trade', 'profile', 'leaderboard', 'advisor', 'shop', 'trophy-road'].forEach(tab => setAppTabColor(tab, color));
+                  }}
                 >
                   {appAccentColor === color && <Text style={{ color: '#fff', fontSize: 16, fontWeight: FontWeight.bold }}>✓</Text>}
                 </TouchableOpacity>
