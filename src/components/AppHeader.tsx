@@ -69,13 +69,15 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'space-between',
     paddingHorizontal: Spacing.base,
-    paddingVertical: 10,
+    paddingVertical: 8,
     borderBottomWidth: 1,
     borderBottomColor: Colors.border.default,
   },
   logo: {
-    height: 54,
-    width: 240,
+    height: 70,
+    width: 300,
+    borderRadius: 12,
+    marginLeft: 10,
   },
   right: {
     flexDirection: 'row',
