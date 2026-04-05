@@ -8,7 +8,7 @@ export const ACHIEVEMENTS: Achievement[] = [
     requirement: 'Log into Capital Quest for the first time.',
     icon: '🌱',
     category: 'milestone',
-    xpReward: 50,
+    xpReward: 100,
   },
   {
     id: 'first_trade',
@@ -26,7 +26,7 @@ export const ACHIEVEMENTS: Achievement[] = [
     requirement: 'Purchase shares in an Exchange Traded Fund to learn about broad market exposure.',
     icon: '📊',
     category: 'trading',
-    xpReward: 150,
+    xpReward: 300,
   },
   {
     id: 'sector_scout',
@@ -35,7 +35,7 @@ export const ACHIEVEMENTS: Achievement[] = [
     requirement: 'Own stocks in three different sectors (e.g., Tech, Energy, Healthcare).',
     icon: '🔍',
     category: 'portfolio',
-    xpReward: 200,
+    xpReward: 300,
     target: 3,
   },
   {
@@ -45,7 +45,7 @@ export const ACHIEVEMENTS: Achievement[] = [
     requirement: 'Build a portfolio containing at least 10 different assets to reduce risk.',
     icon: '🌐',
     category: 'portfolio',
-    xpReward: 300,
+    xpReward: 500,
     target: 10,
   },
   {
@@ -55,7 +55,7 @@ export const ACHIEVEMENTS: Achievement[] = [
     requirement: 'Buy an international stock from an exchange outside the United States.',
     icon: '🌍',
     category: 'trading',
-    xpReward: 250,
+    xpReward: 450,
   },
   {
     id: 'cross_exchange_pro',
@@ -64,7 +64,7 @@ export const ACHIEVEMENTS: Achievement[] = [
     requirement: 'Own stocks listed on at least two different exchanges (e.g., NYSE and NASDAQ).',
     icon: '🔄',
     category: 'trading',
-    xpReward: 200,
+    xpReward: 400,
     target: 2,
   },
   {
@@ -74,7 +74,7 @@ export const ACHIEVEMENTS: Achievement[] = [
     requirement: 'Hold a single stock position for more than 30 days without selling.',
     icon: '🤲',
     category: 'portfolio',
-    xpReward: 300,
+    xpReward: 600,
     target: 30,
   },
   {
@@ -84,7 +84,7 @@ export const ACHIEVEMENTS: Achievement[] = [
     requirement: 'Purchase a stock that pays more than 5% dividend to understand passive yield.',
     icon: '💰',
     category: 'trading',
-    xpReward: 200,
+    xpReward: 350,
   },
   {
     id: 'watchlist_wizard',
@@ -113,7 +113,7 @@ export const ACHIEVEMENTS: Achievement[] = [
     requirement: 'Keep your portfolio active after a day where the market drops more than 2%.',
     icon: '💪',
     category: 'portfolio',
-    xpReward: 250,
+    xpReward: 500,
   },
   {
     id: 'balanced_ledger',
@@ -122,7 +122,7 @@ export const ACHIEVEMENTS: Achievement[] = [
     requirement: 'Adjust your position sizes so that no one stock accounts for more than 30% of your total portfolio.',
     icon: '⚖️',
     category: 'portfolio',
-    xpReward: 300,
+    xpReward: 400,
   },
   {
     id: 'fractional_fan',
@@ -131,7 +131,7 @@ export const ACHIEVEMENTS: Achievement[] = [
     requirement: 'Buy a fractional share of a high-priced stock (like Berkshire Hathaway).',
     icon: '🪙',
     category: 'trading',
-    xpReward: 100,
+    xpReward: 150,
   },
   {
     id: 'growth_chaser',
@@ -140,7 +140,7 @@ export const ACHIEVEMENTS: Achievement[] = [
     requirement: 'Invest in a company with a market cap under $2 billion.',
     icon: '🚀',
     category: 'trading',
-    xpReward: 200,
+    xpReward: 300,
   },
   {
     id: 'blue_chip_anchor',
@@ -168,7 +168,7 @@ export const ACHIEVEMENTS: Achievement[] = [
     requirement: 'Your portfolio grows by 10% after a fall of 10%.',
     icon: '🔄',
     category: 'portfolio',
-    xpReward: 400,
+    xpReward: 500,
   },
   {
     id: 'bite_the_bullet',
@@ -177,7 +177,7 @@ export const ACHIEVEMENTS: Achievement[] = [
     requirement: 'Sell a stock that has decreased in value by more than 10% from when you bought it.',
     icon: '😤',
     category: 'trading',
-    xpReward: 150,
+    xpReward: 200,
   },
 ];
 
