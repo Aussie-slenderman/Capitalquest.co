@@ -154,10 +154,10 @@ export default function AppLayout() {
       screenOptions={{
         headerShown: false,
         contentStyle: { backgroundColor: screenBg },
-        tabBarStyle: [styles.tabBar, { backgroundColor: tabBarBg, borderTopColor: tabBarBorder }],
+        tabBarStyle: [styles.tabBar, { backgroundColor: 'transparent', borderTopWidth: 0 }],
         tabBarActiveTintColor: appAccentColor,
         tabBarInactiveTintColor: Colors.text.tertiary,
-        tabBarLabelStyle: styles.tabLabel,
+        tabBarShowLabel: false,
         tabBarItemStyle: styles.tabItem,
       }}
     >
@@ -245,26 +245,26 @@ function TabImageIcon({
 
 const styles = StyleSheet.create({
   tabBar: {
-    backgroundColor: Colors.bg.secondary,
-    borderTopColor: 'rgba(255,255,255,0.15)',
-    borderTopWidth: 1.5,
-    height: 80,
-    paddingBottom: 8,
-    paddingTop: 4,
+    position: 'absolute',
+    bottom: 0,
+    left: 0,
+    right: 0,
+    backgroundColor: 'transparent',
+    borderTopWidth: 0,
+    elevation: 0,
+    height: 90,
+    paddingBottom: 12,
+    paddingTop: 6,
   },
   tabItem: {
     paddingHorizontal: 0,
     minWidth: 0,
   },
-  tabLabel: {
-    fontSize: 10,
-    fontWeight: FontWeight.medium,
-  },
   // Tab image icon
   tabImage: {
-    width: 40,
-    height: 40,
-    borderRadius: 8,
+    width: 60,
+    height: 60,
+    borderRadius: 12,
   },
   // Notification badge
   badge: {
