@@ -21,7 +21,10 @@ import { refreshPortfolioPrices } from '../../src/services/tradingEngine';
 import { subscribeToPrices } from '../../src/services/stockApi';
 import { Colors, FontSize, FontWeight } from '../../src/constants/theme';
 import { useT } from '../../src/constants/translations';
-import type { Portfolio, ChatRoom } from '../../src/types';
+import { ACHIEVEMENTS, getLevelFromXP } from '../../src/constants/achievements';
+import { POPULAR_STOCKS } from '../../src/constants/stocks';
+import { updateUser } from '../../src/services/auth';
+import type { Portfolio, ChatRoom, Achievement } from '../../src/types';
 import AchievementToast from '../../src/components/AchievementToast';
 import Sidebar from '../../src/components/Sidebar';
 
@@ -59,6 +62,81 @@ export default function AppLayout() {
     });
     return unsub;
   }, [user?.id]);
+
+  // Retroactive achievement check — runs once when portfolio is available
+  const hasCheckedAchievements = useRef(false);
+  useEffect(() => {
+    if (!user?.id || !portfolio || hasCheckedAchievements.current) return;
+    hasCheckedAchievements.current = true;
+
+    const alreadyUnlocked = new Set(
+      (user.achievements || []).filter((a: any) => a.unlockedAt).map((a: any) => a.id)
+    );
+    const newlyUnlocked: any[] = [];
+
+    const stockData = POPULAR_STOCKS.reduce((map, s) => { map[s.symbol] = s; return map; }, {} as Record<string, typeof POPULAR_STOCKS[0]>);
+    const holdingStocks = portfolio.holdings.map(h => stockData[h.symbol]).filter(Boolean);
+    const holdingSectors = new Set(holdingStocks.map(s => s.sector));
+    const holdingExchanges = new Set(holdingStocks.map(s => s.exchange));
+    const hasInternational = holdingStocks.some(s => s.country !== 'US');
+    const hasETF = holdingStocks.some(s => s.sector === 'ETF');
+    const totalValue = portfolio.totalValue || 1;
+    const maxPct = Math.max(...portfolio.holdings.map(h => (h.currentValue / totalValue) * 100), 0);
+    const isBalanced = portfolio.holdings.length >= 2 && maxPct <= 30;
+    const gainDollars = portfolio.totalGainLoss ?? 0;
+    const gainPercent = (gainDollars / (portfolio.startingBalance || 1)) * 100;
+    const orders = portfolio.orders ?? [];
+    const filledBuys = orders.filter(o => o.type === 'buy' && o.status === 'filled' && o.filledAt);
+    const now = Date.now();
+    const BLUE_CHIPS = ['AAPL', 'MSFT', 'GOOGL', 'AMZN', 'JPM', 'V', 'BRK.B', 'KO', 'JNJ', 'PG', 'WMT'];
+
+    for (const ach of ACHIEVEMENTS) {
+      if (alreadyUnlocked.has(ach.id)) continue;
+      let shouldUnlock = false;
+      switch (ach.id) {
+        case 'first_login': shouldUnlock = true; break;
+        case 'first_trade': shouldUnlock = orders.length > 0; break;
+        case 'etf_explorer': shouldUnlock = hasETF; break;
+        case 'sector_scout': shouldUnlock = holdingSectors.size >= 3; break;
+        case 'the_diversifier': shouldUnlock = portfolio.holdings.length >= 10; break;
+        case 'global_nomad': shouldUnlock = hasInternational; break;
+        case 'cross_exchange_pro': shouldUnlock = holdingExchanges.size >= 2; break;
+        case 'steady_hands':
+          shouldUnlock = portfolio.holdings.some(h => {
+            const fb = filledBuys.find(o => o.symbol === h.symbol);
+            return fb?.filledAt && (now - fb.filledAt) >= 30 * 24 * 60 * 60 * 1000;
+          });
+          break;
+        case 'balanced_ledger': shouldUnlock = isBalanced; break;
+        case 'growth_chaser':
+          shouldUnlock = holdingStocks.some(s => !BLUE_CHIPS.includes(s.symbol) && s.sector !== 'ETF');
+          break;
+        case 'blue_chip_anchor':
+          shouldUnlock = portfolio.holdings.some(h => {
+            if (!BLUE_CHIPS.includes(h.symbol)) return false;
+            const fb = filledBuys.find(o => o.symbol === h.symbol);
+            return fb?.filledAt && (now - fb.filledAt) >= 14 * 24 * 60 * 60 * 1000;
+          });
+          break;
+        case 'profit_milestone': shouldUnlock = gainPercent >= 10; break;
+      }
+      if (shouldUnlock) {
+        newlyUnlocked.push({ ...ach, unlockedAt: Date.now() });
+        alreadyUnlocked.add(ach.id);
+      }
+    }
+
+    if (newlyUnlocked.length > 0) {
+      const existing = user.achievements || [];
+      const merged = [...existing, ...newlyUnlocked];
+      const xpGained = newlyUnlocked.reduce((sum: number, a: any) => sum + a.xpReward, 0);
+      const newXP = (user.xp || 0) + xpGained;
+      const newLevel = getLevelFromXP(newXP);
+      const updatedUser = { ...user, achievements: merged, xp: newXP, level: newLevel.level };
+      useAppStore.getState().setUser(updatedUser);
+      updateUser(user.id, { achievements: merged, xp: newXP, level: newLevel.level }).catch(() => {});
+    }
+  }, [user?.id, portfolio]);
 
   // Refresh portfolio prices every 30s
   useEffect(() => {
