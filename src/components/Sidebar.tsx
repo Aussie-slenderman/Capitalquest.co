@@ -1,4 +1,4 @@
-import React, { useEffect, useRef } from 'react';
+import React, { useEffect, useRef, useState, useMemo } from 'react';
 import {
   View,
   Text,
@@ -6,88 +6,39 @@ import {
   Animated,
   TouchableOpacity,
   ScrollView,
-  Dimensions,
+  Modal,
+  FlatList,
+  TextInput,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { useAppStore } from '../store/useAppStore';
-import { Colors, FontSize, FontWeight, Spacing, Radius } from '../constants/theme';
-import { formatCurrency, formatPercent, formatShares } from '../utils/formatters';
-import { getXPProgress } from '../constants/achievements';
-import { router } from 'expo-router';
+import { Colors, LightColors, FontSize, FontWeight, Spacing, Radius } from '../constants/theme';
+import { formatAccountNumber } from '../utils/formatters';
+import { LANGUAGES, useT } from '../constants/translations';
 
 const SIDEBAR_WIDTH = 300;
-const TRENDING_SYMBOLS = ['NVDA', 'TSLA', 'META', 'AAPL', 'MSFT'];
 
-const NAV_TABS = [
-  { icon: '📊', label: 'Markets',   route: '/(app)/home' },
-  { icon: '💼', label: 'Portfolio', route: '/(app)/portfolio' },
-  { icon: '📈', label: 'Trade',     route: '/(app)/trade' },
-  { icon: '🏆', label: 'Ranks',     route: '/(app)/leaderboard' },
-  { icon: '💬', label: 'Social',    route: '/(app)/social' },
-  { icon: '🎖️', label: 'Trophy',   route: '/(app)/trophy-road' },
-  { icon: '👤', label: 'Profile',   route: '/(app)/profile' },
+const ACCENT_COLORS = [
+  { label: 'Sky Blue',   color: '#00B3E6' },
+  { label: 'Emerald',    color: '#00D4AA' },
+  { label: 'Purple',     color: '#7C3AED' },
+  { label: 'Rose',       color: '#EC4899' },
+  { label: 'Gold',       color: '#F5C518' },
+  { label: 'Orange',     color: '#F59E0B' },
+  { label: 'Lime',       color: '#22C55E' },
+  { label: 'Red',        color: '#EF4444' },
+  { label: 'Indigo',     color: '#6366F1' },
+  { label: 'Cyan',       color: '#06B6D4' },
+  { label: 'White',      color: '#F1F5F9' },
+  { label: 'Coral',      color: '#FF6B6B' },
 ];
 
-// ─── Level color helper ───────────────────────────────────────────────────────
-
-function getLevelColor(level: number): string {
-  return Colors.levels[Math.min(level - 1, Colors.levels.length - 1)] ?? Colors.levels[0];
-}
-
-// ─── Initials Avatar ──────────────────────────────────────────────────────────
-
-function InitialsAvatar({
-  name,
-  size = 40,
-  color = Colors.brand.primary,
-}: {
-  name: string;
-  size?: number;
-  color?: string;
-}) {
-  const initials = name
-    .split(' ')
-    .map((w) => w[0])
-    .join('')
-    .toUpperCase()
-    .slice(0, 2);
-
-  return (
-    <View
-      style={{
-        width: size,
-        height: size,
-        borderRadius: size / 2,
-        backgroundColor: color + '33',
-        borderWidth: 1.5,
-        borderColor: color,
-        alignItems: 'center',
-        justifyContent: 'center',
-      }}
-    >
-      <Text
-        style={{
-          fontSize: size * 0.38,
-          fontWeight: FontWeight.bold,
-          color,
-        }}
-      >
-        {initials}
-      </Text>
-    </View>
-  );
-}
-
-// ─── Section Header ───────────────────────────────────────────────────────────
-
-function SectionHeader({ title }: { title: string }) {
-  return (
-    <View style={styles.sectionHeader}>
-      <Text style={styles.sectionTitle}>{title}</Text>
-    </View>
-  );
-}
+const TAB_COLOR_OPTIONS = [
+  { label: 'Social',  tab: 'social',      defaultColor: '#EC4899', icon: '💬' },
+  { label: 'Trade',   tab: 'trade',       defaultColor: '#00C853', icon: '📊' },
+  { label: 'Profile', tab: 'profile',     defaultColor: '#7C3AED', icon: '👤' },
+];
 
 // ─── Sidebar Component ────────────────────────────────────────────────────────
 
@@ -100,8 +51,30 @@ export default function Sidebar({ visible, onClose }: SidebarProps) {
   const insets = useSafeAreaInsets();
   const translateX = useRef(new Animated.Value(SIDEBAR_WIDTH)).current;
   const overlayOpacity = useRef(new Animated.Value(0)).current;
+  const t = useT();
 
-  const { user, portfolio, watchlist, quotes } = useAppStore();
+  const {
+    user,
+    appColorMode, setAppColorMode,
+    appAccentColor, setAppAccentColor,
+    appTileStyle, setAppTileStyle,
+    appTabColors, setAppTabColor,
+    appLanguage, setAppLanguage,
+  } = useAppStore();
+
+  const isLight = appColorMode === 'light';
+  const C = isLight ? LightColors : Colors;
+
+  const [langPickerVisible, setLangPickerVisible] = useState(false);
+  const [langSearch, setLangSearch] = useState('');
+  const filteredLangs = useMemo(() => {
+    if (!langSearch.trim()) return LANGUAGES;
+    const q = langSearch.toLowerCase();
+    return LANGUAGES.filter(l =>
+      l.name.toLowerCase().includes(q) || l.nativeName.toLowerCase().includes(q)
+    );
+  }, [langSearch]);
+  const currentLang = LANGUAGES.find(l => l.code === appLanguage) ?? LANGUAGES[0];
 
   // ─── Slide animation ────────────────────────────────────────────────────────
   useEffect(() => {
@@ -135,43 +108,6 @@ export default function Sidebar({ visible, onClose }: SidebarProps) {
     }
   }, [visible, translateX, overlayOpacity]);
 
-  if (!visible) {
-    // Keep component mounted for exit animation; guard with pointer-events
-  }
-
-  // ─── Top Movers ─────────────────────────────────────────────────────────────
-
-  const topMovers = watchlist
-    .map((symbol) => ({
-      symbol,
-      quote: quotes[symbol],
-    }))
-    .filter((s) => s.quote !== undefined)
-    .sort((a, b) =>
-      Math.abs(b.quote!.changePercent) - Math.abs(a.quote!.changePercent)
-    )
-    .slice(0, 5);
-
-  // ─── Trending Stocks ─────────────────────────────────────────────────────────
-
-  const trendingStocks = TRENDING_SYMBOLS.map((symbol) => ({
-    symbol,
-    quote: quotes[symbol],
-  }));
-
-  // ─── Level Progress ──────────────────────────────────────────────────────────
-
-  const xp = user?.xp ?? 0;
-  const xpProgress = getXPProgress(xp);
-  const levelColor = getLevelColor(xpProgress.current.level);
-
-  // ─── Navigate to trade ───────────────────────────────────────────────────────
-
-  const navigateToTrade = (symbol: string) => {
-    onClose();
-    router.push({ pathname: '/(app)/trade', params: { symbol } } as never);
-  };
-
   return (
     <>
       {/* Overlay */}
@@ -190,15 +126,17 @@ export default function Sidebar({ visible, onClose }: SidebarProps) {
             transform: [{ translateX }],
             paddingTop: insets.top,
             paddingBottom: insets.bottom,
+            backgroundColor: C.bg.secondary,
+            borderLeftColor: C.border.default,
           },
         ]}
         pointerEvents={visible ? 'auto' : 'none'}
       >
         {/* Close Button */}
-        <View style={styles.closeRow}>
-          <Text style={styles.sidebarHeading}>Overview</Text>
-          <TouchableOpacity style={styles.closeBtn} onPress={onClose} hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}>
-            <Text style={styles.closeBtnText}>✕</Text>
+        <View style={[styles.closeRow, { borderBottomColor: C.border.default }]}>
+          <Text style={[styles.sidebarHeading, { color: C.text.primary }]}>Settings</Text>
+          <TouchableOpacity style={[styles.closeBtn, { backgroundColor: C.bg.tertiary, borderColor: C.border.default }]} onPress={onClose} hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}>
+            <Text style={[styles.closeBtnText, { color: C.text.secondary }]}>✕</Text>
           </TouchableOpacity>
         </View>
 
@@ -206,203 +144,125 @@ export default function Sidebar({ visible, onClose }: SidebarProps) {
           showsVerticalScrollIndicator={false}
           contentContainerStyle={{ paddingBottom: Spacing['2xl'] }}
         >
-          {/* ── Navigation Tabs ──────────────────────────────────────────── */}
-          <SectionHeader title="Navigate" />
-          <View style={styles.navGrid}>
-            {NAV_TABS.map(tab => (
-              <TouchableOpacity
-                key={tab.route}
-                style={styles.navItem}
-                onPress={() => {
-                  onClose();
-                  router.push(tab.route as never);
-                }}
-              >
-                <Text style={styles.navIcon}>{tab.icon}</Text>
-                <Text style={styles.navLabel}>{tab.label}</Text>
-              </TouchableOpacity>
-            ))}
-          </View>
-
-          {/* ── Section 1: My Holdings ───────────────────────────────────── */}
-          <SectionHeader title="My Holdings" />
-          {!portfolio || portfolio.holdings.length === 0 ? (
-            <View style={styles.emptySection}>
-              <Text style={styles.emptyText}>No holdings yet</Text>
-            </View>
-          ) : (
-            portfolio.holdings.map((holding) => {
-              const isGain = holding.gainLossPercent >= 0;
-              const changeColor = isGain ? Colors.market.gain : Colors.market.loss;
-              return (
-                <TouchableOpacity
-                  key={holding.symbol}
-                  style={styles.holdingRow}
-                  onPress={() => navigateToTrade(holding.symbol)}
-                >
-                  <View style={styles.holdingLeft}>
-                    <Text style={styles.holdingSymbol}>{holding.symbol}</Text>
-                    <Text style={styles.holdingShares}>
-                      {formatShares(holding.shares)} shares
-                    </Text>
-                  </View>
-                  <View style={styles.holdingRight}>
-                    <Text style={styles.holdingValue}>
-                      {formatCurrency(holding.currentValue)}
-                    </Text>
-                    <Text style={[styles.holdingChange, { color: changeColor }]}>
-                      {isGain ? '+' : ''}
-                      {formatPercent(holding.gainLossPercent)}
-                    </Text>
-                  </View>
-                </TouchableOpacity>
-              );
-            })
-          )}
-
-          {/* ── Section 2: Top Movers ────────────────────────────────────── */}
-          <SectionHeader title="Top Movers Today" />
-          {topMovers.length === 0 ? (
-            <View style={styles.emptySection}>
-              <Text style={styles.emptyText}>No market data yet</Text>
-            </View>
-          ) : (
-            topMovers.map(({ symbol, quote }) => {
-              if (!quote) return null;
-              const isGain = quote.changePercent >= 0;
-              const changeColor = isGain ? Colors.market.gain : Colors.market.loss;
-              const badgeBg = isGain ? Colors.market.gainBg : Colors.market.lossBg;
-              return (
-                <View key={symbol} style={styles.moverRow}>
-                  <View style={[styles.moverBadge, { backgroundColor: badgeBg }]}>
-                    <Text style={[styles.moverBadgeText, { color: changeColor }]}>
-                      {isGain ? '▲' : '▼'}{' '}
-                      {formatPercent(Math.abs(quote.changePercent), false)}
-                    </Text>
-                  </View>
-                  <View style={styles.moverInfo}>
-                    <Text style={styles.moverSymbol}>{symbol}</Text>
-                    <Text style={styles.moverPrice}>
-                      {formatCurrency(quote.price)}
-                    </Text>
-                  </View>
-                  <TouchableOpacity
-                    style={styles.buyBtn}
-                    onPress={() => navigateToTrade(symbol)}
-                  >
-                    <Text style={styles.buyBtnText}>BUY</Text>
-                  </TouchableOpacity>
-                </View>
-              );
-            })
-          )}
-
-          {/* ── Section 3: Trending Stocks ───────────────────────────────── */}
-          <SectionHeader title="Trending Stocks" />
-          {trendingStocks.map(({ symbol, quote }) => (
-            <TouchableOpacity
-              key={symbol}
-              style={styles.trendingRow}
-              onPress={() => navigateToTrade(symbol)}
-            >
-              <InitialsAvatar name={symbol} size={34} color={Colors.brand.accent} />
-              <View style={styles.trendingInfo}>
-                <Text style={styles.trendingSymbol}>{symbol}</Text>
-                {quote ? (
-                  <Text
-                    style={[
-                      styles.trendingChange,
-                      {
-                        color:
-                          quote.changePercent >= 0
-                            ? Colors.market.gain
-                            : Colors.market.loss,
-                      },
-                    ]}
-                  >
-                    {quote.changePercent >= 0 ? '+' : ''}
-                    {formatPercent(quote.changePercent)}
-                  </Text>
-                ) : (
-                  <Text style={styles.trendingChange}>—</Text>
-                )}
-              </View>
-              <Text style={styles.trendingPrice}>
-                {quote ? formatCurrency(quote.price) : '—'}
+          {/* ── Account Number ── */}
+          <View style={[styles.settingsSection, { borderTopColor: C.border.default }]}>
+            <Text style={[styles.sectionTitle, { color: C.text.primary }]}>{t('account_number')}</Text>
+            <View style={[styles.accountRow, { backgroundColor: C.bg.tertiary, borderColor: C.border.default }]}>
+              <Text style={{ fontSize: FontSize.base, color: C.text.secondary }}>
+                {user ? formatAccountNumber(user.accountNumber) : '—'}
               </Text>
-            </TouchableOpacity>
-          ))}
-
-          {/* ── Section 4: Level Progress ────────────────────────────────── */}
-          <SectionHeader title="Your Level Progress" />
-          <View style={styles.levelCard}>
-            <View style={styles.levelTopRow}>
-              <Text style={styles.levelIcon}>{xpProgress.current.icon}</Text>
-              <View style={styles.levelDetails}>
-                <Text style={[styles.levelTitle, { color: levelColor }]}>
-                  {xpProgress.current.title}
-                </Text>
-                <Text style={styles.levelSubtitle}>
-                  Level {xpProgress.current.level}
-                  {xpProgress.nextLevel
-                    ? ` → ${xpProgress.nextLevel.title}`
-                    : ' (Max Level)'}
-                </Text>
-              </View>
             </View>
-
-            {/* XP Progress Bar */}
-            <View style={styles.xpBarContainer}>
-              <View style={styles.xpBarTrack}>
-                <Animated.View
-                  style={[
-                    styles.xpBarFill,
-                    {
-                      width: `${Math.min(xpProgress.progress * 100, 100)}%`,
-                      backgroundColor: levelColor,
-                    },
-                  ]}
-                />
-              </View>
-              <View style={styles.xpLabelRow}>
-                <Text style={styles.xpLabel}>
-                  {xpProgress.xpInLevel.toLocaleString()} XP
-                </Text>
-                {xpProgress.nextLevel && (
-                  <Text style={styles.xpLabel}>
-                    {xpProgress.xpNeeded.toLocaleString()} XP needed
-                  </Text>
-                )}
-              </View>
-            </View>
-
-            {xpProgress.nextLevel && (
-              <View style={styles.nextMilestoneRow}>
-                <Text style={styles.nextMilestoneLabel}>Next milestone</Text>
-                <View
-                  style={[
-                    styles.nextMilestoneBadge,
-                    { backgroundColor: getLevelColor(xpProgress.nextLevel.level) + '22' },
-                  ]}
-                >
-                  <Text style={styles.nextMilestoneIcon}>
-                    {xpProgress.nextLevel.icon}
-                  </Text>
-                  <Text
-                    style={[
-                      styles.nextMilestoneText,
-                      { color: getLevelColor(xpProgress.nextLevel.level) },
-                    ]}
-                  >
-                    {xpProgress.nextLevel.title}
-                  </Text>
-                </View>
-              </View>
-            )}
           </View>
 
+          {/* ── Language ── */}
+          <TouchableOpacity
+            style={[styles.langBtn, { backgroundColor: C.bg.tertiary, borderColor: C.border.default }]}
+            onPress={() => setLangPickerVisible(true)}
+          >
+            <Text style={{ fontSize: FontSize.base, fontWeight: FontWeight.medium, color: C.text.primary }}>🌐  {t('language')}</Text>
+            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
+              <Text style={{ fontSize: FontSize.base, color: Colors.brand.primary, fontWeight: FontWeight.semibold }}>{currentLang.nativeName}</Text>
+              <Text style={{ fontSize: 12, color: C.text.tertiary }}>▶</Text>
+            </View>
+          </TouchableOpacity>
+
+          {/* ── Appearance Settings ── */}
+          <View style={[styles.settingsSection, { borderTopColor: C.border.default }]}>
+            <Text style={[styles.sectionTitle, { color: C.text.primary }]}>{t('appearance')}</Text>
+
+            {/* Dark / Light Mode */}
+            <Text style={[styles.settingsSubhead, { color: C.text.secondary }]}>{t('mode')}</Text>
+            <View style={[styles.modeRow, { backgroundColor: C.bg.tertiary, borderColor: C.border.default }]}>
+              <TouchableOpacity
+                style={[styles.modeBtn, appColorMode === 'dark' && { backgroundColor: appAccentColor }]}
+                onPress={() => setAppColorMode('dark')}
+              >
+                <Text style={{ fontSize: FontSize.base, fontWeight: FontWeight.semibold, color: appColorMode === 'dark' ? '#fff' : C.text.primary }}>{`🌑  ${t('dark')}`}</Text>
+              </TouchableOpacity>
+              <TouchableOpacity
+                style={[styles.modeBtn, appColorMode === 'light' && { backgroundColor: appAccentColor }]}
+                onPress={() => setAppColorMode('light')}
+              >
+                <Text style={{ fontSize: FontSize.base, fontWeight: FontWeight.semibold, color: appColorMode === 'light' ? '#fff' : C.text.primary }}>{`☀️  ${t('light')}`}</Text>
+              </TouchableOpacity>
+            </View>
+
+            {/* Accent Colour */}
+            <Text style={[styles.settingsSubhead, { color: C.text.secondary }]}>{t('accent_colour')}</Text>
+            <View style={styles.colorGrid}>
+              {ACCENT_COLORS.map(({ label, color }) => (
+                <TouchableOpacity
+                  key={color}
+                  style={[
+                    styles.colorSwatch,
+                    { backgroundColor: color },
+                    appAccentColor === color && styles.colorSwatchActive,
+                  ]}
+                  onPress={() => setAppAccentColor(color)}
+                >
+                  {appAccentColor === color && <Text style={{ color: '#fff', fontSize: 16, fontWeight: FontWeight.bold }}>✓</Text>}
+                </TouchableOpacity>
+              ))}
+            </View>
+
+            {/* Reset */}
+            <TouchableOpacity
+              style={[styles.resetBtn, { borderColor: C.border.default }]}
+              onPress={() => {
+                setAppColorMode('dark');
+                setAppAccentColor('#00B3E6');
+                setAppTileStyle('default');
+                TAB_COLOR_OPTIONS.forEach(({ tab, defaultColor }) => setAppTabColor(tab, defaultColor));
+              }}
+            >
+              <Text style={[styles.resetText, { color: C.text.tertiary }]}>{`↺  ${t('reset_defaults')}`}</Text>
+            </TouchableOpacity>
+          </View>
         </ScrollView>
       </Animated.View>
+
+      {/* ── Language Picker Modal ── */}
+      <Modal visible={langPickerVisible} transparent animationType="slide">
+        <View style={{ flex: 1, backgroundColor: 'rgba(0,0,0,0.75)', justifyContent: 'flex-end' }}>
+          <View style={{ backgroundColor: C.bg.secondary, borderTopLeftRadius: 20, borderTopRightRadius: 20, maxHeight: '80%', paddingBottom: 40 }}>
+            <View style={{ padding: 20, borderBottomWidth: 1, borderBottomColor: C.border.default }}>
+              <Text style={{ fontSize: FontSize.lg, fontWeight: FontWeight.bold, color: C.text.primary }}>{t('select_language')}</Text>
+            </View>
+            <TextInput
+              style={{ marginHorizontal: 20, marginVertical: 10, backgroundColor: C.bg.tertiary, borderRadius: 12, padding: 12, fontSize: 15, color: C.text.primary, borderWidth: 1, borderColor: C.border.default }}
+              placeholder={t('search_languages')}
+              placeholderTextColor={C.text.tertiary}
+              value={langSearch}
+              onChangeText={setLangSearch}
+            />
+            <FlatList
+              data={filteredLangs}
+              keyExtractor={(item) => item.code}
+              renderItem={({ item }) => (
+                <TouchableOpacity
+                  style={{ paddingHorizontal: Spacing.base, paddingVertical: 14, borderBottomWidth: 1, borderBottomColor: C.border.default, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', ...(item.code === appLanguage ? { backgroundColor: 'rgba(0,179,230,0.1)' } : {}) }}
+                  onPress={() => { setAppLanguage(item.code); setLangPickerVisible(false); setLangSearch(''); }}
+                >
+                  <View>
+                    <Text style={{ fontSize: FontSize.base, color: item.code === appLanguage ? Colors.brand.primary : C.text.primary, fontWeight: item.code === appLanguage ? FontWeight.semibold : FontWeight.regular }}>
+                      {item.nativeName}
+                    </Text>
+                    <Text style={{ fontSize: FontSize.xs, color: C.text.tertiary, marginTop: 2 }}>{item.name}</Text>
+                  </View>
+                  {item.code === appLanguage && <Text style={{ color: Colors.brand.primary, fontSize: FontSize.lg, fontWeight: FontWeight.bold }}>✓</Text>}
+                </TouchableOpacity>
+              )}
+              style={{ maxHeight: 400 }}
+            />
+            <TouchableOpacity
+              style={{ margin: 16, padding: 14, borderRadius: 12, borderWidth: 1, borderColor: C.border.default, alignItems: 'center' }}
+              onPress={() => { setLangPickerVisible(false); setLangSearch(''); }}
+            >
+              <Text style={{ color: C.text.tertiary, fontWeight: FontWeight.semibold }}>Cancel</Text>
+            </TouchableOpacity>
+          </View>
+        </View>
+      </Modal>
     </>
   );
 }
@@ -430,34 +290,6 @@ const styles = StyleSheet.create({
     shadowOpacity: 0.4,
     shadowRadius: 12,
     elevation: 20,
-  },
-
-  // Navigation grid
-  navGrid: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    paddingHorizontal: Spacing.sm,
-    paddingVertical: Spacing.sm,
-    gap: Spacing.xs,
-  },
-  navItem: {
-    width: '30%',
-    flexGrow: 1,
-    backgroundColor: Colors.bg.tertiary,
-    borderRadius: Radius.md,
-    paddingVertical: Spacing.sm,
-    paddingHorizontal: Spacing.xs,
-    alignItems: 'center',
-    borderWidth: 1,
-    borderColor: Colors.border.default,
-    gap: 4,
-  },
-  navIcon: { fontSize: 20 },
-  navLabel: {
-    fontSize: 10,
-    fontWeight: FontWeight.medium,
-    color: Colors.text.secondary,
-    textAlign: 'center',
   },
 
   // Header
@@ -491,256 +323,94 @@ const styles = StyleSheet.create({
     fontWeight: FontWeight.bold,
   },
 
-  // Section Headers
-  sectionHeader: {
+  // Settings sections
+  settingsSection: {
     paddingHorizontal: Spacing.base,
     paddingTop: Spacing.lg,
     paddingBottom: Spacing.sm,
-    borderBottomWidth: 1,
-    borderBottomColor: Colors.border.default,
   },
   sectionTitle: {
-    fontSize: FontSize.xs,
-    fontWeight: FontWeight.semibold,
-    color: Colors.text.tertiary,
-    textTransform: 'uppercase',
-    letterSpacing: 0.8,
-  },
-
-  // Empty State
-  emptySection: {
-    paddingHorizontal: Spacing.base,
-    paddingVertical: Spacing.md,
-  },
-  emptyText: {
-    fontSize: FontSize.sm,
-    color: Colors.text.tertiary,
-  },
-
-  // Holdings
-  holdingRow: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    paddingHorizontal: Spacing.base,
-    paddingVertical: Spacing.md,
-    borderBottomWidth: 1,
-    borderBottomColor: Colors.border.default,
-  },
-  holdingLeft: {
-    flex: 1,
-  },
-  holdingSymbol: {
-    fontSize: FontSize.base,
-    fontWeight: FontWeight.semibold,
-    color: Colors.text.primary,
-  },
-  holdingShares: {
-    fontSize: FontSize.xs,
-    color: Colors.text.tertiary,
-    marginTop: 2,
-  },
-  holdingRight: {
-    alignItems: 'flex-end',
-  },
-  holdingValue: {
-    fontSize: FontSize.base,
-    fontWeight: FontWeight.semibold,
-    color: Colors.text.primary,
-  },
-  holdingChange: {
-    fontSize: FontSize.xs,
-    fontWeight: FontWeight.medium,
-    marginTop: 2,
-  },
-
-  // Top Movers
-  moverRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    paddingHorizontal: Spacing.base,
-    paddingVertical: Spacing.sm + 2,
-    borderBottomWidth: 1,
-    borderBottomColor: Colors.border.default,
-    gap: Spacing.sm,
-  },
-  moverBadge: {
-    paddingHorizontal: Spacing.sm,
-    paddingVertical: 4,
-    borderRadius: Radius.sm,
-    minWidth: 70,
-    alignItems: 'center',
-  },
-  moverBadgeText: {
-    fontSize: FontSize.xs,
-    fontWeight: FontWeight.bold,
-  },
-  moverInfo: {
-    flex: 1,
-  },
-  moverSymbol: {
-    fontSize: FontSize.base,
-    fontWeight: FontWeight.semibold,
-    color: Colors.text.primary,
-  },
-  moverPrice: {
-    fontSize: FontSize.xs,
-    color: Colors.text.secondary,
-    marginTop: 1,
-  },
-  buyBtn: {
-    backgroundColor: Colors.brand.primary + '22',
-    borderWidth: 1,
-    borderColor: Colors.brand.primary,
-    borderRadius: Radius.sm,
-    paddingHorizontal: Spacing.sm,
-    paddingVertical: 4,
-  },
-  buyBtnText: {
-    color: Colors.brand.primary,
-    fontSize: FontSize.xs,
-    fontWeight: FontWeight.bold,
-  },
-
-  // Trending Stocks
-  trendingRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    paddingHorizontal: Spacing.base,
-    paddingVertical: Spacing.sm + 2,
-    borderBottomWidth: 1,
-    borderBottomColor: Colors.border.default,
-    gap: Spacing.sm,
-  },
-  trendingInfo: {
-    flex: 1,
-  },
-  trendingSymbol: {
-    fontSize: FontSize.base,
-    fontWeight: FontWeight.semibold,
-    color: Colors.text.primary,
-  },
-  trendingChange: {
-    fontSize: FontSize.xs,
-    fontWeight: FontWeight.medium,
-    marginTop: 2,
-    color: Colors.text.tertiary,
-  },
-  trendingPrice: {
-    fontSize: FontSize.base,
-    fontWeight: FontWeight.semibold,
-    color: Colors.text.primary,
-  },
-
-  // Level Card
-  levelCard: {
-    margin: Spacing.base,
-    backgroundColor: Colors.bg.tertiary,
-    borderRadius: Radius.md,
-    padding: Spacing.md,
-    borderWidth: 1,
-    borderColor: Colors.border.default,
-  },
-  levelTopRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    marginBottom: Spacing.md,
-    gap: Spacing.md,
-  },
-  levelIcon: {
-    fontSize: 32,
-  },
-  levelDetails: {
-    flex: 1,
-  },
-  levelTitle: {
     fontSize: FontSize.base,
     fontWeight: FontWeight.bold,
-  },
-  levelSubtitle: {
-    fontSize: FontSize.xs,
-    color: Colors.text.tertiary,
-    marginTop: 2,
-  },
-  xpBarContainer: {
-    marginBottom: Spacing.md,
-  },
-  xpBarTrack: {
-    height: 8,
-    backgroundColor: Colors.bg.primary,
-    borderRadius: Radius.full,
-    overflow: 'hidden',
-    marginBottom: Spacing.xs,
-  },
-  xpBarFill: {
-    height: '100%',
-    borderRadius: Radius.full,
-  },
-  xpLabelRow: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-  },
-  xpLabel: {
-    fontSize: FontSize.xs,
-    color: Colors.text.tertiary,
-  },
-  nextMilestoneRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    paddingTop: Spacing.sm,
-    borderTopWidth: 1,
-    borderTopColor: Colors.border.default,
-  },
-  nextMilestoneLabel: {
-    fontSize: FontSize.xs,
-    color: Colors.text.tertiary,
-  },
-  nextMilestoneBadge: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    paddingHorizontal: Spacing.sm,
-    paddingVertical: 3,
-    borderRadius: Radius.full,
-    gap: 4,
-  },
-  nextMilestoneIcon: {
-    fontSize: FontSize.sm,
-  },
-  nextMilestoneText: {
-    fontSize: FontSize.xs,
-    fontWeight: FontWeight.semibold,
-  },
-
-  // Add Email
-  addEmailBtn: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: Colors.bg.tertiary,
-    borderRadius: Radius.lg,
-    padding: Spacing.base,
-    marginHorizontal: Spacing.base,
     marginBottom: Spacing.sm,
-    borderWidth: 1,
-    borderColor: Colors.brand.primary + '40',
-    gap: Spacing.sm,
   },
-  addEmailIcon: {
-    fontSize: 24,
-  },
-  addEmailTitle: {
-    fontSize: FontSize.sm,
-    fontWeight: FontWeight.semibold,
-    color: Colors.text.primary,
-  },
-  addEmailSub: {
+  settingsSubhead: {
     fontSize: FontSize.xs,
-    color: Colors.text.tertiary,
-    marginTop: 1,
+    fontWeight: FontWeight.semibold,
+    textTransform: 'uppercase',
+    letterSpacing: 0.5,
+    marginTop: Spacing.md,
+    marginBottom: Spacing.sm,
   },
-  addEmailArrow: {
-    fontSize: FontSize.lg,
-    color: Colors.brand.primary,
-    fontWeight: FontWeight.bold,
+
+  // Account number
+  accountRow: {
+    borderRadius: Radius.md,
+    borderWidth: 1,
+    paddingHorizontal: Spacing.base,
+    paddingVertical: 12,
+  },
+
+  // Language button
+  langBtn: {
+    marginHorizontal: Spacing.base,
+    marginTop: Spacing.md,
+    borderRadius: Radius.lg,
+    borderWidth: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingHorizontal: Spacing.base,
+    paddingVertical: 14,
+  },
+
+  // Mode toggle
+  modeRow: {
+    flexDirection: 'row',
+    borderRadius: Radius.lg,
+    borderWidth: 1,
+    overflow: 'hidden',
+  },
+  modeBtn: {
+    flex: 1,
+    paddingVertical: 10,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+
+  // Color grid
+  colorGrid: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 8,
+  },
+  colorSwatch: {
+    width: 32,
+    height: 32,
+    borderRadius: 16,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  colorSwatchActive: {
+    borderWidth: 2.5,
+    borderColor: '#fff',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.3,
+    shadowRadius: 4,
+    elevation: 4,
+  },
+
+  // Reset
+  resetBtn: {
+    marginTop: Spacing.lg,
+    borderRadius: Radius.md,
+    borderWidth: 1,
+    paddingVertical: 10,
+    alignItems: 'center',
+  },
+  resetText: {
+    fontSize: FontSize.sm,
+    fontWeight: FontWeight.medium,
   },
 });
