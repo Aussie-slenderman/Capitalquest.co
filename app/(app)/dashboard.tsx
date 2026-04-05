@@ -1,4 +1,4 @@
-import React, { useMemo, useEffect, useState } from 'react';
+import React, { useMemo, useState } from 'react';
 import {
   View, Text, ScrollView, TouchableOpacity, TextInput,
   StyleSheet, StatusBar, SafeAreaView, Modal, FlatList,
@@ -9,64 +9,10 @@ import { ALL_NEWS } from './notifications';
 import Sidebar from '../../src/components/Sidebar';
 import AppHeader from '../../src/components/AppHeader';
 import { useAppStore } from '../../src/store/useAppStore';
-import { formatRelativeTime } from '../../src/utils/formatters';
-import { getQuotes } from '../../src/services/stockApi';
 import { updateUser } from '../../src/services/auth';
 import { Colors, LightColors, FontSize, FontWeight, Spacing, Radius } from '../../src/constants/theme';
 import { useT } from '../../src/constants/translations';
 
-// ─── Market indices ───────────────────────────────────────────────────────────
-const MARKET_INDICES = [
-  { symbol: '^GSPC', name: 'S&P 500',    price: 6672.62,  changePercent: -1.50 },
-  { symbol: '^IXIC', name: 'NASDAQ',     price: 22105.36, changePercent: -0.93 },
-  { symbol: '^DJI',  name: 'Dow Jones',  price: 46958.47, changePercent: -1.55 },
-  { symbol: '^FTSE', name: 'FTSE 100',   price: 10261.15, changePercent: -0.43 },
-  { symbol: '^GDAXI',name: 'DAX',        price: 23447.29, changePercent: -0.60 },
-  { symbol: '^N225', name: 'Nikkei',     price: 53819.61, changePercent: -1.16 },
-];
-
-const DASHBOARD_NEWS = [
-  {
-    id: '1',
-    headline: 'Markets selloff deepens as tariff fears and recession concerns rattle investors',
-    source: 'Reuters',
-    publishedAt: Date.now() - 1_800_000,
-    relatedSymbols: ['SPY', 'QQQ'],
-    category: 'Markets',
-  },
-  {
-    id: '2',
-    headline: 'Tesla slides as EV demand concerns mount and margin pressure weighs on outlook',
-    source: 'Bloomberg',
-    publishedAt: Date.now() - 5_400_000,
-    relatedSymbols: ['TSLA'],
-    category: 'Stocks',
-  },
-  {
-    id: '3',
-    headline: 'NVIDIA faces pressure as AI spending scrutiny grows among hyperscalers',
-    source: 'WSJ',
-    publishedAt: Date.now() - 9_000_000,
-    relatedSymbols: ['NVDA', 'AMD'],
-    category: 'Tech',
-  },
-  {
-    id: '4',
-    headline: 'Apple quietly launches new iPhone SE with advanced AI features at lower price point',
-    source: 'CNBC',
-    publishedAt: Date.now() - 14_400_000,
-    relatedSymbols: ['AAPL'],
-    category: 'Tech',
-  },
-  {
-    id: '5',
-    headline: 'Fed holds rates steady, signals patient approach as jobs data stays resilient',
-    source: 'Financial Times',
-    publishedAt: Date.now() - 21_600_000,
-    relatedSymbols: ['SPY', 'GLD'],
-    category: 'Economy',
-  },
-];
 
 const ALL_COUNTRIES = [
   "Afghanistan","Albania","Algeria","Andorra","Angola","Antigua and Barbuda","Argentina","Armenia","Australia","Austria","Azerbaijan",
@@ -98,7 +44,7 @@ const ALL_COUNTRIES = [
 export default function DashboardScreen() {
   const {
     user, setUser,
-    quotes, setQuote, notifications, newsLastRead,
+    notifications, newsLastRead,
     portfolio, isSidebarOpen, setSidebarOpen, appTabColors, appColorMode,
     showWelcomePopup, setShowWelcomePopup,
   } = useAppStore();
@@ -146,18 +92,6 @@ export default function DashboardScreen() {
     return notifications.filter(n => !n.read).length + (hasUnreadHoldingsNews ? 1 : 0);
   }, [notifications, portfolio, newsLastRead]);
 
-  useEffect(() => {
-    let cancelled = false;
-    (async () => {
-      try {
-        const liveQuotes = await getQuotes(MARKET_INDICES.map(i => i.symbol));
-        if (cancelled) return;
-        Object.entries(liveQuotes).forEach(([sym, q]) => setQuote(sym, q));
-      } catch { /* fall back to mock */ }
-    })();
-    return () => { cancelled = true; };
-  }, []);
-
   return (
     <View style={{ flex: 1 }}>
       <SafeAreaView style={[styles.safeArea, { backgroundColor: C.bg.primary }]}>
@@ -165,32 +99,6 @@ export default function DashboardScreen() {
 
         {/* ── Top bar ── */}
         <AppHeader title="CapitalQuest" />
-
-        {/* ── Market indices strip ── */}
-        <ScrollView
-          horizontal
-          showsHorizontalScrollIndicator={false}
-          style={styles.indicesStrip}
-          contentContainerStyle={styles.indicesContent}
-        >
-          {MARKET_INDICES.map(idx => {
-            const live = quotes[idx.symbol];
-            const price = live?.price ?? idx.price;
-            const pct = live?.changePercent ?? idx.changePercent;
-            const up = pct >= 0;
-            return (
-              <View key={idx.symbol} style={[styles.indexPill, { backgroundColor: C.bg.secondary, borderColor: C.border.default }]}>
-                <Text style={[styles.indexName, { color: C.text.tertiary }]}>{idx.name}</Text>
-                <Text style={[styles.indexPrice, { color: C.text.primary }]}>
-                  {price.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
-                </Text>
-                <Text style={[styles.indexChange, { color: up ? Colors.market.gain : Colors.market.loss }]}>
-                  {up ? '▲' : '▼'} {Math.abs(pct).toFixed(2)}%
-                </Text>
-              </View>
-            );
-          })}
-        </ScrollView>
 
         <ScrollView
           style={styles.scroll}
@@ -260,36 +168,6 @@ export default function DashboardScreen() {
               </TouchableOpacity>
             </View>
           </LinearGradient>
-
-          {/* ── News section ── */}
-          <View style={styles.newsHeader}>
-            <Text style={[styles.newsTitle, { color: C.text.primary }]}>{`📰  ${t('market_news')}`}</Text>
-            <TouchableOpacity onPress={() => router.push('/(app)/home' as never)}>
-              <Text style={[styles.seeAll, { color: tabColor }]}>{`${t('see_all')} →`}</Text>
-            </TouchableOpacity>
-          </View>
-
-          {DASHBOARD_NEWS.map((article, i) => (
-            <TouchableOpacity key={article.id} style={[styles.newsCard, { backgroundColor: C.bg.secondary, borderColor: C.border.default }]} activeOpacity={0.8}
-              onPress={() => router.push({ pathname: '/(app)/news-article', params: { headline: article.headline, source: article.source, publishedAt: String(article.publishedAt), symbols: article.relatedSymbols.join(','), category: article.category } })}>
-              <View style={[styles.newsCategoryBadge, { backgroundColor: C.bg.tertiary }]}>
-                <Text style={styles.newsCategoryText}>{t(`cat_${article.category.toLowerCase()}`) !== `cat_${article.category.toLowerCase()}` ? t(`cat_${article.category.toLowerCase()}`) : article.category}</Text>
-              </View>
-              <Text style={[styles.newsHeadline, { color: C.text.primary }]} numberOfLines={2}>{t(`news_${article.id}`) !== `news_${article.id}` ? t(`news_${article.id}`) : article.headline}</Text>
-              <View style={styles.newsMeta}>
-                <Text style={styles.newsSource}>{article.source}</Text>
-                <Text style={[styles.newsDot, { color: C.text.tertiary }]}>·</Text>
-                <Text style={[styles.newsTime, { color: C.text.tertiary }]}>{formatRelativeTime(article.publishedAt)}</Text>
-                <View style={styles.newsTagRow}>
-                  {article.relatedSymbols.slice(0, 2).map(sym => (
-                    <View key={sym} style={[styles.newsTag, { backgroundColor: C.bg.input, borderColor: C.border.default }]}>
-                      <Text style={[styles.newsTagText, { color: C.text.secondary }]}>{sym}</Text>
-                    </View>
-                  ))}
-                </View>
-              </View>
-            </TouchableOpacity>
-          ))}
 
           <View style={{ height: 24 }} />
         </ScrollView>
@@ -436,33 +314,9 @@ const styles = StyleSheet.create({
     borderRadius: 2,
   },
 
-  // Indices strip
-  indicesStrip: {
-    maxHeight: 72,
-    borderBottomWidth: 1,
-    borderBottomColor: Colors.border.default,
-  },
-  indicesContent: {
-    paddingHorizontal: Spacing.base,
-    paddingVertical: Spacing.sm,
-    gap: Spacing.sm,
-  },
-  indexPill: {
-    backgroundColor: Colors.bg.secondary,
-    borderRadius: Radius.md,
-    paddingHorizontal: Spacing.md,
-    paddingVertical: Spacing.sm,
-    minWidth: 110,
-    borderWidth: 1,
-    borderColor: Colors.border.default,
-  },
-  indexName:   { fontSize: FontSize.xs, color: Colors.text.tertiary, fontWeight: FontWeight.medium },
-  indexPrice:  { fontSize: FontSize.sm, fontWeight: FontWeight.bold, color: Colors.text.primary, marginTop: 2 },
-  indexChange: { fontSize: FontSize.xs, fontWeight: FontWeight.medium, marginTop: 1 },
-
   // Scroll
   scroll:   { flex: 1 },
-  scrollContent: { paddingTop: Spacing.base },
+  scrollContent: { paddingTop: Spacing.xl },
 
   // Hero
   heroSection: {
@@ -510,72 +364,6 @@ const styles = StyleSheet.create({
   },
   quickBtnIcon: { fontSize: 22 },
   quickBtnText: { fontSize: FontSize.sm, fontWeight: FontWeight.semibold },
-
-  // News
-  newsHeader: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    marginHorizontal: Spacing.base,
-    marginBottom: Spacing.sm,
-  },
-  newsTitle: {
-    fontSize: FontSize.base,
-    fontWeight: FontWeight.semibold,
-    color: Colors.text.primary,
-  },
-  seeAll: {
-    fontSize: FontSize.sm,
-    fontWeight: FontWeight.medium,
-  },
-  newsCard: {
-    backgroundColor: Colors.bg.secondary,
-    borderRadius: Radius.lg,
-    marginHorizontal: Spacing.base,
-    marginBottom: Spacing.sm,
-    padding: Spacing.base,
-    borderWidth: 1,
-    borderColor: Colors.border.default,
-  },
-  newsCategoryBadge: {
-    alignSelf: 'flex-start',
-    backgroundColor: Colors.bg.tertiary,
-    borderRadius: Radius.sm,
-    paddingHorizontal: Spacing.sm,
-    paddingVertical: 2,
-    marginBottom: Spacing.xs,
-  },
-  newsCategoryText: {
-    fontSize: FontSize.xs,
-    fontWeight: FontWeight.semibold,
-    color: Colors.brand.primary,
-  },
-  newsHeadline: {
-    fontSize: FontSize.base,
-    fontWeight: FontWeight.medium,
-    color: Colors.text.primary,
-    lineHeight: 21,
-    marginBottom: Spacing.sm,
-  },
-  newsMeta: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 4,
-    flexWrap: 'wrap',
-  },
-  newsSource: { fontSize: FontSize.xs, fontWeight: FontWeight.semibold, color: Colors.brand.primary },
-  newsDot:    { fontSize: FontSize.xs, color: Colors.text.tertiary },
-  newsTime:   { fontSize: FontSize.xs, color: Colors.text.tertiary },
-  newsTagRow: { flexDirection: 'row', gap: 4, marginLeft: 4 },
-  newsTag: {
-    backgroundColor: Colors.bg.input,
-    borderRadius: Radius.sm,
-    paddingHorizontal: 6,
-    paddingVertical: 1,
-    borderWidth: 1,
-    borderColor: Colors.border.default,
-  },
-  newsTagText: { fontSize: FontSize.xs, fontWeight: FontWeight.semibold, color: Colors.text.secondary },
 
   // ── Welcome popup ──
   welcomeOverlay: {
