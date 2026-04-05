@@ -252,18 +252,19 @@ const styles = StyleSheet.create({
     backgroundColor: 'transparent',
     borderTopWidth: 0,
     elevation: 0,
-    height: 90,
-    paddingBottom: 6,
+    height: 110,
+    paddingBottom: 10,
     paddingTop: 0,
+    paddingHorizontal: 10,
   },
   tabItem: {
-    paddingHorizontal: 0,
+    paddingHorizontal: 4,
     minWidth: 0,
   },
   // Tab image icon
   tabImage: {
-    width: 80,
-    height: 80,
+    width: 90,
+    height: 90,
   },
   // Notification badge
   badge: {

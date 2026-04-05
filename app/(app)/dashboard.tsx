@@ -318,7 +318,7 @@ const styles = StyleSheet.create({
 
   // Scroll
   scroll:   { flex: 1 },
-  scrollContent: { flexGrow: 1, padding: Spacing.base },
+  scrollContent: { flexGrow: 1, padding: Spacing.base, paddingBottom: 200 },
 
   // Hero
   heroSection: {
