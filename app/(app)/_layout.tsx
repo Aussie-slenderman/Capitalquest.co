@@ -1,5 +1,5 @@
 import React, { useEffect, useRef } from 'react';
-import { View, Text, Image, StyleSheet, TouchableOpacity, Platform, AppState } from 'react-native';
+import { View, Text, Image, StyleSheet, TouchableOpacity, Platform, AppState, Dimensions } from 'react-native';
 import { Tabs, router } from 'expo-router';
 
 const TAB_ICONS = {
@@ -15,6 +15,7 @@ import {
   listenToChatRooms,
   listenToTradeProposals,
   listenToClubInvites,
+  listenToUser,
   fetchPendingInvites,
 } from '../../src/services/auth';
 import { refreshPortfolioPrices } from '../../src/services/tradingEngine';
@@ -53,6 +54,25 @@ export default function AppLayout() {
     });
     return () => sub.remove();
   }, []);
+
+  // Listen to user document changes (keeps friendIds, clubIds, etc. in sync)
+  useEffect(() => {
+    if (!user?.id) return;
+    const unsub = listenToUser(user.id, (data: any) => {
+      if (data) {
+        const currentUser = useAppStore.getState().user;
+        if (currentUser) {
+          // Merge Firestore changes into local user state
+          useAppStore.getState().setUser({
+            ...currentUser,
+            friendIds: data.friendIds || [],
+            clubIds: data.clubIds || [],
+          });
+        }
+      }
+    });
+    return unsub;
+  }, [user?.id]);
 
   // Listen to portfolio changes
   useEffect(() => {
@@ -280,7 +300,7 @@ export default function AppLayout() {
         options={{
           title: t('social'),
           tabBarIcon: ({ focused }) => (
-            <View style={{ width: 90, height: 90 }}>
+            <View style={{ width: TAB_ICON_SIZE, height: TAB_ICON_SIZE }}>
               <TabImageIcon source={TAB_ICONS.social} focused={focused} />
               <View style={styles.badge}>
                 <Text style={styles.badgeText}>{socialBadgeCount > 9 ? '9+' : socialBadgeCount}</Text>
@@ -312,6 +332,13 @@ export default function AppLayout() {
   );
 }
 
+const SCREEN_WIDTH = Dimensions.get('window').width;
+const TAB_COUNT = 5;
+// Each tab gets an equal slice of screen width minus horizontal padding (20px).
+// Subtract extra per-tab gap (12px) so icons never touch. Cap at 70.
+const TAB_ICON_SIZE = Math.min(70, Math.floor((SCREEN_WIDTH - 20) / TAB_COUNT - 12));
+const TAB_BAR_HEIGHT = TAB_ICON_SIZE + 20;
+
 function TabImageIcon({
   source,
   focused,
@@ -322,7 +349,7 @@ function TabImageIcon({
   return (
     <Image
       source={source}
-      style={[styles.tabImage, { opacity: focused ? 1 : 0.5 }]}
+      style={[styles.tabImage, { width: TAB_ICON_SIZE, height: TAB_ICON_SIZE, opacity: focused ? 1 : 0.5 }]}
       resizeMode="contain"
     />
   );
@@ -333,19 +360,22 @@ const styles = StyleSheet.create({
     position: 'relative' as const,
     borderTopWidth: 1,
     elevation: 0,
-    height: 110,
+    height: TAB_BAR_HEIGHT,
     paddingBottom: 10,
     paddingTop: 0,
     paddingHorizontal: 10,
   },
   tabItem: {
-    paddingHorizontal: 4,
+    flex: 1,
+    paddingHorizontal: 0,
     minWidth: 0,
+    alignItems: 'center',
+    justifyContent: 'center',
   },
   // Tab image icon
   tabImage: {
-    width: 90,
-    height: 90,
+    width: TAB_ICON_SIZE,
+    height: TAB_ICON_SIZE,
   },
   // Notification badge
   badge: {
