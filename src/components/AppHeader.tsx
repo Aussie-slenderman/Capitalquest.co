@@ -77,7 +77,8 @@ const styles = StyleSheet.create({
     height: 70,
     width: 300,
     borderRadius: 12,
-    marginLeft: 10,
+    marginLeft: -6,
+    overflow: 'hidden',
   },
   right: {
     flexDirection: 'row',
