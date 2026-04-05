@@ -207,6 +207,7 @@ export default function AppLayout() {
       <Tabs.Screen name="trade"         options={{ href: null }} />
       <Tabs.Screen name="buy-bling"     options={{ href: null }} />
       <Tabs.Screen name="notifications" options={{ href: null }} />
+      <Tabs.Screen name="news-article"  options={{ href: null }} />
     </Tabs>
     <AchievementToast />
     </View>
