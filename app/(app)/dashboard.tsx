@@ -169,7 +169,6 @@ export default function DashboardScreen() {
             </View>
           </LinearGradient>
 
-          <View style={{ height: 24 }} />
         </ScrollView>
       </SafeAreaView>
 
@@ -316,16 +315,16 @@ const styles = StyleSheet.create({
 
   // Scroll
   scroll:   { flex: 1 },
-  scrollContent: { paddingTop: Spacing.xl },
+  scrollContent: { flexGrow: 1, padding: Spacing.base },
 
   // Hero
   heroSection: {
-    marginHorizontal: Spacing.base,
-    marginBottom: Spacing.xl,
+    flex: 1,
     paddingVertical: Spacing['2xl'],
     paddingHorizontal: Spacing.xl,
     borderRadius: Radius.xl,
     alignItems: 'center',
+    justifyContent: 'center',
     borderWidth: 1,
     borderColor: Colors.border.default,
   },
