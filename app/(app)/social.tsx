@@ -35,6 +35,7 @@ import {
   sendClubInvite,
   sendFriendRequest,
   removeFriend,
+  deleteClub,
   getLeaderboard,
   getUserById,
   fetchPendingInvites,
@@ -579,14 +580,17 @@ function MessagesTab() {
       removeClubInvite(invite.id);
 
       if (invite.type === 'club_invite' && invite.clubId) {
-        const { joinClub: joinClubFn } = await import('../../src/services/auth');
+        const { joinClub: joinClubFn, getClub } = await import('../../src/services/auth');
         await joinClubFn(user.id, invite.clubId);
-        addMyClub({
+        // Fetch the full club data to get accurate memberIds
+        let clubData: any = null;
+        try { clubData = await getClub(invite.clubId); } catch {}
+        addMyClub(clubData ?? {
           id: invite.clubId,
           name: invite.clubName ?? 'Club',
           description: '',
           ownerId: invite.fromUserId,
-          memberIds: [user.id],
+          memberIds: [invite.fromUserId, user.id],
           isPublic: false,
           createdAt: invite.sentAt,
           chatRoomId: `chat_${invite.clubId}`,
@@ -802,8 +806,8 @@ function ClubsTab() {
     setJoiningId(club.id);
     try {
       await joinClub(user.id, club.id);
-      // Move from discover list to my clubs in store
-      addMyClub(club);
+      // Move from discover list to my clubs in store (with updated memberIds)
+      addMyClub({ ...club, memberIds: [...(club.memberIds || []), user.id] });
       setPublicClubs(prev => prev.filter(c => c.id !== club.id));
       // Also update user's clubIds locally
       const { setUser } = useAppStore.getState();
@@ -918,6 +922,28 @@ function ClubsTab() {
           {club.description}
         </Text>
       ) : null}
+      {/* Delete button — only for club owner */}
+      {isMember && club.ownerId === user?.id && (
+        <TouchableOpacity
+          style={{ marginTop: Spacing.sm, paddingVertical: 8, paddingHorizontal: Spacing.base, borderRadius: Radius.md, backgroundColor: Colors.market.loss + '15', borderWidth: 1, borderColor: Colors.market.loss + '44', alignSelf: 'flex-start' }}
+          onPress={async () => {
+            const confirmed = Platform.OS === 'web'
+              ? window.confirm(`Are you sure you want to delete "${club.name}"? This cannot be undone.`)
+              : false;
+            if (!confirmed || !user) return;
+            try {
+              await deleteClub(club.id, user.id);
+              setMyClubs((prev: Club[]) => prev.filter(c => c.id !== club.id));
+              const { setUser: su } = useAppStore.getState();
+              su({ ...user, clubIds: (user.clubIds || []).filter(id => id !== club.id) });
+            } catch (err) {
+              console.error('Failed to delete club:', err);
+            }
+          }}
+        >
+          <Text style={{ color: Colors.market.loss, fontSize: FontSize.xs, fontWeight: FontWeight.semibold }}>Delete Club</Text>
+        </TouchableOpacity>
+      )}
     </View>
   );
 

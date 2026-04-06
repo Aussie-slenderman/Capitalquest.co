@@ -442,6 +442,27 @@ export async function joinClub(userId: string, clubId: string) {
   await batch.commit();
 }
 
+export async function deleteClub(clubId: string, ownerId: string) {
+  const clubRef = doc(db, 'clubs', clubId);
+  const clubSnap = await getDoc(clubRef);
+  if (!clubSnap.exists()) throw new Error('Club not found');
+  const club = clubSnap.data();
+  if (club.ownerId !== ownerId) throw new Error('Only the owner can delete this club');
+
+  const batch = writeBatch(db);
+  // Delete the club document
+  batch.delete(clubRef);
+  // Remove clubId from all members' clubIds
+  for (const memberId of (club.memberIds || [])) {
+    batch.update(doc(db, 'users', memberId), { clubIds: arrayRemove(clubId) });
+  }
+  // Delete the chat room if it exists
+  if (club.chatRoomId) {
+    batch.delete(doc(db, 'chatRooms', club.chatRoomId));
+  }
+  await batch.commit();
+}
+
 export async function getClub(clubId: string) {
   const snap = await getDoc(doc(db, 'clubs', clubId));
   return snap.exists() ? { id: snap.id, ...snap.data() } : null;
