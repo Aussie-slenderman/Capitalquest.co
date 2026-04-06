@@ -497,16 +497,15 @@ export async function getPublicClubs(limitCount = 50) {
 // ─── Chat ─────────────────────────────────────────────────────────────────────
 
 export async function createDMRoom(userId1: string, userId2: string) {
-  // Check if DM already exists
+  // Check if DM already exists (single-field query to avoid composite index requirement)
   const q = query(
     collection(db, 'chatRooms'),
-    where('type', '==', 'dm'),
     where('participantIds', 'array-contains', userId1)
   );
   const snap = await getDocs(q);
   const existing = snap.docs.find(d => {
     const data = d.data();
-    return data.participantIds.includes(userId2);
+    return data.type === 'dm' && data.participantIds.includes(userId2);
   });
   if (existing) return { id: existing.id, ...existing.data() };
 
