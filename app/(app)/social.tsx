@@ -452,7 +452,7 @@ function ChatModal({
             isOwn ? styles.bubbleOwn : styles.bubbleOther,
           ]}
         >
-          <Text style={[styles.messageText, { color: CMC.text.primary }, isOwn && { color: CMC.text.primary }]}>
+          <Text style={[styles.messageText, { color: '#FFFFFF' }]}>
             {item.text}
           </Text>
         </View>
