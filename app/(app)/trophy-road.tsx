@@ -471,12 +471,12 @@ export default function TrophyRoadScreen() {
   const { appColorMode } = useAppStore();
   const isLight = appColorMode === 'light';
   const C = isLight ? LightColors : Colors;
-  const [activeTab, setActiveTab] = useState<AwardsTab>('trophy-road');
+  const [activeTab, setActiveTab] = useState<AwardsTab>('ranked');
 
   const tabs: { key: AwardsTab; label: string }[] = [
-    { key: 'trophy-road',   label: 'Trophy Road' },
-    { key: 'achievements',  label: 'Achievements' },
     { key: 'ranked',        label: 'Ranked' },
+    { key: 'achievements',  label: 'Achievements' },
+    { key: 'trophy-road',   label: 'Trophy Road' },
   ];
 
   const renderContent = () => {
