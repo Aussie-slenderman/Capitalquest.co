@@ -437,12 +437,12 @@ function RankedTab() {
 // ─── Main screen ─────────────────────────────────────────────────────────────
 
 export default function TrophyRoadScreen() {
-  const [activeTab, setActiveTab] = useState<AwardsTab>('trophy-road');
+  const [activeTab, setActiveTab] = useState<AwardsTab>('ranked');
 
   const tabs: { key: AwardsTab; label: string }[] = [
+    { key: 'ranked',        label: 'Ranked' },
     { key: 'trophy-road',   label: 'Trophy Road' },
     { key: 'achievements',  label: 'Achievements' },
-    { key: 'ranked',        label: 'Ranked' },
   ];
 
   const renderContent = () => {
