@@ -158,8 +158,11 @@ export default function RootLayout() {
             updateUser(s.uid, { onboardingComplete: true }).catch(() => {});
           });
         }
+        // Mark welcomeShown for old users who never had it set
         if (ud && !ud.welcomeShown) {
-          setShowWelcomePopup(true);
+          import('../src/services/auth').then(({ updateUser: upd }) => {
+            upd(s.uid, { welcomeShown: true }).catch(() => {});
+          });
         }
         router.replace('/(app)/dashboard');
       } else {

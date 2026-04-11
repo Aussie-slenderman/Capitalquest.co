@@ -1,7 +1,7 @@
 import React, { useMemo, useState } from 'react';
 import {
   View, Text, Image, ScrollView, TouchableOpacity, TextInput,
-  StyleSheet, StatusBar, SafeAreaView, Modal, FlatList,
+  StyleSheet, StatusBar, SafeAreaView, Modal, Platform,
 } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { router } from 'expo-router';
@@ -63,11 +63,10 @@ export default function DashboardScreen() {
 
   const handleSelectCountry = async (country: string) => {
     if (!user) return;
-    try {
-      await updateUser(user.id, { country });
-      setUser({ ...user, country });
-      setShowCountryPicker(false);
-    } catch {}
+    setUser({ ...user, country });
+    setShowCountryPicker(false);
+    setCountrySearch('');
+    try { await updateUser(user.id, { country }); } catch {}
   };
 
   const needsCountry = user && (!user.country || user.country === '' || user.country === 'Unknown');
@@ -220,7 +219,7 @@ export default function DashboardScreen() {
       {/* Country Picker Modal */}
       <Modal visible={showCountryPicker} transparent animationType="slide">
         <View style={{ flex: 1, backgroundColor: 'rgba(0,0,0,0.75)', justifyContent: 'flex-end' }}>
-          <View style={{ backgroundColor: '#111827', borderTopLeftRadius: 20, borderTopRightRadius: 20, maxHeight: '80%', paddingBottom: 40 }}>
+          <View style={{ backgroundColor: '#111827', borderTopLeftRadius: 20, borderTopRightRadius: 20, maxHeight: '80%' }}>
             <View style={{ padding: 20, borderBottomWidth: 1, borderBottomColor: '#1E2940' }}>
               <Text style={{ fontSize: 20, fontWeight: '800', color: '#F1F5F9', textAlign: 'center', marginBottom: 12 }}>🌍 Select Your Country</Text>
               <TextInput
@@ -232,19 +231,23 @@ export default function DashboardScreen() {
                 autoFocus
               />
             </View>
-            <FlatList
-              data={filteredCountries}
-              keyExtractor={(item) => item}
-              renderItem={({ item }) => (
-                <TouchableOpacity
-                  style={{ paddingVertical: 14, paddingHorizontal: 20, borderBottomWidth: 1, borderBottomColor: '#1A2235' }}
-                  onPress={() => handleSelectCountry(item)}
-                >
-                  <Text style={{ fontSize: 15, color: '#F1F5F9' }}>{item}</Text>
-                </TouchableOpacity>
-              )}
-              style={{ maxHeight: 400 }}
-            />
+            <ScrollView style={{ flexGrow: 0 }} nestedScrollEnabled>
+              {filteredCountries.map((country) => {
+                const rowStyle = { paddingVertical: 14, paddingHorizontal: 20, borderBottomWidth: 1, borderBottomColor: '#1A2235' } as const;
+                if (Platform.OS === 'web') {
+                  return (
+                    <div key={country} style={{ paddingTop: 14, paddingBottom: 14, paddingLeft: 20, paddingRight: 20, borderBottom: '1px solid #1A2235', cursor: 'pointer' }} onClick={() => handleSelectCountry(country)}>
+                      <Text style={{ fontSize: 15, color: '#F1F5F9' }}>{country}</Text>
+                    </div>
+                  );
+                }
+                return (
+                  <TouchableOpacity key={country} style={rowStyle} onPress={() => handleSelectCountry(country)}>
+                    <Text style={{ fontSize: 15, color: '#F1F5F9' }}>{country}</Text>
+                  </TouchableOpacity>
+                );
+              })}
+            </ScrollView>
             <TouchableOpacity
               style={{ margin: 16, padding: 14, borderRadius: 12, borderWidth: 1, borderColor: '#1E2940', alignItems: 'center' }}
               onPress={() => setShowCountryPicker(false)}
