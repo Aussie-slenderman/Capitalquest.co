@@ -24,7 +24,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { LinearGradient } from 'expo-linear-gradient';
 import { LineChart } from 'react-native-gifted-charts';
 import Toast from 'react-native-toast-message';
-import { useLocalSearchParams } from 'expo-router';
+import { useLocalSearchParams, useFocusEffect } from 'expo-router';
 
 import { useAppStore } from '../../src/store/useAppStore';
 import {
@@ -355,12 +355,21 @@ export default function TradeScreen() {
     }, 400);
   }, []);
 
+  const loadNews = useCallback(async (symbol: string, showSpinner = true) => {
+    if (showSpinner) setIsLoadingNews(true);
+    try {
+      const articles = await getCompanyNews(symbol);
+      setNews(articles);
+    } finally {
+      if (showSpinner) setIsLoadingNews(false);
+    }
+  }, []);
+
   const handleSelectStock = useCallback(async (symbol: string) => {
     setShowSearchResults(false);
     setSearchQuery(symbol);
     setInputValue('');
     setIsLoadingStock(true);
-    setIsLoadingNews(true);
     try {
       const profile = await getStockProfile(symbol);
       if (profile) {
@@ -381,13 +390,21 @@ export default function TradeScreen() {
     } finally {
       setIsLoadingStock(false);
     }
-    try {
-      const articles = await getCompanyNews(symbol);
-      setNews(articles);
-    } finally {
-      setIsLoadingNews(false);
-    }
-  }, [fadeAnim, setQuote]);
+    await loadNews(symbol);
+  }, [fadeAnim, setQuote, loadNews]);
+
+  // Refresh news whenever the Buy/Sell screen regains focus (e.g. user
+  // navigates back to it) and poll periodically while it's open, so the
+  // news feed stays current as people use the app.
+  useFocusEffect(
+    useCallback(() => {
+      const symbol = stock?.symbol;
+      if (!symbol) return;
+      loadNews(symbol, false);
+      const id = setInterval(() => loadNews(symbol, false), 60_000);
+      return () => clearInterval(id);
+    }, [stock?.symbol, loadNews])
+  );
 
   // ─── Chart data ────────────────────────────────────────────────────────────
 
