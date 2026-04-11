@@ -216,7 +216,7 @@ export async function loadWatchlist(userId: string): Promise<string[]> {
 }
 
 export async function updateUser(userId: string, data: Partial<Record<string, unknown>>) {
-  return updateDoc(doc(db, 'users', userId), data);
+  return setDoc(doc(db, 'users', userId), data, { merge: true });
 }
 
 export function listenToUser(userId: string, callback: (data: unknown) => void) {
