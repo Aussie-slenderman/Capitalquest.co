@@ -684,6 +684,20 @@ window.__cqShowUsernameModal=function(cur,colors,saveFn){
     if(!/^[a-z0-9_]+$/.test(v)){err.textContent='Only letters, numbers, and underscores';inp.style.borderColor='#FF3D57';return;}
     if(v===cur){close();return;}
     if(typeof saveFn==='function')saveFn(v);
+    var all=document.querySelectorAll('[dir="auto"]');
+    for(var i=0;i<all.length;i++){
+      var t=all[i].textContent;
+      if(t==='@'+cur){all[i].textContent='@'+v;}
+      else if(t===cur){
+        var p=all[i].previousElementSibling||all[i].parentElement;
+        if(p&&p.textContent&&p.textContent.indexOf('@')>=0){all[i].textContent=v;}
+      }
+    }
+    var spans=document.querySelectorAll('span');
+    for(var j=0;j<spans.length;j++){
+      if(spans[j].textContent==='@'+cur)spans[j].textContent='@'+v;
+    }
+    cur=v;
     close();
   });
   document.getElementById('cq-u-cancel').addEventListener('click',close);
