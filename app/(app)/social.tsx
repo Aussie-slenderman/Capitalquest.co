@@ -901,8 +901,8 @@ function ClubsTab() {
               <Text style={[styles.clubActionBtnText, { color: Colors.brand.gold }]}>+ Add</Text>
             </TouchableOpacity>
           )}
-          {/* Edit button — only shown for clubs you're in */}
-          {isMember && (
+          {/* Edit button — only shown for club owner */}
+          {isMember && club.ownerId === user?.id && (
             <TouchableOpacity
               style={[styles.clubActionBtn, { backgroundColor: Colors.brand.primary + '22', borderColor: Colors.brand.primary }]}
               onPress={() => { setEditClub(club); setEditModalVisible(true); setEditName(club.name); setEditDesc(club.description); setEditIsPublic(club.isPublic); }}

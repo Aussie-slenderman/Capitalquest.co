@@ -857,26 +857,12 @@ export async function leaveClub(clubId: string, userId: string) {
   if (!clubSnap.exists()) throw new Error('Club not found');
   const club = clubSnap.data();
 
-  const newMembers = (club.memberIds || []).filter((id: string) => id !== userId);
   const batchOp = writeBatch(db);
-  batchOp.update(clubRef, { memberIds: newMembers });
-
-  const userRef = doc(db, 'users', userId);
-  const userSnap = await getDoc(userRef);
-  if (userSnap.exists()) {
-    const userData = userSnap.data();
-    const newClubIds = (userData.clubIds || []).filter((id: string) => id !== clubId);
-    batchOp.update(userRef, { clubIds: newClubIds });
-  }
+  batchOp.set(clubRef, { memberIds: arrayRemove(userId) }, { merge: true });
+  batchOp.set(doc(db, 'users', userId), { clubIds: arrayRemove(clubId) }, { merge: true });
 
   if (club.chatRoomId) {
-    const chatRef = doc(db, 'chatRooms', club.chatRoomId);
-    const chatSnap = await getDoc(chatRef);
-    if (chatSnap.exists()) {
-      const chatData = chatSnap.data();
-      const newParticipants = (chatData.participantIds || []).filter((id: string) => id !== userId);
-      batchOp.update(chatRef, { participantIds: newParticipants });
-    }
+    batchOp.set(doc(db, 'chatRooms', club.chatRoomId), { participantIds: arrayRemove(userId) }, { merge: true });
   }
 
   await batchOp.commit();
