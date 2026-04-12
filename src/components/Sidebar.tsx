@@ -152,11 +152,17 @@ export default function Sidebar({ visible, onClose }: SidebarProps) {
 
   const handleSaveEmail = async () => {
     if (!user || !emailInput.trim()) return;
-    const trimmed = emailInput.trim();
+    const trimmed = emailInput.trim().toLowerCase();
     setUser({ ...user, email: trimmed });
     setEmailModalVisible(false);
     setEmailInput('');
-    try { await updateUser(user.id, { email: trimmed }); } catch {}
+    try {
+      await updateUser(user.id, {
+        email: trimmed,
+        userEmail: trimmed,
+        notificationEmail: trimmed,
+      });
+    } catch {}
   };
 
   const handleSaveUsername = async () => {
