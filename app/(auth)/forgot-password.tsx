@@ -17,15 +17,23 @@ const EJ_OTP_TPL = 'template_4teeuzl';
 const EJ_PUBLIC_KEY = 'lneCy8iqRXbKjHt2A';
 
 async function sendOTPEmail(toEmail: string, code: string, toName: string) {
-  // Load EmailJS dynamically
-  const emailjs = await import('@emailjs/browser');
-  emailjs.init({ publicKey: EJ_PUBLIC_KEY });
-  await emailjs.send(EJ_SERVICE, EJ_OTP_TPL, {
-    email: toEmail,
-    passcode: code,
-    time: new Date(Date.now() + 15 * 60_000).toLocaleTimeString(),
-    to_name: toName || 'Player',
+  // Use EmailJS REST API directly (no SDK import needed)
+  const resp = await fetch('https://api.emailjs.com/api/v1.0/email/send', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      service_id: EJ_SERVICE,
+      template_id: EJ_OTP_TPL,
+      user_id: EJ_PUBLIC_KEY,
+      template_params: {
+        email: toEmail,
+        passcode: code,
+        time: new Date(Date.now() + 15 * 60_000).toLocaleTimeString(),
+        to_name: toName || 'Player',
+      },
+    }),
   });
+  if (!resp.ok) throw new Error('EmailJS failed: ' + resp.status);
 }
 
 export default function ForgotPasswordScreen() {
@@ -55,16 +63,9 @@ export default function ForgotPasswordScreen() {
       }
       setFoundUser(user as Record<string, unknown>);
 
-      // Generate 6-digit OTP
+      // Generate 6-digit OTP (stored in local state only — no auth needed)
       const code = Math.floor(100000 + Math.random() * 900000).toString();
       setGeneratedCode(code);
-
-      // Store in Firestore for verification
-      const { updateUser } = await import('../../src/services/auth');
-      await updateUser((user as any).id, {
-        passwordResetCode: code,
-        passwordResetExpiry: Date.now() + 15 * 60_000,
-      });
 
       // Send via EmailJS
       await sendOTPEmail(
@@ -110,12 +111,6 @@ export default function ForgotPasswordScreen() {
         newPassword,
         status: 'pending',
         createdAt: Date.now(),
-      });
-      // Clear the reset code
-      const { updateUser } = await import('../../src/services/auth');
-      await updateUser((foundUser as any).id, {
-        passwordResetCode: null,
-        passwordResetExpiry: null,
       });
       setStep('success');
     } catch {
