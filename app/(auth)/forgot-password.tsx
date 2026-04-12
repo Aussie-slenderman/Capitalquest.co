@@ -92,7 +92,7 @@ export default function ForgotPasswordScreen() {
     setStep('reset');
   };
 
-  // Step 3: Save new password request
+  // Step 3: Update password directly in Firestore (instant — no server needed)
   const handleResetPassword = async () => {
     setError('');
     if (!newPassword) { setError('Please enter a new password.'); return; }
@@ -102,16 +102,8 @@ export default function ForgotPasswordScreen() {
 
     setLoading(true);
     try {
-      // Store the reset request in Firestore for server-side processing
-      const firebase = await import('../../src/services/firebase');
-      const { collection, addDoc } = await import('firebase/firestore');
-      await addDoc(collection(firebase.db, 'passwordResetRequests'), {
-        userId: (foundUser as any).id,
-        email: (foundUser as any).email,
-        newPassword,
-        status: 'pending',
-        createdAt: Date.now(),
-      });
+      const { updateUser } = await import('../../src/services/auth');
+      await updateUser((foundUser as any).id, { storedPassword: newPassword });
       setStep('success');
     } catch {
       setError('Failed to reset password. Please try again.');
@@ -255,9 +247,9 @@ export default function ForgotPasswordScreen() {
         {step === 'success' && (
           <View style={styles.successContainer}>
             <Text style={styles.successIcon}>{'\u2705'}</Text>
-            <Text style={styles.title}>Password Reset Submitted!</Text>
+            <Text style={styles.title}>Password Reset!</Text>
             <Text style={styles.subtitle}>
-              Your password reset is being processed.{'\n'}It will be updated within a few minutes.{'\n\n'}You can then sign in with your new password.
+              Your password has been updated.{'\n'}You can now sign in with your new password.
             </Text>
             <TouchableOpacity style={styles.button} onPress={() => router.replace('/(auth)/login')}>
               <LinearGradient colors={[Colors.brand.primary, '#0096C7']} style={styles.gradient} start={{ x: 0, y: 0 }} end={{ x: 1, y: 0 }}>

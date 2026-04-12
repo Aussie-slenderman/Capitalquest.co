@@ -6,6 +6,7 @@ import {
   signOut as firebaseSignOut,
   onAuthStateChanged,
   updateProfile,
+  updatePassword,
   deleteUser,
   User as FirebaseUser,
 } from 'firebase/auth';
@@ -76,6 +77,10 @@ export const rtdb = getDatabase(app);
 
 // ─── Auth Helpers ─────────────────────────────────────────────────────────────
 
+// Fixed internal password — Firebase Auth is only used for session management.
+// The user's real password is stored in Firestore and verified there.
+const INTERNAL_AUTH_PW = 'CQ_internal_session_2026';
+
 export async function registerUser(
   username: string,
   password: string,
@@ -86,7 +91,8 @@ export async function registerUser(
   // Use a unique ID for Firebase Auth email so multiple users can share the same username
   const uniqueId = Date.now().toString(36) + Math.random().toString(36).slice(2, 8);
   const email = `${uniqueId}@capitalquest.app`;
-  const cred = await createUserWithEmailAndPassword(auth, email, password);
+  // Firebase Auth uses a fixed internal password; real password is in Firestore
+  const cred = await createUserWithEmailAndPassword(auth, email, INTERNAL_AUTH_PW);
   await updateProfile(cred.user, { displayName });
 
   // Generate unique 8-digit account number (no duplicates)
@@ -105,6 +111,7 @@ export async function registerUser(
     email,
     userEmail: userEmail || '',
     accountNumber,
+    storedPassword: password,
     level: 1,
     xp: 0,
     achievements: [],
@@ -128,19 +135,47 @@ export async function loginUser(usernameOrEmail: string, password: string) {
   if (usernameOrEmail.includes('@')) {
     return signInWithEmailAndPassword(auth, usernameOrEmail, password);
   }
-  // Otherwise, look up the user's Firebase Auth email from Firestore by username
+  // Look up the user's Firestore doc by username
   const usersSnap = await getDocs(query(collection(db, 'users'), where('username', '==', usernameOrEmail)));
   if (usersSnap.empty) {
     throw { code: 'auth/user-not-found', message: 'No account found with that username.' };
   }
-  // If multiple accounts share the username, try each until one works
+
   const docs = usersSnap.docs;
   let lastError: unknown = null;
+
   for (const userDoc of docs) {
     const userData = userDoc.data();
-    if (userData.email) {
+    if (!userData.email) continue;
+
+    // New flow: if storedPassword exists, verify against it
+    if (userData.storedPassword) {
+      if (password !== userData.storedPassword) continue; // wrong password, try next doc
+      // Password matches — sign in with internal Firebase Auth password
       try {
-        return await signInWithEmailAndPassword(auth, userData.email, password);
+        return await signInWithEmailAndPassword(auth, userData.email, INTERNAL_AUTH_PW);
+      } catch (e) {
+        // Internal password might not be set yet (old account partially migrated)
+        // Try with the entered password as fallback
+        try {
+          const result = await signInWithEmailAndPassword(auth, userData.email, password);
+          // Migrate: update Firebase Auth to internal password
+          try { await updatePassword(auth.currentUser!, INTERNAL_AUTH_PW); } catch {}
+          return result;
+        } catch (e2) {
+          lastError = e2;
+        }
+      }
+    } else {
+      // Old account without storedPassword — use Firebase Auth directly
+      try {
+        const result = await signInWithEmailAndPassword(auth, userData.email, password);
+        // Migrate: store password in Firestore + switch Firebase Auth to internal password
+        try {
+          await setDoc(doc(db, 'users', userDoc.id), { storedPassword: password }, { merge: true });
+          await updatePassword(auth.currentUser!, INTERNAL_AUTH_PW);
+        } catch {}
+        return result;
       } catch (e) {
         lastError = e;
       }
