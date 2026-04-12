@@ -142,7 +142,7 @@ export default function DashboardScreen() {
               {t('hero_subtitle')}
             </Text>
 
-            {/* Quick action buttons */}
+            {/* Quick action buttons — top row */}
             <View style={styles.quickActions}>
               <TouchableOpacity
                 style={[styles.quickBtn, { borderColor: 'transparent' }]}
@@ -161,6 +161,21 @@ export default function DashboardScreen() {
                 onPress={() => router.push('/(app)/trophy-road' as never)}
               >
                 <Image source={require('../../assets/tabs/awards.png')} style={styles.quickBtnImage} resizeMode="contain" />
+              </TouchableOpacity>
+            </View>
+            {/* Quick action buttons — bottom row */}
+            <View style={[styles.quickActions, { justifyContent: 'center' }]}>
+              <TouchableOpacity
+                style={[styles.quickBtn, { borderColor: 'transparent' }]}
+                onPress={() => router.push('/(app)/social' as never)}
+              >
+                <Image source={require('../../assets/tabs/social.png')} style={styles.quickBtnImage} resizeMode="contain" />
+              </TouchableOpacity>
+              <TouchableOpacity
+                style={[styles.quickBtn, { borderColor: 'transparent' }]}
+                onPress={() => router.push('/(app)/tutorial' as never)}
+              >
+                <Image source={require('../../assets/tabs/learn.png')} style={styles.quickBtnImage} resizeMode="contain" />
               </TouchableOpacity>
             </View>
           </LinearGradient>
