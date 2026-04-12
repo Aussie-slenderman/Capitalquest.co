@@ -108,39 +108,57 @@ function InitialsAvatar({
 
 function ClubDigestHeader({ club }: { club: Club }) {
   const t = useT();
-  const { globalLeaderboard, user, portfolio, appColorMode: dgAppColorMode } = useAppStore();
+  const { user, portfolio, appColorMode: dgAppColorMode } = useAppStore();
   const DC = dgAppColorMode === 'light' ? LightColors : Colors;
+  const [sorted, setSorted] = useState<LeaderboardEntry[]>([]);
+  const [digestLoading, setDigestLoading] = useState(true);
 
-  // Build member list from real leaderboard data, filtered to club members
-  const memberIds = club.memberIds ?? [];
-  const memberEntries = globalLeaderboard.filter(e => memberIds.includes(e.userId));
+  // Fetch leaderboard data for club members on mount
+  useEffect(() => {
+    (async () => {
+      try {
+        const data = await getLeaderboard('global');
+        const memberIds = new Set(club.memberIds ?? []);
+        let entries = (data as LeaderboardEntry[]).filter(e => memberIds.has(e.userId));
 
-  // If the current user is a member but not yet in the leaderboard, add them
-  const currentUserInList = memberEntries.some(e => e.userId === user?.id);
-  const allMembers = currentUserInList
-    ? memberEntries
-    : user && memberIds.includes(user.id)
-      ? [
-          ...memberEntries,
-          {
+        // Add current user if they're a member but not in the leaderboard yet
+        if (user && memberIds.has(user.id) && !entries.some(e => e.userId === user.id)) {
+          const startBal = portfolio?.startingBalance ?? user.startingBalance ?? 10000;
+          const curVal = portfolio?.totalValue ?? startBal;
+          entries.push({
             userId: user.id,
-            displayName: user.displayName,
-            username: user.username,
-            gainDollars: portfolio?.totalGainLoss ?? 0,
-            rank: memberEntries.length + 1,
+            displayName: user.displayName ?? user.username ?? 'Player',
+            username: user.username ?? 'Player',
+            gainDollars: curVal - startBal,
+            rank: 0,
             level: user.level ?? 1,
-            startingBalance: portfolio?.startingBalance ?? 10000,
-            currentValue: portfolio?.totalValue ?? 10000,
+            startingBalance: startBal,
+            currentValue: curVal,
             country: user.country ?? '',
             isCurrentUser: true,
-          },
-        ]
-      : memberEntries;
+          });
+        }
 
-  const sorted = [...allMembers].sort((a, b) => b.gainDollars - a.gainDollars);
+        entries.sort((a, b) => b.gainDollars - a.gainDollars);
+        entries.forEach((e, i) => { e.rank = i + 1; e.isCurrentUser = e.userId === user?.id; });
+        setSorted(entries);
+      } catch {}
+      setDigestLoading(false);
+    })();
+  }, [club.memberIds?.length, user?.id, portfolio?.totalValue]);
+
   const topPerformer = sorted[0];
 
-  if (allMembers.length === 0) {
+  if (digestLoading) {
+    return (
+      <View style={digestStyles.wrapper}>
+        <ActivityIndicator color={Colors.brand.primary} style={{ paddingVertical: 20 }} />
+        <View style={digestStyles.divider} />
+      </View>
+    );
+  }
+
+  if (sorted.length === 0) {
     return (
       <View style={digestStyles.wrapper}>
         <Text style={[digestStyles.emptyNote, { color: DC.text.tertiary }]}>
