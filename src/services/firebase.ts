@@ -545,6 +545,19 @@ export async function getClub(clubId: string) {
   return snap.exists() ? { id: snap.id, ...snap.data() } : null;
 }
 
+export async function getClubsByIds(clubIds: string[]) {
+  if (!clubIds || clubIds.length === 0) return [];
+  const results = [];
+  // Firestore 'in' queries support max 30 items
+  for (let i = 0; i < clubIds.length; i += 30) {
+    const batch = clubIds.slice(i, i + 30);
+    const q = query(collection(db, 'clubs'), where(documentId(), 'in', batch));
+    const snap = await getDocs(q);
+    snap.docs.forEach(d => results.push({ id: d.id, ...d.data() }));
+  }
+  return results;
+}
+
 export async function sendNotificationToUser(userId: string, notification: { type: string; title: string; body: string; data?: Record<string, unknown> }) {
   await addDoc(collection(db, 'users', userId, 'notifications'), {
     ...notification,

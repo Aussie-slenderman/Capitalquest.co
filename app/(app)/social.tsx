@@ -39,6 +39,7 @@ import {
   getLeaderboard,
   getUserById,
   fetchPendingInvites,
+  getClubsByIds,
 } from '../../src/services/auth';
 import AppHeader from '../../src/components/AppHeader';
 import Sidebar from '../../src/components/Sidebar';
@@ -768,16 +769,18 @@ function ClubsTab() {
   const loadClubs = async () => {
     setLoading(true);
     try {
-      const clubs = await getPublicClubs();
       const userClubIds = user?.clubIds ?? [];
-      const my = clubs.filter((c: Club) => userClubIds.includes(c.id)) as Club[];
-      const discover = clubs.filter((c: Club) => !userClubIds.includes(c.id)) as Club[];
-      // Only overwrite store clubs if Firebase actually returned results;
-      // in mock mode getPublicClubs() returns [] so we preserve locally-created clubs
-      if (clubs.length > 0) {
-        setMyClubs(my);
+      // Fetch user's clubs directly by their IDs (includes private clubs)
+      const [myClubsData, publicClubs] = await Promise.all([
+        userClubIds.length > 0 ? getClubsByIds(userClubIds) : Promise.resolve([]),
+        getPublicClubs(),
+      ]);
+      if (myClubsData.length > 0) {
+        setMyClubs(myClubsData as Club[]);
       }
-      setPublicClubs(discover);
+      // Discover = public clubs the user hasn't joined
+      const myIds = new Set(userClubIds);
+      setPublicClubs((publicClubs as Club[]).filter(c => !myIds.has(c.id)));
     } catch (_) {
       // silently fail
     } finally {

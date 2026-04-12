@@ -198,6 +198,11 @@ export async function getClub(clubId: string) {
   return FB.getClub(clubId);
 }
 
+export async function getClubsByIds(clubIds: string[]) {
+  if (IS_MOCK) return [];
+  return FB.getClubsByIds(clubIds);
+}
+
 export async function deleteClub(clubId: string, ownerId: string) {
   if (IS_MOCK) return;
   return FB.deleteClub(clubId, ownerId);
