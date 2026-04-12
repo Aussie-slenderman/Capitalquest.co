@@ -47,7 +47,9 @@ export default function DashboardScreen() {
     notifications, newsLastRead,
     portfolio, isSidebarOpen, setSidebarOpen, appTabColors, appColorMode,
     showWelcomePopup, setShowWelcomePopup,
+    unreadCount, clubInvites,
   } = useAppStore();
+  const socialBadgeCount = (unreadCount ?? 0) + (clubInvites?.length ?? 0);
   const isLight = appColorMode === 'light';
   const C = isLight ? LightColors : Colors;
   const t = useT();
@@ -169,7 +171,14 @@ export default function DashboardScreen() {
                 style={[styles.quickBtn, { borderColor: 'transparent' }]}
                 onPress={() => router.push('/(app)/social' as never)}
               >
-                <Image source={require('../../assets/tabs/social.png')} style={styles.quickBtnImage} resizeMode="contain" />
+                <View>
+                  <Image source={require('../../assets/tabs/social.png')} style={styles.quickBtnImage} resizeMode="contain" />
+                  {socialBadgeCount > 0 && (
+                    <View style={{ position: 'absolute', top: -4, right: -4, backgroundColor: Colors.market.loss, borderRadius: 10, minWidth: 20, height: 20, alignItems: 'center', justifyContent: 'center', paddingHorizontal: 4, borderWidth: 1.5, borderColor: Colors.bg.primary }}>
+                      <Text style={{ color: '#fff', fontSize: 10, fontWeight: '800' }}>{socialBadgeCount > 9 ? '9+' : socialBadgeCount}</Text>
+                    </View>
+                  )}
+                </View>
               </TouchableOpacity>
               <TouchableOpacity
                 style={[styles.quickBtn, { borderColor: 'transparent' }]}
