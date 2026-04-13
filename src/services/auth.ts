@@ -35,11 +35,6 @@ export async function lookupUserByEmail(email: string) {
   return FB.lookupUserByEmail(email);
 }
 
-export async function resetUserPassword(userId: string, email: string, newPassword: string) {
-  if (IS_MOCK) return;
-  return FB.resetUserPassword(userId, email, newPassword);
-}
-
 export async function loginUser(email: string, password: string) {
   if (IS_MOCK) return Mock.mockLogin(email, password);
   return FB.loginUser(email, password);

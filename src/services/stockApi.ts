@@ -848,11 +848,9 @@ export async function getChartData(
   try {
     const yahooData = await yahooGetChartData(symbol, period);
     if (yahooData.length > 0) {
-      console.log(`[StockAPI] ${symbol} ${period}: Yahoo Finance OK, ${yahooData.length} points`);
       return yahooData;
     }
-  } catch (e) {
-    console.warn(`[StockAPI] ${symbol} ${period}: Yahoo Finance failed`, e);
+  } catch {
   }
 
   // Try Finnhub as fallback if key is configured
@@ -878,7 +876,6 @@ export async function getChartData(
   }
 
   // Generate realistic mock chart data based on actual price
-  console.warn(`[StockAPI] ${symbol} ${period}: All APIs failed, using generated chart data`);
   return generateRealisticChart(symbol, period, currentPrice);
 }
 

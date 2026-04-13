@@ -190,22 +190,6 @@ export async function lookupUserByEmail(email: string) {
   return { ...snap.docs[0].data(), id: snap.docs[0].id };
 }
 
-export async function resetUserPassword(userId: string, firebaseEmail: string, newPassword: string) {
-  // Sign in as the user with their Firebase auth email, then update password
-  // Since we can't sign in without their old password, we use admin-style update
-  // For client-side, we need the user to be currently signed in
-  // Alternative approach: look up the firebase auth email and use updatePassword
-  const currentUser = auth.currentUser;
-  if (currentUser) {
-    // If already signed in, update directly
-    const { updatePassword } = await import('firebase/auth');
-    await updatePassword(currentUser, newPassword);
-    return;
-  }
-  // If not signed in, sign in with the firebase email first
-  // We need to store the result and update
-  throw { message: 'Please sign in first to reset your password.' };
-}
 
 export async function signOut() {
   return firebaseSignOut(auth);
