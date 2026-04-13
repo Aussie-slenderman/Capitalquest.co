@@ -166,7 +166,7 @@ export default function DashboardScreen() {
               </TouchableOpacity>
             </View>
             {/* Quick action buttons — bottom row */}
-            <View style={[styles.quickActions, { justifyContent: 'center', paddingHorizontal: 30 }]}>
+            <View style={[styles.quickActions, { justifyContent: 'center', paddingHorizontal: 80 }]}>
               <TouchableOpacity
                 style={[styles.quickBtn, { borderColor: 'transparent' }]}
                 onPress={() => router.push('/(app)/social' as never)}
