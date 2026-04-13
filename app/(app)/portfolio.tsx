@@ -7,6 +7,8 @@ import {
   StyleSheet,
   StatusBar,
   SafeAreaView,
+  Modal,
+  TextInput,
 } from 'react-native';
 import { router } from 'expo-router';
 import { LineChart } from 'react-native-gifted-charts';
@@ -81,8 +83,11 @@ function buildChartData(totalValue: number, startingBalance: number, portfolioHi
 
 export default function PortfolioScreen() {
   const t = useT();
-  const { user, portfolio, quotes, isSidebarOpen, setSidebarOpen, appColorMode } = useAppStore();
+  const { user, setUser, portfolio, quotes, isSidebarOpen, setSidebarOpen, appColorMode } = useAppStore();
   const [showPortfolio, setShowPortfolio] = useState(false);
+  const [portfolioName, setPortfolioName] = useState((user as any)?.portfolioName || 'Portfolio 1');
+  const [renameVisible, setRenameVisible] = useState(false);
+  const [renameInput, setRenameInput] = useState('');
   const isLight = appColorMode === 'light';
   const C = isLight ? LightColors : Colors;
 
@@ -182,7 +187,12 @@ export default function PortfolioScreen() {
                     <Text style={{ fontSize: 20 }}>📊</Text>
                   </View>
                   <View>
-                    <Text style={{ fontSize: FontSize.lg, fontWeight: FontWeight.bold, color: C.text.primary }}>Portfolio 1</Text>
+                    <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
+                      <Text style={{ fontSize: FontSize.lg, fontWeight: FontWeight.bold, color: C.text.primary }}>{portfolioName}</Text>
+                      <TouchableOpacity onPress={(e) => { e.stopPropagation(); setRenameInput(portfolioName); setRenameVisible(true); }} hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}>
+                        <Text style={{ fontSize: 14 }}>✏️</Text>
+                      </TouchableOpacity>
+                    </View>
                     <Text style={{ fontSize: FontSize.xs, color: C.text.tertiary, marginTop: 2 }}>
                       {holdings.length} holding{holdings.length !== 1 ? 's' : ''} · {portfolioAgeDays} day{portfolioAgeDays !== 1 ? 's' : ''} old
                     </Text>
@@ -205,6 +215,45 @@ export default function PortfolioScreen() {
               </View>
             </TouchableOpacity>
           </View>
+
+          {/* Rename Modal */}
+          <Modal visible={renameVisible} transparent animationType="fade">
+            <View style={{ flex: 1, backgroundColor: 'rgba(0,0,0,0.7)', alignItems: 'center', justifyContent: 'center', paddingHorizontal: Spacing.xl }}>
+              <View style={{ width: '100%', backgroundColor: C.bg.secondary, borderRadius: Radius.xl, padding: Spacing.xl, borderWidth: 1, borderColor: C.border.default }}>
+                <Text style={{ fontSize: FontSize.lg, fontWeight: FontWeight.bold, color: C.text.primary, marginBottom: Spacing.md }}>✏️  Rename Portfolio</Text>
+                <TextInput
+                  style={{ backgroundColor: C.bg.tertiary, borderRadius: Radius.md, padding: 14, fontSize: FontSize.base, color: C.text.primary, borderWidth: 1, borderColor: C.border.default, marginBottom: Spacing.md }}
+                  value={renameInput}
+                  onChangeText={setRenameInput}
+                  placeholder="Portfolio name"
+                  placeholderTextColor={Colors.text.tertiary}
+                  autoFocus
+                  maxLength={30}
+                />
+                <TouchableOpacity
+                  style={{ backgroundColor: Colors.brand.primary, borderRadius: Radius.lg, paddingVertical: 14, alignItems: 'center', marginBottom: Spacing.sm, opacity: renameInput.trim() ? 1 : 0.4 }}
+                  disabled={!renameInput.trim()}
+                  onPress={async () => {
+                    const name = renameInput.trim();
+                    if (!name) return;
+                    setPortfolioName(name);
+                    setRenameVisible(false);
+                    if (user) {
+                      try {
+                        const { updateUser } = await import('../../src/services/auth');
+                        await updateUser(user.id, { portfolioName: name });
+                      } catch {}
+                    }
+                  }}
+                >
+                  <Text style={{ color: '#fff', fontSize: FontSize.base, fontWeight: FontWeight.bold }}>Save</Text>
+                </TouchableOpacity>
+                <TouchableOpacity style={{ paddingVertical: 10, alignItems: 'center' }} onPress={() => setRenameVisible(false)}>
+                  <Text style={{ color: C.text.tertiary, fontWeight: FontWeight.semibold }}>Cancel</Text>
+                </TouchableOpacity>
+              </View>
+            </View>
+          </Modal>
         </SafeAreaView>
       </View>
     );
@@ -222,7 +271,7 @@ export default function PortfolioScreen() {
         onPress={() => setShowPortfolio(false)}
       >
         <Text style={{ color: Colors.brand.primary, fontSize: FontSize.base }}>‹ Back</Text>
-        <Text style={{ color: C.text.secondary, fontSize: FontSize.sm }}> Portfolio 1</Text>
+        <Text style={{ color: C.text.secondary, fontSize: FontSize.sm }}> {portfolioName}</Text>
       </TouchableOpacity>
 
       <ScrollView
