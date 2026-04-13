@@ -166,14 +166,14 @@ export default function DashboardScreen() {
               </TouchableOpacity>
             </View>
             {/* Quick action buttons — bottom row */}
-            <View style={[styles.quickActions, { justifyContent: 'center', paddingHorizontal: 80 }]}>
+            <View style={[styles.quickActions, { justifyContent: 'center', paddingHorizontal: 80, marginTop: 8 }]}>
               <TouchableOpacity
                 style={[styles.quickBtn, { borderColor: 'transparent' }]}
                 onPress={() => router.push('/(app)/social' as never)}
               >
-                <View style={{ width: 100, height: 100 }}>
+                <View style={{ width: '100%', maxWidth: 120 }}>
                   <Image source={require('../../assets/tabs/social.png')} style={styles.quickBtnImage} resizeMode="contain" />
-                  <View style={{ position: 'absolute', top: -2, right: 9.5, backgroundColor: Colors.market.loss, borderRadius: 9, minWidth: 18, height: 18, alignItems: 'center', justifyContent: 'center', paddingHorizontal: 3, borderWidth: 1.5, borderColor: Colors.bg.primary }}>
+                  <View style={{ position: 'absolute', top: -2, right: 4, backgroundColor: Colors.market.loss, borderRadius: 9, minWidth: 18, height: 18, alignItems: 'center', justifyContent: 'center', paddingHorizontal: 3, borderWidth: 1.5, borderColor: Colors.bg.primary }}>
                     <Text style={{ color: '#fff', fontSize: 10, fontWeight: FontWeight.bold }}>{socialBadgeCount > 9 ? '9+' : socialBadgeCount}</Text>
                   </View>
                 </View>
@@ -366,24 +366,23 @@ const styles = StyleSheet.create({
     maxWidth: 280,
   },
   quickActions: {
-    flex: 1,
     flexDirection: 'row',
     gap: Spacing.sm,
-    marginTop: 20,
+    marginTop: 16,
     width: '100%',
+    flexWrap: 'nowrap',
   },
   quickBtn: {
     flex: 1,
     alignItems: 'center',
     justifyContent: 'center',
-    paddingHorizontal: 10,
     borderRadius: Radius.lg,
     borderWidth: 0,
     backgroundColor: 'transparent',
     gap: 8,
     minWidth: 0,
   },
-  quickBtnImage: { width: 100, height: 100 },
+  quickBtnImage: { width: '100%', aspectRatio: 1, maxWidth: 120, maxHeight: 120 } as any,
   quickBtnDesc: { fontSize: FontSize.xs, textAlign: 'center', lineHeight: 16, marginTop: 4, color: Colors.text.tertiary },
 
   // ── Welcome popup ──
