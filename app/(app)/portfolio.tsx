@@ -85,9 +85,15 @@ export default function PortfolioScreen() {
   const t = useT();
   const { user, setUser, portfolio, quotes, isSidebarOpen, setSidebarOpen, appColorMode } = useAppStore();
   const [showPortfolio, setShowPortfolio] = useState(false);
-  const [portfolioName, setPortfolioName] = useState((user as any)?.portfolioName || 'Portfolio 1');
+  const savedName = (user as any)?.portfolioName;
+  const [portfolioName, setPortfolioName] = useState(savedName || 'Portfolio 1');
   const [renameVisible, setRenameVisible] = useState(false);
   const [renameInput, setRenameInput] = useState('');
+
+  // Sync portfolio name when user data loads from Firestore
+  React.useEffect(() => {
+    if (savedName && savedName !== portfolioName) setPortfolioName(savedName);
+  }, [savedName]);
   const isLight = appColorMode === 'light';
   const C = isLight ? LightColors : Colors;
 
