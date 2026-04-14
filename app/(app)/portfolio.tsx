@@ -385,7 +385,7 @@ export default function PortfolioScreen() {
                   }
                 }}
               >
-                <Text style={{ color: '#0A0E1A', fontSize: FontSize.base, fontWeight: FontWeight.extrabold, letterSpacing: 0.3 }}>Add Portfolio — $0.99</Text>
+                <Text style={{ color: '#0A0E1A', fontSize: FontSize.base, fontWeight: FontWeight.extrabold, letterSpacing: 0.3 }}>Add Portfolio</Text>
               </TouchableOpacity>
             </View>
           </View>
