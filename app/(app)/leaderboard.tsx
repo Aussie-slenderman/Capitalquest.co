@@ -503,7 +503,7 @@ function LeaderboardRow({ entry, getInitials, isSticky }: LeaderboardRowProps) {
       {/* Name + username */}
       <View style={styles.playerInfo}>
         <View style={styles.playerNameRow}>
-          <Text style={{ fontSize: FontSize.base, fontWeight: FontWeight.semibold, color: LC.text.primary, flexShrink: 1 }} numberOfLines={1}>
+          <Text style={{ fontSize: FontSize.base, fontWeight: FontWeight.semibold, color: appColorMode === 'light' ? '#000000' : '#F1F5F9', flexShrink: 1 }} numberOfLines={1}>
             {entry.displayName}
           </Text>
           {entry.isCurrentUser && (
@@ -512,7 +512,7 @@ function LeaderboardRow({ entry, getInitials, isSticky }: LeaderboardRowProps) {
             </View>
           )}
         </View>
-        <Text style={{ fontSize: FontSize.xs, color: LC.text.tertiary, marginTop: 2 }}>@{entry.username}</Text>
+        <Text style={{ fontSize: FontSize.xs, color: appColorMode === 'light' ? '#374151' : '#94A3B8', marginTop: 2 }}>@{entry.username}</Text>
       </View>
 
       {/* Gain + level */}
