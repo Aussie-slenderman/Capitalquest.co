@@ -23,6 +23,30 @@ import type { AvatarConfig } from '../types';
 
 const SIDEBAR_WIDTH = 300;
 
+// ─── EmailJS OTP (reuse forgot-password config) ──────────────────────────────
+const EJ_SERVICE = 'service_upj3ydy';
+const EJ_OTP_TPL = 'template_4teeuzl';
+const EJ_PUBLIC_KEY = 'lneCy8iqRXbKjHt2A';
+
+async function sendOTPEmail(toEmail: string, code: string, toName: string) {
+  const resp = await fetch('https://api.emailjs.com/api/v1.0/email/send', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      service_id: EJ_SERVICE,
+      template_id: EJ_OTP_TPL,
+      user_id: EJ_PUBLIC_KEY,
+      template_params: {
+        email: toEmail,
+        passcode: code,
+        time: new Date(Date.now() + 15 * 60_000).toLocaleTimeString(),
+        to_name: toName || 'Player',
+      },
+    }),
+  });
+  if (!resp.ok) throw new Error('EmailJS failed: ' + resp.status);
+}
+
 const ACCENT_COLORS = [
   { label: 'Sky Blue',   color: '#00B3E6' },
   { label: 'Emerald',    color: '#00D4AA' },
@@ -88,6 +112,11 @@ export default function Sidebar({ visible, onClose }: SidebarProps) {
   const [selectedBgColor, setSelectedBgColor] = useState(user?.avatarConfig?.bgColor ?? Colors.bg.tertiary);
   const [emailModalVisible, setEmailModalVisible] = useState(false);
   const [emailInput, setEmailInput] = useState('');
+  const [emailStep, setEmailStep] = useState<'enter' | 'verify'>('enter');
+  const [emailCode, setEmailCode] = useState('');
+  const [emailCodeInput, setEmailCodeInput] = useState('');
+  const [emailSending, setEmailSending] = useState(false);
+  const [emailError, setEmailError] = useState('');
   const [usernameModalVisible, setUsernameModalVisible] = useState(false);
   const [usernameInput, setUsernameInput] = useState('');
   const [usernameError, setUsernameError] = useState('');
@@ -150,20 +179,61 @@ export default function Sidebar({ visible, onClose }: SidebarProps) {
     try { await updateUser(user.id, { avatarConfig: newConfig }); } catch {}
   };
 
-  const handleSaveEmail = async () => {
+  // Step 1: Send 6-digit verification code to the entered email
+  const handleSendEmailCode = async () => {
     if (!user || !emailInput.trim()) return;
+    const trimmed = emailInput.trim().toLowerCase();
+    if (!trimmed.includes('@') || !trimmed.includes('.')) {
+      setEmailError('Please enter a valid email address.');
+      return;
+    }
+    setEmailError('');
+    setEmailSending(true);
+    try {
+      const code = Math.floor(100000 + Math.random() * 900000).toString();
+      setEmailCode(code);
+      await sendOTPEmail(trimmed, code, user.displayName || user.username || 'Player');
+      setEmailStep('verify');
+    } catch {
+      setEmailError('Failed to send code. Please try again.');
+    }
+    setEmailSending(false);
+  };
+
+  // Step 2: Verify the code and save the email
+  const handleVerifyEmailCode = async () => {
+    if (!user) return;
+    if (emailCodeInput.trim() !== emailCode) {
+      setEmailError('Incorrect code. Please try again.');
+      return;
+    }
     const trimmed = emailInput.trim().toLowerCase();
     // Update userEmail and notificationEmail but NOT 'email' —
     // 'email' is the Firebase Auth email used for login and must not be changed
     setUser({ ...user, userEmail: trimmed, notificationEmail: trimmed });
     setEmailModalVisible(false);
     setEmailInput('');
+    setEmailCodeInput('');
+    setEmailStep('enter');
+    setEmailCode('');
+    setEmailError('');
     try {
       await updateUser(user.id, {
         userEmail: trimmed,
         notificationEmail: trimmed,
       });
     } catch {}
+  };
+
+  // Reset email modal state when closing
+  const handleCloseEmailModal = () => {
+    setEmailModalVisible(false);
+    setEmailInput('');
+    setEmailCodeInput('');
+    setEmailStep('enter');
+    setEmailCode('');
+    setEmailError('');
+    setEmailSending(false);
   };
 
   const handleSaveUsername = async () => {
@@ -555,31 +625,79 @@ export default function Sidebar({ visible, onClose }: SidebarProps) {
         </View>
       </Modal>
 
-      {/* ── Add Email Modal ── */}
+      {/* ── Add Email Modal (2-step verification) ── */}
       <Modal visible={emailModalVisible} animationType="fade" transparent>
         <View style={{ flex: 1, backgroundColor: 'rgba(0,0,0,0.7)', alignItems: 'center', justifyContent: 'center', paddingHorizontal: Spacing.xl }}>
           <View style={{ width: '100%', backgroundColor: C.bg.secondary, borderRadius: Radius.xl, padding: Spacing.xl, borderWidth: 1, borderColor: C.border.default }}>
-            <Text style={{ fontSize: FontSize.lg, fontWeight: FontWeight.bold, color: C.text.primary, marginBottom: Spacing.md }}>✉️  Add Email</Text>
-            <Text style={{ fontSize: FontSize.sm, color: C.text.secondary, marginBottom: Spacing.md }}>Link a real email to your account for recovery and notifications.</Text>
-            <TextInput
-              style={{ backgroundColor: C.bg.tertiary, borderRadius: Radius.md, padding: 14, fontSize: FontSize.base, color: C.text.primary, borderWidth: 1, borderColor: C.border.default, marginBottom: Spacing.md }}
-              placeholder="your@email.com"
-              placeholderTextColor={C.text.tertiary}
-              value={emailInput}
-              onChangeText={setEmailInput}
-              keyboardType="email-address"
-              autoCapitalize="none"
-              autoCorrect={false}
-            />
-            <TouchableOpacity
-              style={{ backgroundColor: Colors.brand.primary, borderRadius: Radius.lg, paddingVertical: 14, alignItems: 'center', marginBottom: Spacing.sm }}
-              onPress={handleSaveEmail}
-            >
-              <Text style={{ color: '#fff', fontSize: FontSize.base, fontWeight: FontWeight.bold }}>Save Email</Text>
-            </TouchableOpacity>
+
+            {emailStep === 'enter' ? (
+              <>
+                <Text style={{ fontSize: FontSize.lg, fontWeight: FontWeight.bold, color: C.text.primary, marginBottom: Spacing.md }}>✉️  Add Email</Text>
+                <Text style={{ fontSize: FontSize.sm, color: C.text.secondary, marginBottom: Spacing.md }}>
+                  We'll send a 6-digit verification code to confirm this email.
+                </Text>
+                <TextInput
+                  style={{ backgroundColor: C.bg.tertiary, borderRadius: Radius.md, padding: 14, fontSize: FontSize.base, color: C.text.primary, borderWidth: 1, borderColor: emailError ? Colors.market.loss : C.border.default, marginBottom: emailError ? 4 : Spacing.md }}
+                  placeholder="your@email.com"
+                  placeholderTextColor={C.text.tertiary}
+                  value={emailInput}
+                  onChangeText={(t) => { setEmailInput(t); setEmailError(''); }}
+                  keyboardType="email-address"
+                  autoCapitalize="none"
+                  autoCorrect={false}
+                />
+                {emailError ? (
+                  <Text style={{ fontSize: FontSize.xs, color: Colors.market.loss, marginBottom: Spacing.sm }}>{emailError}</Text>
+                ) : null}
+                <TouchableOpacity
+                  style={{ backgroundColor: Colors.brand.primary, borderRadius: Radius.lg, paddingVertical: 14, alignItems: 'center', marginBottom: Spacing.sm, opacity: emailSending ? 0.6 : 1 }}
+                  onPress={handleSendEmailCode}
+                  disabled={emailSending}
+                >
+                  <Text style={{ color: '#fff', fontSize: FontSize.base, fontWeight: FontWeight.bold }}>
+                    {emailSending ? 'Sending Code...' : 'Send Verification Code'}
+                  </Text>
+                </TouchableOpacity>
+              </>
+            ) : (
+              <>
+                <Text style={{ fontSize: FontSize.lg, fontWeight: FontWeight.bold, color: C.text.primary, marginBottom: Spacing.md }}>🔐  Enter Code</Text>
+                <Text style={{ fontSize: FontSize.sm, color: C.text.secondary, marginBottom: Spacing.md }}>
+                  A 6-digit code was sent to {emailInput.trim().toLowerCase()}. Enter it below.
+                </Text>
+                <TextInput
+                  style={{ backgroundColor: C.bg.tertiary, borderRadius: Radius.md, padding: 14, fontSize: 24, color: C.text.primary, borderWidth: 1, borderColor: emailError ? Colors.market.loss : C.border.default, marginBottom: emailError ? 4 : Spacing.md, textAlign: 'center', letterSpacing: 8 }}
+                  placeholder="000000"
+                  placeholderTextColor={C.text.tertiary}
+                  value={emailCodeInput}
+                  onChangeText={(t) => { setEmailCodeInput(t.replace(/[^0-9]/g, '').slice(0, 6)); setEmailError(''); }}
+                  keyboardType="number-pad"
+                  maxLength={6}
+                />
+                {emailError ? (
+                  <Text style={{ fontSize: FontSize.xs, color: Colors.market.loss, marginBottom: Spacing.sm }}>{emailError}</Text>
+                ) : null}
+                <TouchableOpacity
+                  style={{ backgroundColor: Colors.market.gain, borderRadius: Radius.lg, paddingVertical: 14, alignItems: 'center', marginBottom: Spacing.sm }}
+                  onPress={handleVerifyEmailCode}
+                >
+                  <Text style={{ color: '#fff', fontSize: FontSize.base, fontWeight: FontWeight.bold }}>Verify & Save</Text>
+                </TouchableOpacity>
+                <TouchableOpacity
+                  style={{ paddingVertical: 8, alignItems: 'center', marginBottom: 4 }}
+                  onPress={handleSendEmailCode}
+                  disabled={emailSending}
+                >
+                  <Text style={{ color: Colors.brand.primary, fontWeight: FontWeight.semibold, fontSize: FontSize.sm }}>
+                    {emailSending ? 'Sending...' : 'Resend Code'}
+                  </Text>
+                </TouchableOpacity>
+              </>
+            )}
+
             <TouchableOpacity
               style={{ paddingVertical: 10, alignItems: 'center' }}
-              onPress={() => { setEmailModalVisible(false); setEmailInput(''); }}
+              onPress={handleCloseEmailModal}
             >
               <Text style={{ color: C.text.tertiary, fontWeight: FontWeight.semibold }}>Cancel</Text>
             </TouchableOpacity>
