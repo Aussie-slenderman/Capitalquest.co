@@ -239,7 +239,8 @@ async function main() {
 
   const users = usersSnap.docs.filter(doc => {
     const d = doc.data();
-    return d.notificationEmail && typeof d.notificationEmail === 'string';
+    const email = d.notificationEmail || d.userEmail;
+    return email && typeof email === 'string';
   });
 
   console.log(`Found ${users.length} user(s) to email.`);
@@ -249,7 +250,7 @@ async function main() {
   for (const doc of users) {
     const uid  = doc.id;
     const data = doc.data();
-    const to   = data.notificationEmail;
+    const to   = data.notificationEmail || data.userEmail;
     const name = data.username || data.displayName || 'Player';
 
     console.log(`Processing ${uid} (${to})…`);

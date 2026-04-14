@@ -294,8 +294,8 @@ async function main() {
   for (const userDoc of usersSnap.docs) {
     const user = userDoc.data();
 
-    // Use notificationEmail (real email) if available, otherwise skip fake @capitalquest.app emails
-    const sendTo = user.notificationEmail || user.email;
+    // Use notificationEmail, userEmail, or email — skip fake @capitalquest.app emails
+    const sendTo = user.notificationEmail || user.userEmail || user.email;
     if (!sendTo || sendTo.endsWith('@capitalquest.app')) { skipped++; continue; }
 
     try {
