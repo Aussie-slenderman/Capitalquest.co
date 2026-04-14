@@ -88,23 +88,28 @@ function getDateRangeText(period: PortfolioChartPeriod, createdAt?: number): str
   return `${fmt(startDate)} – ${fmt(now)}`;
 }
 
+interface ChartResult {
+  data: { value: number }[];
+  baseline: number;
+  topValue: number;
+  startValue: number;
+  endValue: number;
+  changeAmount: number;
+  changePercent: number;
+  dataPoints: number;
+  isFlat: boolean;
+}
+
 function buildChartData(
   totalValue: number,
   portfolioHistory?: { timestamp: number; totalValue: number }[],
   period: PortfolioChartPeriod = '1M',
-): { value: number }[] & { baseline?: number; topValue?: number } {
-  // Helper: create a flat-line result centered around a value
-  function makeFlatLine(val: number, pointCount: number) {
-    // Use ±2.5% range so the flat line sits in the center
-    const spread = val * 0.025 || 50;
-    const baseline = val - spread;
-    const topValue = spread * 2;
-    const pts = Array.from({ length: Math.max(pointCount, 2) }, () => ({ value: val - baseline }));
-    const result = pts as any;
-    result.baseline = baseline;
-    result.topValue = topValue;
-    return result;
-  }
+): ChartResult {
+  const empty: ChartResult = {
+    data: [], baseline: 0, topValue: 100,
+    startValue: 0, endValue: 0, changeAmount: 0, changePercent: 0,
+    dataPoints: 0, isFlat: true,
+  };
 
   if (portfolioHistory && portfolioHistory.length > 0) {
     const cutoff = getPeriodCutoff(period);
@@ -116,37 +121,53 @@ function buildChartData(
       const values = filtered.map(p => p.totalValue);
       const mn = Math.min(...values);
       const mx = Math.max(...values);
+      const startVal = filtered[0].totalValue;
+      const endVal = filtered[filtered.length - 1].totalValue;
+      const changeAmount = endVal - startVal;
+      const changePercent = startVal > 0 ? (changeAmount / startVal) * 100 : 0;
+      const isFlat = mx - mn < 0.01;
 
-      // If all values are the same (flat portfolio), center the line
-      if (mx - mn < 0.01) {
-        return makeFlatLine(mn, filtered.length);
+      // Calculate baseline and topValue
+      let baseline: number;
+      let topValue: number;
+      if (isFlat) {
+        const spread = mn * 0.025 || 50;
+        baseline = mn - spread;
+        topValue = spread * 2;
+      } else {
+        const range = mx - mn;
+        const padding = range * 0.08;
+        baseline = mn - padding;
+        topValue = (mx + padding) - baseline;
       }
 
-      const range = mx - mn;
-      const padding = range * 0.08;
-      const baseline = mn - padding;
-      const topValue = (mx + padding) - baseline;
-      const dataPoints = filtered.map(p => ({ value: p.totalValue - baseline }));
-
-      // If only 1 data point, duplicate it so LineChart draws a visible line
+      let dataPoints = filtered.map(p => ({ value: p.totalValue - baseline }));
       if (dataPoints.length === 1) {
         dataPoints.push({ ...dataPoints[0] });
       }
 
-      const result = dataPoints as any;
-      result.baseline = baseline;
-      result.topValue = topValue;
-      return result;
+      return {
+        data: dataPoints, baseline, topValue,
+        startValue: startVal, endValue: endVal,
+        changeAmount, changePercent,
+        dataPoints: filtered.length, isFlat,
+      };
     }
   }
 
   // No history data — show flat line at current value
   if (totalValue > 0) {
-    return makeFlatLine(totalValue, 2);
+    const spread = totalValue * 0.025 || 50;
+    const baseline = totalValue - spread;
+    const topValue = spread * 2;
+    const pts = [{ value: totalValue - baseline }, { value: totalValue - baseline }];
+    return {
+      data: pts, baseline, topValue,
+      startValue: totalValue, endValue: totalValue,
+      changeAmount: 0, changePercent: 0,
+      dataPoints: 1, isFlat: true,
+    };
   }
-  const empty = [] as any;
-  empty.baseline = 0;
-  empty.topValue = 100;
   return empty;
 }
 
@@ -181,14 +202,14 @@ export default function PortfolioScreen() {
   const { clampedLevel, xpInCurrentLevel, xpProgress, levelColor, title: levelTitle } =
     getLevelInfo(user?.level ?? 1, user?.xp ?? 0);
 
-  const chartData = useMemo(
+  const chartResult = useMemo(
     () => buildChartData(totalValue, portfolio?.history, chartPeriod),
     // eslint-disable-next-line react-hooks/exhaustive-deps
     [portfolio?.userId, portfolio?.history, totalValue, chartPeriod],
   );
 
-  const chartBaseline = (chartData as any).baseline ?? 0;
-  const chartTopValue = (chartData as any).topValue ?? 100;
+  const chartBaseline = chartResult.baseline;
+  const chartTopValue = chartResult.topValue;
 
   const formatYLabel = useCallback((val: string) => {
     const n = Number(val) + chartBaseline;
@@ -472,36 +493,58 @@ export default function PortfolioScreen() {
           </Text>
         </View>
         <View style={[styles.chartCard, { backgroundColor: C.bg.secondary, borderColor: C.border.default }]}>
-          {chartData.length > 0 ? (
-            <LineChart
-              data={chartData}
-              width={280}
-              height={200}
-              color={isGain ? Colors.market.gain : Colors.market.loss}
-              thickness={2}
-              hideDataPoints
-              startFillColor={(isGain ? Colors.market.gain : Colors.market.loss) + '40'}
-              endFillColor={(isGain ? Colors.market.gain : Colors.market.loss) + '05'}
-              startOpacity={0.3}
-              endOpacity={0}
-              areaChart
-              hideRules
-              hideAxesAndRules={false}
-              yAxisColor="transparent"
-              xAxisColor={C.border.default}
-              yAxisTextStyle={{ color: C.text.tertiary, fontSize: 10 }}
-              formatYLabel={formatYLabel}
-              yAxisLabelWidth={50}
-              maxValue={chartTopValue}
-              noOfSections={4}
-              backgroundColor="transparent"
-              adjustToWidth
-              initialSpacing={0}
-              endSpacing={0}
-              minValue={0}
-            />
+          {chartResult.data.length > 0 ? (
+            <>
+              <LineChart
+                data={chartResult.data}
+                width={280}
+                height={180}
+                color={chartResult.changeAmount >= 0 ? Colors.market.gain : Colors.market.loss}
+                thickness={2}
+                hideDataPoints={chartResult.dataPoints > 30}
+                dataPointsColor={chartResult.changeAmount >= 0 ? Colors.market.gain : Colors.market.loss}
+                dataPointsRadius={3}
+                startFillColor={(chartResult.changeAmount >= 0 ? Colors.market.gain : Colors.market.loss) + '40'}
+                endFillColor={(chartResult.changeAmount >= 0 ? Colors.market.gain : Colors.market.loss) + '05'}
+                startOpacity={0.3}
+                endOpacity={0}
+                areaChart
+                hideRules
+                hideAxesAndRules={false}
+                yAxisColor="transparent"
+                xAxisColor={C.border.default}
+                yAxisTextStyle={{ color: C.text.tertiary, fontSize: 10 }}
+                formatYLabel={formatYLabel}
+                yAxisLabelWidth={50}
+                maxValue={chartTopValue}
+                noOfSections={4}
+                backgroundColor="transparent"
+                adjustToWidth
+                initialSpacing={4}
+                endSpacing={4}
+                minValue={0}
+              />
+              {/* Period change summary */}
+              <View style={styles.chartSummaryRow}>
+                <Text style={{ color: C.text.tertiary, fontSize: FontSize.xs }}>
+                  {chartResult.dataPoints} data point{chartResult.dataPoints !== 1 ? 's' : ''}
+                </Text>
+                <Text style={{
+                  fontSize: FontSize.sm,
+                  fontWeight: FontWeight.bold as any,
+                  color: chartResult.isFlat
+                    ? C.text.tertiary
+                    : chartResult.changeAmount >= 0 ? Colors.market.gain : Colors.market.loss,
+                }}>
+                  {chartResult.isFlat
+                    ? 'No change'
+                    : `${chartResult.changeAmount >= 0 ? '+' : ''}${formatCurrency(chartResult.changeAmount)} (${chartResult.changePercent >= 0 ? '+' : ''}${chartResult.changePercent.toFixed(2)}%)`
+                  }
+                </Text>
+              </View>
+            </>
           ) : (
-            <View style={{ height: 200, alignItems: 'center', justifyContent: 'center' }}>
+            <View style={{ height: 180, alignItems: 'center', justifyContent: 'center' }}>
               <Text style={{ color: C.text.tertiary, fontSize: 14 }}>{t('no_perf_data')}</Text>
             </View>
           )}
@@ -886,6 +929,14 @@ const styles = StyleSheet.create({
     borderColor: Colors.border.default,
     overflow: 'hidden',
     alignItems: 'center',
+  },
+  chartSummaryRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    width: '100%',
+    paddingHorizontal: Spacing.sm,
+    marginTop: Spacing.xs,
   },
   periodSelector: {
     flexDirection: 'row',
