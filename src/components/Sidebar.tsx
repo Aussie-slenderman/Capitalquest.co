@@ -221,6 +221,7 @@ export default function Sidebar({ visible, onClose }: SidebarProps) {
       await updateUser(user.id, {
         userEmail: trimmed,
         notificationEmail: trimmed,
+        emailVerified: true,
       });
     } catch {}
   };
