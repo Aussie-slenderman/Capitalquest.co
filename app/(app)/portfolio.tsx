@@ -1,4 +1,4 @@
-import React, { useMemo, useState } from 'react';
+import React, { useCallback, useMemo, useState } from 'react';
 import {
   View,
   Text,
@@ -51,32 +51,76 @@ function getLevelInfo(level: number, xp: number) {
   return { clampedLevel, xpInCurrentLevel, xpProgress, levelColor, title };
 }
 
-// ─── Chart data seeding ───────────────────────────────────────────────────────
+// ─── Chart period types & helpers ─────────────────────────────────────────────
 
-function buildChartData(totalValue: number, startingBalance: number, portfolioHistory?: { timestamp: number; totalValue: number }[]): { value: number }[] {
-  // Use real portfolio history if available, filtered to last 30 days
+type PortfolioChartPeriod = '1W' | '1M' | '1Y' | 'YTD' | 'ALL';
+const PORTFOLIO_CHART_PERIODS: PortfolioChartPeriod[] = ['1W', '1M', '1Y', 'YTD', 'ALL'];
+
+function getPeriodCutoff(period: PortfolioChartPeriod): number {
+  const now = Date.now();
+  switch (period) {
+    case '1W':  return now - 7 * 24 * 60 * 60 * 1000;
+    case '1M':  return now - 30 * 24 * 60 * 60 * 1000;
+    case '1Y':  return now - 365 * 24 * 60 * 60 * 1000;
+    case 'YTD': {
+      const jan1 = new Date(new Date().getFullYear(), 0, 1).getTime();
+      return jan1;
+    }
+    case 'ALL':  return 0;
+  }
+}
+
+function getPeriodLabel(period: PortfolioChartPeriod): string {
+  switch (period) {
+    case '1W':  return '7-Day Performance';
+    case '1M':  return '30-Day Performance';
+    case '1Y':  return '1-Year Performance';
+    case 'YTD': return 'Year-to-Date Performance';
+    case 'ALL': return 'All-Time Performance';
+  }
+}
+
+function buildChartData(
+  totalValue: number,
+  portfolioHistory?: { timestamp: number; totalValue: number }[],
+  period: PortfolioChartPeriod = '1M',
+): { value: number; baseline: number; topValue: number }[] & { baseline?: number; topValue?: number } {
   if (portfolioHistory && portfolioHistory.length > 0) {
-    const thirtyDaysAgo = Date.now() - 30 * 24 * 60 * 60 * 1000;
-    const recentData = portfolioHistory
-      .filter(p => p.timestamp >= thirtyDaysAgo)
+    const cutoff = getPeriodCutoff(period);
+    const filtered = portfolioHistory
+      .filter(p => p.timestamp >= cutoff)
       .sort((a, b) => a.timestamp - b.timestamp);
 
-    if (recentData.length > 0) {
-      const values = recentData.map(p => p.totalValue);
+    if (filtered.length > 0) {
+      const values = filtered.map(p => p.totalValue);
       const mn = Math.min(...values);
       const mx = Math.max(...values);
-      const range = mx - mn || 1;
-      return recentData.map(p => ({
-        value: ((p.totalValue - mn) / range) * 95 + 5,
-      }));
+      const range = mx - mn || mx * 0.01;
+      const baseline = mn - range * 0.08;
+      const topValue = (mx + range * 0.08) - baseline;
+      const result = filtered.map(p => ({
+        value: p.totalValue - baseline,
+        baseline,
+        topValue,
+      })) as any;
+      result.baseline = baseline;
+      result.topValue = topValue;
+      return result;
     }
   }
 
-  // No history data — if portfolio has value, show a single-point baseline
+  // No history data — single-point at current value
   if (totalValue > 0) {
-    return [{ value: 50 }];
+    const baseline = totalValue * 0.95;
+    const result = [{ value: totalValue - baseline, baseline, topValue: totalValue * 0.1 }] as any;
+    result.baseline = baseline;
+    result.topValue = totalValue * 0.1;
+    return result;
   }
-  return [];
+  const empty = [] as any;
+  empty.baseline = 0;
+  empty.topValue = 100;
+  return empty;
 }
 
 // ─── Main Component ───────────────────────────────────────────────────────────
@@ -94,6 +138,7 @@ export default function PortfolioScreen() {
   React.useEffect(() => {
     if (savedName && savedName !== portfolioName) setPortfolioName(savedName);
   }, [savedName]);
+  const [chartPeriod, setChartPeriod] = useState<PortfolioChartPeriod>('1M');
   const isLight = appColorMode === 'light';
   const C = isLight ? LightColors : Colors;
 
@@ -110,10 +155,19 @@ export default function PortfolioScreen() {
     getLevelInfo(user?.level ?? 1, user?.xp ?? 0);
 
   const chartData = useMemo(
-    () => buildChartData(totalValue, startingBalance, portfolio?.history),
+    () => buildChartData(totalValue, portfolio?.history, chartPeriod),
     // eslint-disable-next-line react-hooks/exhaustive-deps
-    [portfolio?.userId, portfolio?.history, totalValue],
+    [portfolio?.userId, portfolio?.history, totalValue, chartPeriod],
   );
+
+  const chartBaseline = (chartData as any).baseline ?? 0;
+  const chartTopValue = (chartData as any).topValue ?? 100;
+
+  const formatYLabel = useCallback((val: string) => {
+    const n = Number(val) + chartBaseline;
+    if (n >= 1000) return '$' + (n / 1000).toFixed(1) + 'k';
+    return '$' + Math.round(n);
+  }, [chartBaseline]);
 
   const portfolioAgeDays = useMemo(() => {
     if (!portfolio?.createdAt) return 0;
@@ -385,39 +439,64 @@ export default function PortfolioScreen() {
 
         {/* Portfolio Chart */}
         <View style={styles.sectionHeader}>
-          <Text style={[styles.sectionTitle, { color: C.text.primary }]}>{t('performance_30d')}</Text>
+          <Text style={[styles.sectionTitle, { color: C.text.primary }]}>{getPeriodLabel(chartPeriod)}</Text>
         </View>
         <View style={[styles.chartCard, { backgroundColor: C.bg.secondary, borderColor: C.border.default }]}>
           {chartData.length > 0 ? (
             <LineChart
               data={chartData}
-              width={320}
+              width={280}
               height={200}
-              color={totalGainLoss >= 0 ? Colors.market.gain : Colors.market.loss}
+              color={isGain ? Colors.market.gain : Colors.market.loss}
               thickness={2}
               hideDataPoints
-              startFillColor={(totalGainLoss >= 0 ? Colors.market.gain : Colors.market.loss) + '40'}
-              endFillColor={(totalGainLoss >= 0 ? Colors.market.gain : Colors.market.loss) + '05'}
+              startFillColor={(isGain ? Colors.market.gain : Colors.market.loss) + '40'}
+              endFillColor={(isGain ? Colors.market.gain : Colors.market.loss) + '05'}
               startOpacity={0.3}
               endOpacity={0}
               areaChart
               hideRules
-              hideYAxisText
               hideAxesAndRules={false}
               yAxisColor="transparent"
-              xAxisColor={Colors.border.default}
+              xAxisColor={C.border.default}
+              yAxisTextStyle={{ color: C.text.tertiary, fontSize: 10 }}
+              formatYLabel={formatYLabel}
+              yAxisLabelWidth={50}
+              maxValue={chartTopValue}
+              noOfSections={4}
               backgroundColor="transparent"
               adjustToWidth
               initialSpacing={0}
               endSpacing={0}
               minValue={0}
-              noOfSections={4}
             />
           ) : (
             <View style={{ height: 200, alignItems: 'center', justifyContent: 'center' }}>
               <Text style={{ color: C.text.tertiary, fontSize: 14 }}>{t('no_perf_data')}</Text>
             </View>
           )}
+
+          {/* Period selector buttons */}
+          <View style={styles.periodSelector}>
+            {PORTFOLIO_CHART_PERIODS.map(period => (
+              <TouchableOpacity
+                key={period}
+                style={[
+                  styles.periodButton,
+                  chartPeriod === period && { backgroundColor: C.bg.tertiary },
+                ]}
+                onPress={() => setChartPeriod(period)}
+              >
+                <Text style={[
+                  styles.periodButtonText,
+                  { color: C.text.tertiary },
+                  chartPeriod === period && { color: Colors.brand.primary, fontWeight: FontWeight.bold as any },
+                ]}>
+                  {period}
+                </Text>
+              </TouchableOpacity>
+            ))}
+          </View>
         </View>
 
         {/* Holdings */}
@@ -777,6 +856,26 @@ const styles = StyleSheet.create({
     borderColor: Colors.border.default,
     overflow: 'hidden',
     alignItems: 'center',
+  },
+  periodSelector: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    marginTop: Spacing.md,
+    gap: 4,
+    width: '100%',
+    paddingHorizontal: Spacing.sm,
+  },
+  periodButton: {
+    flex: 1,
+    paddingVertical: 6,
+    alignItems: 'center',
+    borderRadius: Radius.md,
+    backgroundColor: 'transparent',
+  },
+  periodButtonText: {
+    fontSize: FontSize.sm,
+    color: Colors.text.tertiary,
+    fontWeight: FontWeight.medium,
   },
 
   // Generic card

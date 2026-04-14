@@ -353,36 +353,52 @@ export async function saveHourlySnapshot(
   } catch { /* non-critical */ }
 }
 
-// Load hourly snapshots for the last 30 days (for the performance chart).
+// Load all portfolio history snapshots (hourly + daily merged, deduped).
 export async function getPortfolioHistory(
   userId: string,
 ): Promise<{ timestamp: number; totalValue: number }[]> {
   if (IS_MOCK_FIREBASE) return [];
+  const results: { timestamp: number; totalValue: number }[] = [];
+
+  // Fetch hourly snapshots (all time)
   try {
-    const thirtyDaysAgo = Date.now() - 30 * 24 * 60 * 60 * 1000;
     const snap = await getDocs(
       query(
         collection(db, 'portfolioHistory', userId, 'hourly'),
         orderBy('timestamp', 'asc'),
       ),
     );
-    return snap.docs
-      .map(d => d.data() as { timestamp: number; totalValue: number })
-      .filter(d => d.timestamp >= thirtyDaysAgo);
-  } catch {
-    // Fallback: try daily snapshots if hourly collection doesn't exist yet
-    try {
-      const snap = await getDocs(
-        collection(db, 'portfolioHistory', userId, 'snapshots'),
-      );
-      return snap.docs
-        .map(d => {
-          const data = d.data();
-          return { timestamp: data.updatedAt ?? Date.now(), totalValue: data.totalValue ?? 0 };
-        })
-        .sort((a, b) => a.timestamp - b.timestamp);
-    } catch { return []; }
+    snap.docs.forEach(d => {
+      const data = d.data() as { timestamp: number; totalValue: number };
+      results.push(data);
+    });
+  } catch { /* hourly collection may not exist */ }
+
+  // Also fetch daily snapshots for older data coverage
+  try {
+    const snap = await getDocs(
+      collection(db, 'portfolioHistory', userId, 'snapshots'),
+    );
+    snap.docs.forEach(d => {
+      const data = d.data();
+      results.push({
+        timestamp: data.updatedAt ?? Date.now(),
+        totalValue: data.totalValue ?? 0,
+      });
+    });
+  } catch { /* daily collection may not exist */ }
+
+  // Deduplicate by rounding to nearest hour, keeping latest entry per hour
+  const byHour = new Map<number, { timestamp: number; totalValue: number }>();
+  for (const r of results) {
+    const hourKey = Math.floor(r.timestamp / 3_600_000);
+    const existing = byHour.get(hourKey);
+    if (!existing || r.timestamp > existing.timestamp) {
+      byHour.set(hourKey, r);
+    }
   }
+
+  return Array.from(byHour.values()).sort((a, b) => a.timestamp - b.timestamp);
 }
 
 // ─── Transaction Helpers ──────────────────────────────────────────────────────
