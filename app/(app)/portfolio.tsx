@@ -80,6 +80,14 @@ function getPeriodLabel(period: PortfolioChartPeriod): string {
   }
 }
 
+function getDateRangeText(period: PortfolioChartPeriod, createdAt?: number): string {
+  const now = new Date();
+  const fmt = (d: Date) => d.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: now.getFullYear() !== d.getFullYear() ? 'numeric' : undefined } as any);
+  const cutoff = getPeriodCutoff(period);
+  const startDate = period === 'ALL' && createdAt ? new Date(createdAt) : new Date(cutoff);
+  return `${fmt(startDate)} – ${fmt(now)}`;
+}
+
 function buildChartData(
   totalValue: number,
   portfolioHistory?: { timestamp: number; totalValue: number }[],
@@ -459,6 +467,9 @@ export default function PortfolioScreen() {
         {/* Portfolio Chart */}
         <View style={styles.sectionHeader}>
           <Text style={[styles.sectionTitle, { color: C.text.primary }]}>{getPeriodLabel(chartPeriod)}</Text>
+          <Text style={{ color: C.text.tertiary, fontSize: FontSize.xs, marginTop: 2 }}>
+            {getDateRangeText(chartPeriod, portfolio?.createdAt)}
+          </Text>
         </View>
         <View style={[styles.chartCard, { backgroundColor: C.bg.secondary, borderColor: C.border.default }]}>
           {chartData.length > 0 ? (
@@ -502,14 +513,14 @@ export default function PortfolioScreen() {
                 key={period}
                 style={[
                   styles.periodButton,
-                  chartPeriod === period && { backgroundColor: C.bg.tertiary },
+                  chartPeriod === period && styles.periodButtonActive,
                 ]}
                 onPress={() => setChartPeriod(period)}
               >
                 <Text style={[
                   styles.periodButtonText,
                   { color: C.text.tertiary },
-                  chartPeriod === period && { color: Colors.brand.primary, fontWeight: FontWeight.bold as any },
+                  chartPeriod === period && styles.periodButtonTextActive,
                 ]}>
                   {period}
                 </Text>
@@ -886,15 +897,24 @@ const styles = StyleSheet.create({
   },
   periodButton: {
     flex: 1,
-    paddingVertical: 6,
+    paddingVertical: 8,
     alignItems: 'center',
     borderRadius: Radius.md,
     backgroundColor: 'transparent',
+  },
+  periodButtonActive: {
+    backgroundColor: Colors.brand.primary + '20',
+    borderWidth: 1,
+    borderColor: Colors.brand.primary,
   },
   periodButtonText: {
     fontSize: FontSize.sm,
     color: Colors.text.tertiary,
     fontWeight: FontWeight.medium,
+  },
+  periodButtonTextActive: {
+    color: Colors.brand.primary,
+    fontWeight: FontWeight.bold,
   },
 
   // Generic card
