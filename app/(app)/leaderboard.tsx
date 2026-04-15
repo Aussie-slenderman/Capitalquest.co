@@ -15,6 +15,7 @@ import {
   RefreshControl,
   Animated,
   Dimensions,
+  Platform,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import AppHeader from '../../src/components/AppHeader';
@@ -471,10 +472,27 @@ interface LeaderboardRowProps {
 function LeaderboardRow({ entry, getInitials, isSticky }: LeaderboardRowProps) {
   const { appColorMode } = useAppStore();
   const LC = appColorMode === 'light' ? LightColors : Colors;
+  const isLight = appColorMode === 'light';
   const rankStyle = getRankStyle(entry.rank);
   const isGain = entry.gainDollars >= 0;
   const gainColor = isGain ? Colors.market.gain : Colors.market.loss;
   const levelColor = Colors.levels[(Math.max(1, entry.level ?? 1) - 1) % Colors.levels.length];
+
+  // Force DOM color for light mode — React Native Web atomic CSS can override inline styles
+  const nameRef = React.useRef<any>(null);
+  const usernameRef = React.useRef<any>(null);
+  React.useEffect(() => {
+    if (Platform.OS === 'web') {
+      if (nameRef.current) {
+        const el = nameRef.current as unknown as HTMLElement;
+        if (el.style) el.style.setProperty('color', isLight ? '#000000' : '#F1F5F9', 'important');
+      }
+      if (usernameRef.current) {
+        const el = usernameRef.current as unknown as HTMLElement;
+        if (el.style) el.style.setProperty('color', isLight ? '#374151' : '#94A3B8', 'important');
+      }
+    }
+  }, [isLight]);
 
   return (
     <View style={[
@@ -503,7 +521,7 @@ function LeaderboardRow({ entry, getInitials, isSticky }: LeaderboardRowProps) {
       {/* Name + username */}
       <View style={styles.playerInfo}>
         <View style={styles.playerNameRow}>
-          <Text style={{ fontSize: FontSize.base, fontWeight: FontWeight.semibold, color: appColorMode === 'light' ? '#000000' : '#F1F5F9', flexShrink: 1 }} numberOfLines={1}>
+          <Text ref={nameRef} style={{ fontSize: FontSize.base, fontWeight: FontWeight.semibold, color: isLight ? '#000000' : '#F1F5F9', flexShrink: 1 }} numberOfLines={1}>
             {entry.displayName}
           </Text>
           {entry.isCurrentUser && (
@@ -512,7 +530,7 @@ function LeaderboardRow({ entry, getInitials, isSticky }: LeaderboardRowProps) {
             </View>
           )}
         </View>
-        <Text style={{ fontSize: FontSize.xs, color: appColorMode === 'light' ? '#374151' : '#94A3B8', marginTop: 2 }}>@{entry.username}</Text>
+        <Text ref={usernameRef} style={{ fontSize: FontSize.xs, color: isLight ? '#374151' : '#94A3B8', marginTop: 2 }}>@{entry.username}</Text>
       </View>
 
       {/* Gain + level */}
