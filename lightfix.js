@@ -1,34 +1,32 @@
-// Fix light mode text visibility — runs every 2s
+// Light mode fix — runs every 1 second
+// Fixes both backgrounds AND text colors when in light mode
 setInterval(function(){
   try {
-    // Check if user has light mode enabled in their saved settings
-    var store = localStorage.getItem('stockquest-store') || localStorage.getItem('app-storage') || '';
+    var store = localStorage.getItem('stockquest-store') || '';
     var isLight = store.indexOf('"appColorMode":"light"') > -1;
+    if (!isLight) return;
 
-    // Also check actual background colors as fallback
-    if (!isLight) {
-      var root = document.getElementById('root');
-      if (root) {
-        var els = root.querySelectorAll('[style*="background"]');
-        for (var i = 0; i < Math.min(els.length, 10); i++) {
-          var bg = els[i].style.backgroundColor;
-          if (bg && (bg.indexOf('255') > -1 || bg.indexOf('243') > -1 || bg.indexOf('245') > -1)) {
-            isLight = true;
-            break;
-          }
-        }
+    // White text → black
+    document.querySelectorAll('.r-1gnjku,.r-1ff0s43,.r-jwli3a').forEach(function(el) {
+      el.style.setProperty('color', '#0A0E1A', 'important');
+    });
+    // Dim grey text → darker grey
+    document.querySelectorAll('.r-1npgj5g,.r-1s7ct43').forEach(function(el) {
+      el.style.setProperty('color', '#374151', 'important');
+    });
+
+    // Dark backgrounds → light backgrounds (atomic CSS classes for #111827, #1A2235, #0A0E1A)
+    // Find all elements and check their computed background color
+    var all = document.querySelectorAll('div');
+    for (var i = 0; i < all.length; i++) {
+      var el = all[i];
+      var bg = window.getComputedStyle(el).backgroundColor;
+      // Replace very dark backgrounds with light equivalents
+      if (bg === 'rgb(17, 24, 39)' || bg === 'rgb(26, 34, 53)') {
+        el.style.setProperty('background-color', '#F3F4F6', 'important');
+      } else if (bg === 'rgb(10, 14, 26)') {
+        el.style.setProperty('background-color', '#FFFFFF', 'important');
       }
     }
-
-    if (isLight) {
-      // Force white/cyan text to black in light mode
-      document.querySelectorAll('.r-1gnjku,.r-1ff0s43,.r-jwli3a').forEach(function(el) {
-        el.style.setProperty('color', '#0A0E1A', 'important');
-      });
-      // Force dim text to dark gray
-      document.querySelectorAll('.r-1npgj5g,.r-1s7ct43').forEach(function(el) {
-        el.style.setProperty('color', '#374151', 'important');
-      });
-    }
   } catch(e) {}
-}, 2000);
+}, 1000);
