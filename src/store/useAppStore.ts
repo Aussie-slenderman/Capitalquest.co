@@ -314,5 +314,12 @@ export const useAppStore = create<AppState>()(persist((set) => ({
 }), {
   name: 'stockquest-store',
   storage: createJSONStorage(() => AsyncStorage),
-  partialize: (state) => ({ watchlist: state.watchlist }),
+  partialize: (state) => ({
+    watchlist: state.watchlist,
+    appColorMode: state.appColorMode,
+    appAccentColor: state.appAccentColor,
+    appTileStyle: state.appTileStyle,
+    appTabColors: state.appTabColors,
+    appLanguage: state.appLanguage,
+  }),
 }));
