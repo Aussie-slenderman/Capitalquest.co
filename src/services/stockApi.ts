@@ -1031,51 +1031,79 @@ export async function getMarketMovers(): Promise<{
 
 export async function getCompanyNews(
   symbol: string,
-  from?: string,
-  to?: string
+  _from?: string,
+  _to?: string
 ): Promise<NewsArticle[]> {
-  if (IS_MOCK_STOCKS) return getMockNews(symbol);
-
-  const today = to ?? new Date().toISOString().split('T')[0];
-  const weekAgo = from ?? new Date(Date.now() - 7 * 86400_000).toISOString().split('T')[0];
-
+  // Fetch real news from Yahoo Finance search API (no API key needed)
   try {
-    const res = await finnhub.get('/company-news', {
-      params: { symbol, from: weekAgo, to: today },
+    const entry = MOCK_DB[symbol.toUpperCase()];
+    const companyName = entry?.name ?? symbol;
+    // Search for company-specific news using stock name
+    const query = `${companyName} stock`;
+    const yahooUrl = `${YAHOO_BASE}/v1/finance/search?q=${encodeURIComponent(query)}&newsCount=10&quotesCount=0&listsCount=0`;
+    const fetchUrl = Platform.OS === 'web'
+      ? `${CQ_PROXY}?url=${encodeURIComponent(yahooUrl)}`
+      : yahooUrl;
+
+    const resp = await axios.get(fetchUrl, {
+      timeout: 8000,
+      headers: Platform.OS !== 'web' ? { 'User-Agent': YAHOO_MOBILE_UA } : undefined,
     });
-    const articles = (res.data || []).slice(0, 10).map((n: Record<string, unknown>) => ({
-      id: String(n.id),
-      headline: n.headline as string,
-      summary: n.summary as string,
-      source: n.source as string,
-      url: n.url as string,
-      imageUrl: n.image as string | undefined,
-      publishedAt: (n.datetime as number) * 1000,
-      relatedSymbols: [symbol],
-    }));
-    if (articles.length === 0) return getMockNews(symbol);
-    return articles;
-  } catch {
-    return getMockNews(symbol);
-  }
+
+    const news = resp.data?.news;
+    if (Array.isArray(news) && news.length > 0) {
+      const articles: NewsArticle[] = news
+        .filter((n: any) => n.title && n.publisher)
+        .slice(0, 10)
+        .map((n: any, i: number) => ({
+          id: `yf_${n.uuid || i}_${Date.now()}`,
+          headline: n.title,
+          summary: '',
+          source: n.publisher,
+          url: n.link || '#',
+          imageUrl: n.thumbnail?.resolutions?.[0]?.url,
+          publishedAt: (n.providerPublishTime ?? Math.floor(Date.now() / 1000)) * 1000,
+          relatedSymbols: [symbol, ...(n.relatedTickers || []).slice(0, 2)],
+        }));
+      if (articles.length > 0) return articles;
+    }
+  } catch { /* fall through to mock */ }
+
+  return getMockNews(symbol);
 }
 
 export async function getMarketNews(): Promise<NewsArticle[]> {
+  // Fetch general market news from Yahoo Finance (no API key needed)
   try {
-    const res = await finnhub.get('/news', { params: { category: 'general' } });
-    return (res.data || []).slice(0, 20).map((n: Record<string, unknown>) => ({
-      id: String(n.id),
-      headline: n.headline as string,
-      summary: n.summary as string,
-      source: n.source as string,
-      url: n.url as string,
-      imageUrl: n.image as string | undefined,
-      publishedAt: (n.datetime as number) * 1000,
-      relatedSymbols: [],
-    }));
-  } catch {
-    return [];
-  }
+    const query = 'stock market today';
+    const yahooUrl = `${YAHOO_BASE}/v1/finance/search?q=${encodeURIComponent(query)}&newsCount=20&quotesCount=0&listsCount=0`;
+    const fetchUrl = Platform.OS === 'web'
+      ? `${CQ_PROXY}?url=${encodeURIComponent(yahooUrl)}`
+      : yahooUrl;
+
+    const resp = await axios.get(fetchUrl, {
+      timeout: 8000,
+      headers: Platform.OS !== 'web' ? { 'User-Agent': YAHOO_MOBILE_UA } : undefined,
+    });
+
+    const news = resp.data?.news;
+    if (Array.isArray(news) && news.length > 0) {
+      return news
+        .filter((n: any) => n.title && n.publisher)
+        .slice(0, 20)
+        .map((n: any, i: number) => ({
+          id: `yf_market_${n.uuid || i}_${Date.now()}`,
+          headline: n.title,
+          summary: '',
+          source: n.publisher,
+          url: n.link || '#',
+          imageUrl: n.thumbnail?.resolutions?.[0]?.url,
+          publishedAt: (n.providerPublishTime ?? Math.floor(Date.now() / 1000)) * 1000,
+          relatedSymbols: (n.relatedTickers || []).slice(0, 3),
+        }));
+    }
+  } catch { /* fall through */ }
+  return [];
 }
 
 // ─── WebSocket for Real-Time Prices ──────────────────────────────────────────
