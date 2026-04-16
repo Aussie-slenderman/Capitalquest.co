@@ -187,7 +187,7 @@ function buildChartData(
 
 export default function PortfolioScreen() {
   const t = useT();
-  const { user, setUser, portfolio, quotes, isSidebarOpen, setSidebarOpen, appColorMode } = useAppStore();
+  const { user, setUser, portfolio, quotes, isSidebarOpen, setSidebarOpen, appColorMode, pendingOrders, removePendingOrder } = useAppStore();
   const [showPortfolio, setShowPortfolio] = useState(false);
   const savedName = (user as any)?.portfolioName;
   const [portfolioName, setPortfolioName] = useState(savedName || 'Portfolio 1');
@@ -600,6 +600,59 @@ export default function PortfolioScreen() {
             </View>
           )}
         </View>
+
+        {/* Pending Limit Orders */}
+        {pendingOrders.length > 0 && (
+          <>
+            <View style={styles.sectionHeader}>
+              <Text style={[styles.sectionTitle, { color: C.text.primary }]}>Pending Orders ({pendingOrders.length})</Text>
+            </View>
+            <View style={[styles.card, { backgroundColor: C.bg.secondary, borderColor: C.border.default }]}>
+              {pendingOrders.map((order, i) => {
+                const isBuy = order.type === 'buy';
+                return (
+                  <View key={order.id}>
+                    {i > 0 && <View style={{ height: 1, backgroundColor: C.border.default, marginVertical: Spacing.sm }} />}
+                    <View style={{ flexDirection: 'row', alignItems: 'center', paddingVertical: Spacing.sm, paddingHorizontal: Spacing.sm }}>
+                      {/* Left: Order info */}
+                      <View style={{ flex: 1 }}>
+                        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8, marginBottom: 4 }}>
+                          <View style={{
+                            backgroundColor: isBuy ? Colors.market.gainBg : Colors.market.lossBg,
+                            paddingHorizontal: 8, paddingVertical: 2, borderRadius: Radius.sm,
+                          }}>
+                            <Text style={{ fontSize: FontSize.xs, fontWeight: FontWeight.bold, color: isBuy ? Colors.market.gain : Colors.market.loss }}>
+                              {isBuy ? 'LIMIT BUY' : 'LIMIT SELL'}
+                            </Text>
+                          </View>
+                          <Text style={{ fontSize: FontSize.base, fontWeight: FontWeight.bold, color: C.text.primary }}>{order.symbol}</Text>
+                        </View>
+                        <Text style={{ fontSize: FontSize.xs, color: C.text.tertiary }}>
+                          {formatShares(order.shares ?? 0)} shares · Target: {formatCurrency(order.limitPrice ?? 0)}
+                        </Text>
+                        <Text style={{ fontSize: FontSize.xs, color: C.text.tertiary, marginTop: 2 }}>
+                          Placed {formatRelativeTime(order.createdAt)}
+                        </Text>
+                      </View>
+                      {/* Right: Status + Cancel */}
+                      <View style={{ alignItems: 'flex-end', gap: 6 }}>
+                        <View style={{ backgroundColor: Colors.brand.gold + '22', paddingHorizontal: 8, paddingVertical: 2, borderRadius: Radius.sm }}>
+                          <Text style={{ fontSize: FontSize.xs, fontWeight: FontWeight.bold, color: Colors.brand.gold }}>PENDING</Text>
+                        </View>
+                        <TouchableOpacity
+                          onPress={() => removePendingOrder(order.id)}
+                          style={{ paddingHorizontal: 8, paddingVertical: 4 }}
+                        >
+                          <Text style={{ fontSize: FontSize.xs, color: Colors.market.loss, fontWeight: FontWeight.semibold }}>Cancel</Text>
+                        </TouchableOpacity>
+                      </View>
+                    </View>
+                  </View>
+                );
+              })}
+            </View>
+          </>
+        )}
 
         {/* Holdings */}
         <View style={styles.sectionHeader}>
