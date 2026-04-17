@@ -16,12 +16,16 @@ import axios from 'axios';
 import { Platform } from 'react-native';
 import type { Stock, StockQuote, ChartDataPoint, ChartPeriod, NewsArticle } from '../types';
 
-const FINNHUB_KEY = 'd7hb6dhr01qhiu0b05mgd7hb6dhr01qhiu0b05n0';
+// Finnhub is now proxied through the Cloudflare Worker, which injects the
+// API key from an env secret. The key is NOT present in the client bundle.
+const FINNHUB_PROXY_BASE = 'https://cq-yahoo-proxy.capitalquest.workers.dev/finnhub';
 const ALPHA_KEY = 'YOUR_ALPHAVANTAGE_API_KEY';
 
 // ─── Mock mode ────────────────────────────────────────────────────────────────
 
-export const IS_MOCK_STOCKS = FINNHUB_KEY === 'YOUR_FINNHUB_API_KEY';
+// The Finnhub proxy is always available, so mock mode is disabled. Individual
+// fetches still fall back to Yahoo / realistic mock data on failure.
+export const IS_MOCK_STOCKS = false;
 
 // Comprehensive mock stock database — 60+ tickers (prices: verified March 13 2026 close)
 // These are used as fallback when Yahoo Finance / Finnhub are unavailable.
@@ -320,9 +324,10 @@ function getMockNews(symbol: string): NewsArticle[] {
   });
 }
 
+// Finnhub axios instance — routes through Cloudflare Worker so the API key
+// stays server-side. The worker appends the token before forwarding.
 const finnhub = axios.create({
-  baseURL: 'https://finnhub.io/api/v1',
-  params: { token: FINNHUB_KEY },
+  baseURL: FINNHUB_PROXY_BASE,
   timeout: 10000,
 });
 
@@ -977,10 +982,7 @@ export async function searchStocks(query: string): Promise<SearchResult[]> {
   // When Finnhub key is configured, use Finnhub symbol search for broadest global coverage
   if (!IS_MOCK_STOCKS) {
     try {
-      const res = await axios.get(
-        `https://finnhub.io/api/v1/search?q=${encodeURIComponent(query)}&token=${FINNHUB_KEY}`,
-        { timeout: 10_000 }
-      );
+      const res = await finnhub.get('/search', { params: { q: query } });
       const results: SearchResult[] = (res.data.result || []).slice(0, 20).map((r: Record<string, string>) => ({
         symbol: r.symbol,
         name: r.description,
@@ -1112,54 +1114,38 @@ export async function getMarketNews(): Promise<NewsArticle[]> {
 
 // ─── WebSocket for Real-Time Prices ──────────────────────────────────────────
 
-let ws: WebSocket | null = null;
+// WebSocket subscription replaced by polling-through-proxy — see subscribeToPrices.
 const wsCallbacks = new Map<string, ((quote: StockQuote) => void)[]>();
 
 export function subscribeToPrices(
   symbols: string[],
   onUpdate: (symbol: string, quote: StockQuote) => void
 ) {
-  function safeSend(msg: string) {
+  // WebSocket was replaced with polling via the Cloudflare Worker proxy so
+  // the Finnhub API key never leaves the server. Symbols are re-fetched
+  // every 15s; the 30s quote cache prevents hammering Finnhub if multiple
+  // subscribers overlap.
+  let cancelled = false;
+
+  async function tick() {
+    if (cancelled || symbols.length === 0) return;
     try {
-      if (ws && ws.readyState === WebSocket.OPEN) ws.send(msg);
-    } catch { /* ignore send errors */ }
+      const quotes = await getQuotes(symbols);
+      if (cancelled) return;
+      for (const [sym, quote] of Object.entries(quotes)) {
+        onUpdate(sym, quote);
+      }
+    } catch { /* non-critical */ }
   }
 
-  if (!ws || ws.readyState > 1) {
-    ws = new WebSocket(`wss://ws.finnhub.io?token=${FINNHUB_KEY}`);
-
-    ws.addEventListener('open', () => {
-      symbols.forEach(s => safeSend(JSON.stringify({ type: 'subscribe', symbol: s })));
-    });
-
-    ws.addEventListener('message', (event) => {
-      try {
-        const msg = JSON.parse(event.data);
-        if (msg.type === 'trade' && msg.data) {
-          msg.data.forEach((trade: { s: string; p: number; t: number }) => {
-            const quote: StockQuote = {
-              symbol: trade.s,
-              price: trade.p,
-              change: 0,
-              changePercent: 0,
-              timestamp: trade.t,
-            };
-            quoteCache.set(trade.s, { data: quote, ts: Date.now() });
-            onUpdate(trade.s, quote);
-          });
-        }
-      } catch { /* ignore parse errors */ }
-    });
-
-    ws.addEventListener('close', () => {
-      ws = null;
-    });
-  } else {
-    symbols.forEach(s => safeSend(JSON.stringify({ type: 'subscribe', symbol: s })));
-  }
+  tick(); // fire immediately so the caller sees an initial value
+  const interval = setInterval(tick, 15_000);
 
   return () => {
-    symbols.forEach(s => safeSend(JSON.stringify({ type: 'unsubscribe', symbol: s })));
+    cancelled = true;
+    clearInterval(interval);
+    // Preserve legacy WebSocket cleanup shape for safety
+    // (no-op since we never opened one)
   };
 }
 
