@@ -476,23 +476,25 @@ function RankedTab() {
                     <Text style={{ fontSize: 9, fontWeight: FontWeight.extrabold, color: '#fff', letterSpacing: 0.5 }}>YOU</Text>
                   </View>
                 )}
-                <TouchableOpacity
-                  onPress={() => handleViewPortfolio(entry)}
-                  activeOpacity={0.7}
-                  style={{
-                    backgroundColor: Colors.brand.primary,
-                    borderRadius: 6,
-                    paddingHorizontal: 10,
-                    paddingVertical: 4,
-                    marginLeft: 4,
-                  }}
-                >
-                  {loadingUserId === entry.userId ? (
-                    <ActivityIndicator size="small" color="#FFFFFF" />
-                  ) : (
-                    <Text style={{ fontSize: 11, fontWeight: '700', color: '#FFFFFF' }}>Portfolio</Text>
-                  )}
-                </TouchableOpacity>
+                {entry.portfolioPrivacy === 'public' && (
+                  <TouchableOpacity
+                    onPress={() => handleViewPortfolio(entry)}
+                    activeOpacity={0.7}
+                    style={{
+                      backgroundColor: Colors.brand.primary,
+                      borderRadius: 6,
+                      paddingHorizontal: 10,
+                      paddingVertical: 4,
+                      marginLeft: 4,
+                    }}
+                  >
+                    {loadingUserId === entry.userId ? (
+                      <ActivityIndicator size="small" color="#FFFFFF" />
+                    ) : (
+                      <Text style={{ fontSize: 11, fontWeight: '700', color: '#FFFFFF' }}>Portfolio</Text>
+                    )}
+                  </TouchableOpacity>
+                )}
               </View>
               <Text style={{ fontSize: FontSize.xs, color: Colors.text.tertiary, marginTop: 2 }}>@{entry.username}</Text>
             </View>
