@@ -247,7 +247,7 @@ export default function LeaderboardScreen() {
   // ─── Helpers ──────────────────────────────────────────────────────────────
 
   const handleViewPortfolio = useCallback(async (entry: LeaderboardEntry) => {
-    if (entry.isCurrentUser || portfolioLoadingUserId) return;
+    if (portfolioLoadingUserId) return;
     setPortfolioLoadingUserId(entry.userId);
     try {
       const { getPublicPortfolio } = await import('../../src/services/firebase');
@@ -656,7 +656,7 @@ function LeaderboardRow({ entry, getInitials, isSticky, onPress, isLoading }: Le
               <Text style={styles.youBadgeText}>YOU</Text>
             </View>
           )}
-          {!entry.isCurrentUser && onPress && (
+          {onPress && (
             <TouchableOpacity
               onPress={onPress}
               activeOpacity={0.7}
