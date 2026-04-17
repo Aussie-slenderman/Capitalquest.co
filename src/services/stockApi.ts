@@ -16,7 +16,7 @@ import axios from 'axios';
 import { Platform } from 'react-native';
 import type { Stock, StockQuote, ChartDataPoint, ChartPeriod, NewsArticle } from '../types';
 
-const FINNHUB_KEY = 'YOUR_FINNHUB_API_KEY';
+const FINNHUB_KEY = 'd7hb6dhr01qhiu0b05mgd7hb6dhr01qhiu0b05n0';
 const ALPHA_KEY = 'YOUR_ALPHAVANTAGE_API_KEY';
 
 // ─── Mock mode ────────────────────────────────────────────────────────────────
@@ -697,29 +697,33 @@ export async function getQuote(symbol: string): Promise<StockQuote> {
   const cached = quoteCache.get(symbol);
   if (cached && Date.now() - cached.ts < QUOTE_TTL) return cached.data;
 
-  // Try Yahoo Finance first (real data, no key needed — same as Apple Stocks app)
+  // PRIMARY: Finnhub /quote — fast (< 200ms typical) and stable.
+  if (!IS_MOCK_STOCKS) {
+    try {
+      const res = await finnhub.get('/quote', { params: { symbol } });
+      const d = res.data;
+      if (d && d.c > 0) {
+        const quote: StockQuote = {
+          symbol,
+          price: d.c,
+          change: d.d ?? 0,
+          changePercent: d.dp ?? 0,
+          timestamp: Date.now(),
+        };
+        quoteCache.set(symbol, { data: quote, ts: Date.now() });
+        return quote;
+      }
+    } catch { /* fall through to Yahoo fallback */ }
+  }
+
+  // FALLBACK 1: Yahoo Finance (slower, but covers symbols Finnhub free tier skips)
   const yahooQuote = await yahooGetQuote(symbol);
   if (yahooQuote && yahooQuote.price > 0) {
     quoteCache.set(symbol, { data: yahooQuote, ts: Date.now() });
     return yahooQuote;
   }
 
-  // Try Finnhub if key is configured
-  if (!IS_MOCK_STOCKS) {
-    try {
-      const res = await finnhub.get('/quote', { params: { symbol } });
-      const d = res.data;
-      if (d.c > 0) {
-        const quote: StockQuote = {
-          symbol, price: d.c, change: d.d, changePercent: d.dp, timestamp: Date.now(),
-        };
-        quoteCache.set(symbol, { data: quote, ts: Date.now() });
-        return quote;
-      }
-    } catch { /* fall through */ }
-  }
-
-  // Fall back to mock data
+  // FALLBACK 2: stale cache, then mock
   return cached?.data ?? getMockQuote(symbol);
 }
 
@@ -786,14 +790,7 @@ export async function getStockProfile(symbol: string): Promise<Stock | null> {
   const cached = profileCache.get(symbol);
   if (cached && Date.now() - cached.ts < PROFILE_TTL) return cached.data;
 
-  // Try Yahoo Finance first (real data — same source as Apple Stocks app)
-  const yahooStock = await yahooGetProfile(symbol);
-  if (yahooStock && yahooStock.price > 0) {
-    profileCache.set(symbol, { data: yahooStock, ts: Date.now() });
-    return yahooStock;
-  }
-
-  // Try Finnhub if key is configured
+  // PRIMARY: Finnhub /stock/profile2 + /quote + /stock/metric (3 parallel calls)
   if (!IS_MOCK_STOCKS) {
     try {
       const [profileRes, quoteRes, metricsRes] = await Promise.all([
@@ -801,9 +798,9 @@ export async function getStockProfile(symbol: string): Promise<Stock | null> {
         finnhub.get('/quote', { params: { symbol } }),
         finnhub.get('/stock/metric', { params: { symbol, metric: 'all' } }),
       ]);
-      const p = profileRes.data;
-      const q = quoteRes.data;
-      const m = metricsRes.data.metric || {};
+      const p = profileRes.data || {};
+      const q = quoteRes.data || {};
+      const m = (metricsRes.data && metricsRes.data.metric) || {};
       if (p.name || q.c > 0) {
         const stock: Stock = {
           symbol,
@@ -811,14 +808,14 @@ export async function getStockProfile(symbol: string): Promise<Stock | null> {
           exchange: p.exchange || '',
           country: p.country || '',
           currency: p.currency || 'USD',
-          price: q.c,
-          previousClose: q.pc,
-          change: q.d,
-          changePercent: q.dp,
+          price: q.c ?? 0,
+          previousClose: q.pc ?? q.c ?? 0,
+          change: q.d ?? 0,
+          changePercent: q.dp ?? 0,
           volume: q.v || 0,
-          marketCap: p.marketCapitalization * 1e6 || 0,
-          high52w: m['52WeekHigh'] || q.h,
-          low52w: m['52WeekLow'] || q.l,
+          marketCap: (p.marketCapitalization ?? 0) * 1e6 || 0,
+          high52w: m['52WeekHigh'] || q.h || 0,
+          low52w: m['52WeekLow'] || q.l || 0,
           pe: m.peBasicExclExtraTTM,
           eps: m.epsBasicExclExtraAnnual,
           dividend: m.dividendYieldIndicatedAnnual,
@@ -830,10 +827,17 @@ export async function getStockProfile(symbol: string): Promise<Stock | null> {
         profileCache.set(symbol, { data: stock, ts: Date.now() });
         return stock;
       }
-    } catch { /* fall through */ }
+    } catch { /* fall through to Yahoo fallback */ }
   }
 
-  // Fall back to mock data
+  // FALLBACK 1: Yahoo Finance
+  const yahooStock = await yahooGetProfile(symbol);
+  if (yahooStock && yahooStock.price > 0) {
+    profileCache.set(symbol, { data: yahooStock, ts: Date.now() });
+    return yahooStock;
+  }
+
+  // FALLBACK 2: mock data
   return getMockStock(symbol);
 }
 
