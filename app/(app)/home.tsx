@@ -108,17 +108,35 @@ export default function HomeScreen() {
   // ─── Fetch live market movers on mount ────────────────────────────────────
   useEffect(() => {
     let cancelled = false;
+    const pushMoversIntoQuoteStore = (data: Awaited<ReturnType<typeof getMarketMovers>>) => {
+      [...data.gainers, ...data.losers, ...data.active].forEach(m => {
+        setQuote(m.symbol, {
+          symbol: m.symbol,
+          price: m.price,
+          change: m.change,
+          changePercent: m.changePercent,
+          timestamp: Date.now(),
+        });
+      });
+    };
     (async () => {
       try {
         const data = await getMarketMovers();
-        if (!cancelled) { setMovers(data); setMoversLoading(false); }
+        if (!cancelled) {
+          pushMoversIntoQuoteStore(data);
+          setMovers(data);
+          setMoversLoading(false);
+        }
       } catch { setMoversLoading(false); }
     })();
     const interval = setInterval(async () => {
       if (cancelled) return;
       try {
         const data = await getMarketMovers();
-        if (!cancelled) setMovers(data);
+        if (!cancelled) {
+          pushMoversIntoQuoteStore(data);
+          setMovers(data);
+        }
       } catch {}
     }, 300_000);
     return () => { cancelled = true; clearInterval(interval); };
@@ -331,7 +349,11 @@ export default function HomeScreen() {
             </View>
           ) : (
             currentMovers.map((stock, i) => {
-              const up = stock.changePercent >= 0;
+              // Prefer the shared live quote so Movers and Watchlist never disagree.
+              const live = quotes[stock.symbol];
+              const price = live?.price ?? stock.price;
+              const changePercent = live?.changePercent ?? stock.changePercent;
+              const up = changePercent >= 0;
               return (
                 <TouchableOpacity
                   key={stock.symbol}
@@ -350,10 +372,10 @@ export default function HomeScreen() {
                     </View>
                   </View>
                   <View style={styles.moverRight}>
-                    <Text style={[styles.moverPrice, { color: C.text.primary }]}>{formatCurrency(stock.price)}</Text>
+                    <Text style={[styles.moverPrice, { color: C.text.primary }]}>{formatCurrency(price)}</Text>
                     <View style={[styles.moverBadge, { backgroundColor: up ? Colors.market.gainBg : Colors.market.lossBg }]}>
                       <Text style={[styles.moverChange, { color: up ? Colors.market.gain : Colors.market.loss }]}>
-                        {up ? '▲' : '▼'} {formatPercent(Math.abs(stock.changePercent), false)}
+                        {up ? '▲' : '▼'} {formatPercent(Math.abs(changePercent), false)}
                       </Text>
                     </View>
                   </View>
@@ -413,7 +435,7 @@ export default function HomeScreen() {
                     </Text>
                     {item.price > 0 ? (
                       <Text style={[styles.watchlistChange, { color: up ? Colors.market.gain : Colors.market.loss }]}>
-                        {up ? '+' : ''}{formatPercent(item.changePercent)}
+                        {formatPercent(item.changePercent)}
                       </Text>
                     ) : (
                       <Text style={[styles.watchlistSubtext, { color: C.text.tertiary }]}>{t('loading')}</Text>
