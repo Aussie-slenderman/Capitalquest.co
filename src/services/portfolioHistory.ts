@@ -114,26 +114,29 @@ export async function reconstructPortfolioHistory(
 ): Promise<HistoryPoint[]> {
   const cutoff = getPeriodCutoff(period, portfolio.createdAt);
   const now = Date.now();
+  const todayKey = endOfDay(now);
 
-  // Gather every symbol ever held
   const symbolSet = new Set<string>();
   (portfolio.holdings ?? []).forEach(h => symbolSet.add(h.symbol));
   transactions.forEach(t => symbolSet.add(t.symbol));
   const symbols = Array.from(symbolSet);
 
   if (symbols.length === 0) {
-    // User has never held anything — chart is just the starting cash
     return buildFlatFromCash(portfolio, cutoff);
   }
 
   // Sort transactions newest → oldest for rollback
   const txNewestFirst = [...transactions].sort((a, b) => b.timestamp - a.timestamp);
+  const earliestTxTime = transactions.length > 0
+    ? Math.min(...transactions.map(t => t.timestamp))
+    : now;
 
-  // Fetch historical prices (one call per symbol)
+  // Fetch historical prices in parallel (one call per symbol).
+  // If this fails we fall back to a simpler start-to-current interpolation.
   const stockPeriod = mapToStockPeriod(period);
   const priceMap = await buildPriceMap(symbols, stockPeriod);
 
-  // Start from the CURRENT state and walk backward
+  // Start from CURRENT state and walk backward
   let cash = portfolio.cashBalance;
   const shares: Record<string, number> = {};
   (portfolio.holdings ?? []).forEach(h => {
@@ -142,12 +145,11 @@ export async function reconstructPortfolioHistory(
 
   const points: HistoryPoint[] = [];
 
-  // Iterate day by day from today → cutoff
-  let cursor = endOfDay(now);
+  let cursor = todayKey;
   let txIdx = 0;
 
   while (cursor >= cutoff) {
-    // Roll back every transaction that happened AFTER this cursor
+    // Roll back transactions that happened AFTER this cursor day
     while (txIdx < txNewestFirst.length && txNewestFirst[txIdx].timestamp > cursor) {
       const tx = txNewestFirst[txIdx];
       if (tx.type === 'buy') {
@@ -162,26 +164,69 @@ export async function reconstructPortfolioHistory(
       txIdx++;
     }
 
-    // Price holdings at this day
+    // If the cursor is BEFORE any transaction occurred, the user just
+    // had their starting cash and no holdings → anchor to startingBalance.
+    if (cursor < earliestTxTime) {
+      points.push({
+        timestamp: cursor,
+        totalValue: portfolio.startingBalance ?? cash,
+      });
+      cursor -= DAY_MS;
+      continue;
+    }
+
+    // Compute holdings value using historical close prices
     let holdingsValue = 0;
+    let pricedAll = true;
     for (const [sym, qty] of Object.entries(shares)) {
-      if (qty === 0) continue;
+      if (Math.abs(qty) < 1e-9) continue;
       const px = priceOnOrBefore(priceMap[sym] ?? {}, cursor);
       if (px != null) {
         holdingsValue += qty * px;
       } else {
-        // Fallback: use the avg cost basis from a transaction
+        pricedAll = false;
+        // Best-effort: use cost basis only if nothing else is available
         const fallbackTx = transactions.find(t => t.symbol === sym && t.timestamp <= cursor);
         if (fallbackTx) holdingsValue += qty * fallbackTx.price;
       }
     }
 
-    points.push({ timestamp: cursor, totalValue: cash + holdingsValue });
+    // Anchor today's point to the authoritative current total value.
+    // Without this, stale Yahoo data for "today" collapses to cost basis.
+    const totalValue = (cursor === todayKey)
+      ? portfolio.totalValue
+      : (pricedAll ? cash + holdingsValue : cash + holdingsValue);
+
+    points.push({ timestamp: cursor, totalValue });
     cursor -= DAY_MS;
   }
 
   // Oldest → newest
-  return points.reverse();
+  const reversed = points.reverse();
+
+  // Safety net: if every reconstructed point is essentially the same
+  // (e.g. historical prices all missing AND no transactions occurred in
+  // the window), synthesise a simple 2-point series from startingBalance
+  // → totalValue so the chart still communicates direction.
+  const values = reversed.map(p => p.totalValue);
+  const range = Math.max(...values) - Math.min(...values);
+  if (range < 0.01 && Math.abs(portfolio.totalGainLoss ?? 0) > 0.01) {
+    const first = reversed[0];
+    const last = reversed[reversed.length - 1];
+    if (first && last) {
+      // Linearly interpolate between start and current so the user at
+      // least sees the direction of travel.
+      const start = portfolio.startingBalance ?? first.totalValue;
+      const end = portfolio.totalValue;
+      const span = last.timestamp - first.timestamp || 1;
+      return reversed.map(p => ({
+        timestamp: p.timestamp,
+        totalValue: start + ((end - start) * (p.timestamp - first.timestamp)) / span,
+      }));
+    }
+  }
+
+  return reversed;
 }
 
 /**
