@@ -656,25 +656,23 @@ function LeaderboardRow({ entry, getInitials, isSticky, onPress, isLoading }: Le
               <Text style={styles.youBadgeText}>YOU</Text>
             </View>
           )}
-          {onPress && (
-            <TouchableOpacity
-              onPress={onPress}
-              activeOpacity={0.7}
-              style={{
-                backgroundColor: Colors.brand.primary,
-                borderRadius: Radius.sm,
-                paddingHorizontal: 8,
-                paddingVertical: 3,
-                marginLeft: 6,
-              }}
-            >
-              {isLoading ? (
-                <ActivityIndicator size="small" color="#FFFFFF" />
-              ) : (
-                <Text style={{ fontSize: 11, fontWeight: FontWeight.bold, color: '#FFFFFF' }}>Portfolio</Text>
-              )}
-            </TouchableOpacity>
-          )}
+          <TouchableOpacity
+            onPress={() => { if (onPress) onPress(); }}
+            activeOpacity={0.7}
+            style={{
+              backgroundColor: '#FF3D57',
+              borderRadius: 6,
+              paddingHorizontal: 10,
+              paddingVertical: 4,
+              marginLeft: 8,
+            }}
+          >
+            {isLoading ? (
+              <ActivityIndicator size="small" color="#FFFFFF" />
+            ) : (
+              <Text style={{ fontSize: 12, fontWeight: '700', color: '#FFFFFF' }}>Portfolio</Text>
+            )}
+          </TouchableOpacity>
         </View>
         <Text ref={usernameRef} style={{ fontSize: FontSize.xs, color: isLight ? '#374151' : '#94A3B8', marginTop: 2 }}>@{entry.username}</Text>
       </View>
