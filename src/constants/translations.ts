@@ -202,7 +202,7 @@ const en: Dict = {
   level_10: 'Wolf of Wall Street',
   // Dashboard
   practice: 'Practice.', trade_word: 'Trade.', prosper: 'Prosper.',
-  hero_subtitle: 'Master the markets risk-free — real prices, real strategies.',
+  hero_subtitle: '"I have created this app to let kids master the markets risk free" Theo 13yrs 2026',
   no_perf_data: 'No performance data this month',
 
   // Tutorial / Learn
