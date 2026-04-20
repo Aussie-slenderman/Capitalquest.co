@@ -120,7 +120,7 @@ export async function placeOrder(params: PlaceOrderParams): Promise<OrderResult>
     return { success: false, error: 'Invalid order quantity.' };
   }
 
-  const total = filledShares * price;
+  let total = filledShares * price;
 
   // 3. Load portfolio — from Firebase or local Zustand store
   let portfolio: Portfolio | null = null;
@@ -149,8 +149,17 @@ export async function placeOrder(params: PlaceOrderParams): Promise<OrderResult>
 
   // 4. Validate
   if (type === 'buy') {
-    if (total > portfolio.cashBalance) {
+    // Allow 1-cent tolerance for floating-point drift from fractional share math.
+    // If the player types their exact displayed cash and the stored value has
+    // drifted by fractions of a cent, clamp total & filledShares to the actual
+    // available cash so the order fills cleanly with no negative balance.
+    if (total > portfolio.cashBalance + 0.01) {
       return { success: false, error: 'Insufficient cash balance.' };
+    }
+    if (total > portfolio.cashBalance) {
+      // Within tolerance — clamp to exact cash and recompute shares.
+      total = portfolio.cashBalance;
+      filledShares = total / price;
     }
   } else {
     // Sell: check holding

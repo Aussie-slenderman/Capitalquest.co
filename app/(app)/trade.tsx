@@ -217,7 +217,14 @@ export default function TradeScreen() {
   const canPlaceOrder = parsedInput > 0 && !!stock;
 
   const handleOrderButtonPress = useCallback(async () => {
-    if (!stock) return;
+    if (!stock) {
+      Toast.show({
+        type: 'error',
+        text1: 'Select a stock first',
+        text2: 'Search for a stock using the search bar above, then tap a result.',
+      });
+      return;
+    }
 
     // Check auth — if store has no user, try to recover from Firebase Auth
     let activeUser = user;
@@ -317,7 +324,10 @@ export default function TradeScreen() {
       });
       return;
     }
-    if (orderSide === 'buy' && parsedInput > activeCash && inputMode === 'dollars') {
+    // Allow 1-cent tolerance for floating-point drift from fractional share math.
+    // Without this, typing exactly the displayed cash fails because the stored
+    // value is ~$X.99999998 due to accumulated fractional-share rounding.
+    if (orderSide === 'buy' && parsedInput > activeCash + 0.01 && inputMode === 'dollars') {
       Toast.show({ type: 'error', text1: 'Insufficient funds', text2: `You only have ${formatCurrency(activeCash)} available.` });
       return;
     }
