@@ -20,7 +20,6 @@ web-build/
 *.key
 *.mobileprovision
 *.orig.*
-ios/
 android/
 
 # ─── Environment & secrets ────────────────────────────────────────────────────

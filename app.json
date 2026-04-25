@@ -4,11 +4,11 @@
     "slug": "capitalquest",
     "version": "1.0.0",
     "orientation": "portrait",
-    "icon": "./assets/images/icon.png",
+    "icon": "./assets/logo.png",
     "scheme": "capitalquest",
     "userInterfaceStyle": "dark",
     "splash": {
-      "image": "./assets/images/splash.png",
+      "image": "./assets/logo.png",
       "resizeMode": "contain",
       "backgroundColor": "#0A0E1A"
     },
@@ -24,7 +24,7 @@
     },
     "android": {
       "adaptiveIcon": {
-        "foregroundImage": "./assets/images/adaptive-icon.png",
+        "foregroundImage": "./assets/logo.png",
         "backgroundColor": "#0A0E1A"
       },
       "package": "com.capitalquest.app",
@@ -33,7 +33,7 @@
     "web": {
       "bundler": "metro",
       "output": "static",
-      "favicon": "./assets/images/favicon.png",
+      "favicon": "./assets/logo.png",
       "name": "CapitalQuest",
       "shortName": "CapitalQuest",
       "description": "Master the stock market risk-free. Trade with real-time prices, compete on leaderboards, and level up your investing skills — completely free.",
@@ -47,7 +47,7 @@
       [
         "expo-notifications",
         {
-          "icon": "./assets/images/notification-icon.png",
+          "icon": "./assets/logo.png",
           "color": "#00D4AA"
         }
       ]
