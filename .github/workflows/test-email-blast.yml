@@ -1,0 +1,44 @@
+name: Test Email Blast (manual)
+
+# This is a one-off, manually-triggered workflow that either counts or
+# sends a test email to all CapitalQuest users with a real email address.
+# It is NOT scheduled. Use carefully — sending real users a "test" email
+# can hurt sender reputation. Always run mode=count first.
+
+on:
+  workflow_dispatch:
+    inputs:
+      mode:
+        description: '"count" to preview recipient count without sending, or "send" to actually send the test email.'
+        required: true
+        default: 'count'
+        type: choice
+        options:
+          - count
+          - send
+
+jobs:
+  test-email-blast:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+
+    steps:
+      - name: Checkout repo
+        uses: actions/checkout@v4
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: Install dependencies
+        working-directory: ./scripts
+        run: npm install
+
+      - name: Run test email blast (${{ inputs.mode }})
+        working-directory: ./scripts
+        env:
+          FIREBASE_SERVICE_ACCOUNT: ${{ secrets.FIREBASE_SERVICE_ACCOUNT }}
+          RESEND_API_KEY: ${{ secrets.RESEND_API_KEY }}
+          TEST_EMAIL_MODE: ${{ inputs.mode }}
+        run: node send-test-email-blast.js
