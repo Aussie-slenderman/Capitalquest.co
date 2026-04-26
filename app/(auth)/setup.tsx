@@ -15,7 +15,32 @@ export default function SetupScreen() {
   useEffect(() => {
     if (!user) return;
     (async () => {
+      // 🛑 CRITICAL SAFETY CHECK
+      // setup.tsx was historically called every time it mounted, including
+      // for returning users — which wiped their entire portfolio (holdings,
+      // cash, gains, trade history) by overwriting the Firestore document
+      // with a fresh $10k portfolio. If the user has already completed
+      // onboarding, just send them to the dashboard and DO NOT touch their
+      // portfolio.
+      if (user.onboardingComplete) {
+        // Make sure the registration flag is cleared in case we got here
+        // via a stale/cached redirect, then bail out.
+        setRegistrationInProgress(false);
+        router.replace('/(app)/dashboard');
+        return;
+      }
       try {
+        // Belt-and-braces: even for first-time setup, if a portfolio already
+        // exists in Firestore (e.g. partial signup, retry after refresh),
+        // don't overwrite it. Only init when there's truly no data.
+        const { getPortfolio } = await import('../../src/services/auth');
+        const existing = await getPortfolio(user.id).catch(() => null);
+        if (existing && (existing as any).startingBalance) {
+          console.warn('[CQ Setup] Skipping initPortfolio — portfolio already exists for', user.id);
+          setRegistrationInProgress(false);
+          router.replace('/(app)/dashboard');
+          return;
+        }
         await initPortfolio(user.id, STARTING_BALANCE);
         // Award first_login achievement
         const firstLoginAch = ACHIEVEMENTS.find(a => a.id === 'first_login');

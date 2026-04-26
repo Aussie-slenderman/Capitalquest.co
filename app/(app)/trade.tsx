@@ -284,16 +284,30 @@ export default function TradeScreen() {
       } catch {}
     }
 
-    // If portfolio has no cash and no holdings, it wasn't initialized properly.
-    // Re-initialize with starting balance (default $10,000).
+    // 🛑 The previous "Portfolio restored" safety net called initPortfolio()
+    // any time local cash hit $0 and holdings was empty — but a stale or
+    // mid-load local copy could trigger this and OVERWRITE the real
+    // Firestore portfolio. Now: double-check Firestore directly before
+    // doing anything destructive. Only init if the remote is also empty.
     if (activePortfolio && activePortfolio.cashBalance === 0 && (!activePortfolio.holdings || activePortfolio.holdings.length === 0)) {
-      const startBal = activePortfolio.startingBalance || activeUser.startingBalance || 10000;
-      try {
-        await initPortfolio(activeUser.id, startBal);
-        activePortfolio = { ...activePortfolio, cashBalance: startBal, totalValue: startBal, startingBalance: startBal };
+      const remote = await getPortfolio(activeUser.id).catch(() => null) as Record<string, unknown> | null;
+      const remoteCash = (remote?.cashBalance as number) ?? 0;
+      const remoteHoldings = (remote?.holdings as unknown[]) ?? [];
+      if (remote && (remoteCash > 0 || remoteHoldings.length > 0)) {
+        // Firestore has real data — our local copy was stale. Reload, don't wipe.
+        if (!remote.holdings) remote.holdings = [];
+        activePortfolio = remote as Portfolio;
         setPortfolio(activePortfolio);
-        Toast.show({ type: 'success', text1: 'Portfolio restored', text2: `Your $${startBal.toLocaleString()} balance has been restored.` });
-      } catch {}
+      } else {
+        // Genuinely empty everywhere — safe to init.
+        const startBal = activePortfolio.startingBalance || activeUser.startingBalance || 10000;
+        try {
+          await initPortfolio(activeUser.id, startBal);
+          activePortfolio = { ...activePortfolio, cashBalance: startBal, totalValue: startBal, startingBalance: startBal };
+          setPortfolio(activePortfolio);
+          Toast.show({ type: 'success', text1: 'Portfolio restored', text2: `Your $${startBal.toLocaleString()} balance has been restored.` });
+        } catch {}
+      }
     }
     // If portfolio doesn't exist at all, create one
     if (!activePortfolio) {
