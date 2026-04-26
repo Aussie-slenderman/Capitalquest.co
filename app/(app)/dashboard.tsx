@@ -41,6 +41,14 @@ const ALL_COUNTRIES = [
   "Zambia","Zimbabwe",
 ];
 
+const QUICK_ACTIONS = [
+  { key: 'home', route: '/(app)/home', image: require('../../assets/tabs/buy-sell.png') },
+  { key: 'portfolio', route: '/(app)/portfolio', image: require('../../assets/tabs/portfolio.png') },
+  { key: 'trophy-road', route: '/(app)/trophy-road', image: require('../../assets/tabs/awards.png') },
+  { key: 'social', route: '/(app)/social', image: require('../../assets/tabs/social.png'), hasBadge: true },
+  { key: 'tutorial', route: '/(app)/tutorial', image: require('../../assets/tabs/learn.png') },
+] as const;
+
 export default function DashboardScreen() {
   const {
     user, setUser,
@@ -144,46 +152,26 @@ export default function DashboardScreen() {
               {t('hero_subtitle')}
             </Text>
 
-            {/* Quick action buttons — top row */}
-            <View style={styles.quickActions}>
-              <TouchableOpacity
-                style={[styles.quickBtn, { borderColor: 'transparent' }]}
-                onPress={() => router.push('/(app)/home' as never)}
-              >
-                <Image source={require('../../assets/tabs/buy-sell.png')} style={styles.quickBtnImage} resizeMode="contain" />
-              </TouchableOpacity>
-              <TouchableOpacity
-                style={[styles.quickBtn, { borderColor: 'transparent' }]}
-                onPress={() => router.push('/(app)/portfolio' as never)}
-              >
-                <Image source={require('../../assets/tabs/portfolio.png')} style={styles.quickBtnImage} resizeMode="contain" />
-              </TouchableOpacity>
-              <TouchableOpacity
-                style={[styles.quickBtn, { borderColor: 'transparent' }]}
-                onPress={() => router.push('/(app)/trophy-road' as never)}
-              >
-                <Image source={require('../../assets/tabs/awards.png')} style={styles.quickBtnImage} resizeMode="contain" />
-              </TouchableOpacity>
-            </View>
-            {/* Quick action buttons — bottom row */}
-            <View style={[styles.quickActions, { justifyContent: 'center', paddingHorizontal: 80, marginTop: 8 }]}>
-              <TouchableOpacity
-                style={[styles.quickBtn, { borderColor: 'transparent' }]}
-                onPress={() => router.push('/(app)/social' as never)}
-              >
-                <View style={{ width: '100%', maxWidth: 120 }}>
-                  <Image source={require('../../assets/tabs/social.png')} style={styles.quickBtnImage} resizeMode="contain" />
-                  <View style={{ position: 'absolute', top: '0%', right: '5%', backgroundColor: Colors.market.loss, borderRadius: 99, minWidth: '18%', paddingVertical: '2%', alignItems: 'center', justifyContent: 'center', paddingHorizontal: '4%', borderWidth: 1.5, borderColor: Colors.bg.primary } as any}>
-                    <Text style={{ color: '#fff', fontSize: 9, fontWeight: FontWeight.bold }} adjustsFontSizeToFit numberOfLines={1}>{socialBadgeCount > 9 ? '9+' : socialBadgeCount}</Text>
+            <View style={styles.quickGrid}>
+              {QUICK_ACTIONS.map(action => (
+                <TouchableOpacity
+                  key={action.key}
+                  style={styles.quickGridItem}
+                  activeOpacity={0.82}
+                  onPress={() => router.push(action.route as never)}
+                >
+                  <View style={styles.quickImageFrame}>
+                    <Image source={action.image} style={styles.quickGridImage} resizeMode="contain" />
+                    {action.hasBadge && (
+                      <View style={styles.socialBadge}>
+                        <Text style={styles.socialBadgeText} adjustsFontSizeToFit numberOfLines={1}>
+                          {socialBadgeCount > 9 ? '9+' : socialBadgeCount}
+                        </Text>
+                      </View>
+                    )}
                   </View>
-                </View>
-              </TouchableOpacity>
-              <TouchableOpacity
-                style={[styles.quickBtn, { borderColor: 'transparent' }]}
-                onPress={() => router.push('/(app)/tutorial' as never)}
-              >
-                <Image source={require('../../assets/tabs/learn.png')} style={styles.quickBtnImage} resizeMode="contain" />
-              </TouchableOpacity>
+                </TouchableOpacity>
+              ))}
             </View>
           </LinearGradient>
 
@@ -365,24 +353,54 @@ const styles = StyleSheet.create({
     lineHeight: 22,
     maxWidth: 280,
   },
-  quickActions: {
+  quickGrid: {
     flexDirection: 'row',
-    gap: Spacing.sm,
+    flexWrap: 'wrap',
+    justifyContent: 'center',
+    columnGap: 12,
+    rowGap: 16,
     marginTop: 16,
     width: '100%',
-    flexWrap: 'nowrap',
   },
-  quickBtn: {
-    flex: 1,
+  quickGridItem: {
+    width: '30%',
+    maxWidth: 120,
+    aspectRatio: 1,
     alignItems: 'center',
     justifyContent: 'center',
     borderRadius: Radius.lg,
-    borderWidth: 0,
     backgroundColor: 'transparent',
-    gap: 8,
-    minWidth: 0,
   },
-  quickBtnImage: { width: '100%', aspectRatio: 1, maxWidth: 120, maxHeight: 120 } as any,
+  quickImageFrame: {
+    width: '100%',
+    height: '100%',
+    position: 'relative',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  quickGridImage: {
+    width: '100%',
+    height: '100%',
+  },
+  socialBadge: {
+    position: 'absolute',
+    top: 0,
+    right: 6,
+    backgroundColor: Colors.market.loss,
+    borderRadius: 99,
+    minWidth: 18,
+    height: 18,
+    paddingHorizontal: 4,
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderWidth: 1.5,
+    borderColor: Colors.bg.primary,
+  },
+  socialBadgeText: {
+    color: '#fff',
+    fontSize: 9,
+    fontWeight: FontWeight.bold,
+  },
   quickBtnDesc: { fontSize: FontSize.xs, textAlign: 'center', lineHeight: 16, marginTop: 4, color: Colors.text.tertiary },
 
   // ── Welcome popup ──
