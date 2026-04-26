@@ -60,23 +60,69 @@ async function main() {
   const usersSnap = await db.collection('users').get();
   console.log(`Total user docs: ${usersSnap.size}`);
 
-  // Build deduplicated recipient list
+  // Build per-user breakdown + deduplicated recipient list
   const recipients = new Set();
+  const eligibleRows = []; // { username, email, source, userId }
+  const skippedRows = [];  // { username, reason, raw, userId }
   let skippedFake = 0, skippedNoEmail = 0;
 
   for (const userDoc of usersSnap.docs) {
     const user = userDoc.data();
-    const candidate = user.notificationEmail || user.userEmail || user.email;
-    if (!candidate) { skippedNoEmail++; continue; }
-    if (candidate.endsWith('@capitalquest.app')) { skippedFake++; continue; }
-    recipients.add(candidate.toLowerCase().trim());
+    const username = user.username || user.displayName || '(no username)';
+    const userId = userDoc.id;
+
+    let candidate = null, source = null;
+    if (user.notificationEmail) { candidate = user.notificationEmail; source = 'notificationEmail'; }
+    else if (user.userEmail)   { candidate = user.userEmail;        source = 'userEmail'; }
+    else if (user.email)       { candidate = user.email;            source = 'email'; }
+
+    if (!candidate) {
+      skippedNoEmail++;
+      skippedRows.push({ username, reason: 'no email field at all', raw: '—', userId });
+      continue;
+    }
+    if (candidate.endsWith('@capitalquest.app')) {
+      skippedFake++;
+      skippedRows.push({ username, reason: 'fake @capitalquest.app', raw: candidate, userId });
+      continue;
+    }
+    const normalized = candidate.toLowerCase().trim();
+    recipients.add(normalized);
+    eligibleRows.push({ username, email: normalized, source, userId });
   }
 
   console.log(`\n📊 Recipient summary:`);
   console.log(`   Eligible (real emails, deduplicated): ${recipients.size}`);
+  console.log(`   Eligible rows (before dedup):         ${eligibleRows.length}`);
   console.log(`   Skipped (no email):                   ${skippedNoEmail}`);
   console.log(`   Skipped (fake @capitalquest.app):     ${skippedFake}`);
   console.log(`   Total user docs:                      ${usersSnap.size}`);
+
+  console.log(`\n👥 ELIGIBLE recipients (full list):`);
+  eligibleRows.forEach((r, i) => {
+    console.log(`   ${String(i + 1).padStart(3)}. ${r.email.padEnd(40)}  via ${r.source.padEnd(18)} user=${r.username}  (id=${r.userId})`);
+  });
+
+  // Show duplicates separately so user can see who shares the same email
+  const emailCount = {};
+  eligibleRows.forEach(r => {
+    emailCount[r.email] = (emailCount[r.email] || 0) + 1;
+  });
+  const dupes = Object.entries(emailCount).filter(([_, n]) => n > 1);
+  if (dupes.length > 0) {
+    console.log(`\n⚠ Duplicate emails (multiple accounts share these — only sent once):`);
+    dupes.forEach(([email, n]) => {
+      const usernames = eligibleRows.filter(r => r.email === email).map(r => r.username).join(', ');
+      console.log(`   ${email}  (${n} accounts: ${usernames})`);
+    });
+  }
+
+  if (skippedRows.length > 0) {
+    console.log(`\n🚫 SKIPPED users (full list):`);
+    skippedRows.forEach((r, i) => {
+      console.log(`   ${String(i + 1).padStart(3)}. ${r.username.padEnd(20)}  ${r.reason.padEnd(28)}  raw=${r.raw}`);
+    });
+  }
 
   if (MODE === 'count') {
     console.log(`\n✓ COUNT MODE — no emails sent. Re-run with mode="send" to actually send.`);
