@@ -31,7 +31,7 @@ import {
   Spacing,
   Radius,
 } from '../../src/constants/theme';
-import type { Holding, Order, PortfolioPrivacy, Transaction } from '../../src/types';
+import type { Holding, Order, Portfolio, PortfolioPrivacy, Transaction } from '../../src/types';
 import { reconstructPortfolioHistory, type HistoryPoint } from '../../src/services/portfolioHistory';
 import { getTransactions } from '../../src/services/auth';
 
@@ -185,6 +185,87 @@ function buildChartData(
   return empty;
 }
 
+function getOrderTimestamp(order: Order): number {
+  return order.filledAt ?? order.createdAt ?? 0;
+}
+
+function transactionFromOrder(order: Order, userId: string): Transaction | null {
+  if (order.status !== 'filled') return null;
+  const timestamp = getOrderTimestamp(order);
+  const shares = order.filledShares ?? order.shares ?? 0;
+  const price = order.filledPrice ?? order.limitPrice ?? 0;
+  if (!timestamp || shares <= 0 || price <= 0) return null;
+
+  const orderTotal = (order as Order & { total?: number }).total;
+  return {
+    id: order.id,
+    userId,
+    symbol: order.symbol,
+    type: order.type,
+    shares,
+    price,
+    total: typeof orderTotal === 'number' ? orderTotal : shares * price,
+    timestamp,
+  };
+}
+
+function mergeTransactionSources(
+  transactions: Transaction[],
+  orders: Order[],
+  userId: string,
+): Transaction[] {
+  const merged = [...transactions];
+  const orderTransactions = orders
+    .map(order => transactionFromOrder(order, userId))
+    .filter((tx): tx is Transaction => tx != null);
+
+  for (const orderTx of orderTransactions) {
+    const duplicate = merged.some(tx =>
+      tx.symbol === orderTx.symbol &&
+      tx.type === orderTx.type &&
+      Math.abs(tx.shares - orderTx.shares) < 1e-6 &&
+      Math.abs(tx.price - orderTx.price) < 0.01 &&
+      Math.abs(tx.timestamp - orderTx.timestamp) < 10_000
+    );
+    if (!duplicate) merged.push(orderTx);
+  }
+
+  return merged.sort((a, b) => b.timestamp - a.timestamp);
+}
+
+function getPortfolioHistoryStateKey(portfolio: Portfolio | null): string {
+  if (!portfolio) return 'none';
+  const holdingsKey = (portfolio.holdings ?? [])
+    .map(h => [
+      h.symbol,
+      h.shares,
+      h.currentPrice,
+      h.currentValue,
+      h.totalCost,
+    ].join(':'))
+    .sort()
+    .join('|');
+  const orders = portfolio.orders ?? [];
+  const latestOrderTime = orders.reduce(
+    (latest, order) => Math.max(latest, getOrderTimestamp(order)),
+    0,
+  );
+  const history = portfolio.history ?? [];
+  const latestHistory = history[history.length - 1];
+
+  return [
+    portfolio.cashBalance,
+    portfolio.totalValue,
+    portfolio.investedValue,
+    holdingsKey,
+    orders.length,
+    latestOrderTime,
+    history.length,
+    latestHistory?.timestamp ?? 0,
+    latestHistory?.totalValue ?? 0,
+  ].join(';');
+}
+
 // ─── Main Component ───────────────────────────────────────────────────────────
 
 export default function PortfolioScreen() {
@@ -246,6 +327,10 @@ export default function PortfolioScreen() {
   const [chartPeriod, setChartPeriod] = useState<PortfolioChartPeriod>('1M');
   const [reconstructedHistory, setReconstructedHistory] = useState<HistoryPoint[] | null>(null);
   const historyCacheRef = React.useRef<Map<string, HistoryPoint[]>>(new Map());
+  const portfolioHistoryStateKey = useMemo(
+    () => getPortfolioHistoryStateKey(portfolio),
+    [portfolio],
+  );
 
   // Reconstruct history from transactions when Firestore snapshots are
   // missing / too sparse to span the selected period.
@@ -275,13 +360,17 @@ export default function PortfolioScreen() {
       }
 
       // Check cache
-      const cacheKey = `${user.id}:${chartPeriod}`;
+      const cacheKey = `${user.id}:${chartPeriod}:${portfolioHistoryStateKey}`;
       const cached = historyCacheRef.current.get(cacheKey);
       if (cached) { setReconstructedHistory(cached); return; }
 
       try {
         const txRaw = await getTransactions(user.id);
-        const tx = (txRaw as Transaction[]) ?? [];
+        const tx = mergeTransactionSources(
+          (txRaw as Transaction[]) ?? [],
+          portfolio.orders ?? [],
+          user.id,
+        );
         const reconstructed = await reconstructPortfolioHistory(portfolio, tx, chartPeriod);
         if (cancelled) return;
         historyCacheRef.current.set(cacheKey, reconstructed);
@@ -292,7 +381,7 @@ export default function PortfolioScreen() {
     }
     run();
     return () => { cancelled = true; };
-  }, [user?.id, chartPeriod, portfolio?.history, portfolio?.totalValue]);
+  }, [user?.id, chartPeriod, portfolioHistoryStateKey]);
 
   const isLight = appColorMode === 'light';
   const C = isLight ? LightColors : Colors;
