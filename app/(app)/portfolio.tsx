@@ -60,7 +60,6 @@ function getLevelInfo(level: number, xp: number) {
 // ─── Chart period types & helpers ─────────────────────────────────────────────
 
 type PortfolioChartPeriod = '1W' | '1M' | '1Y' | 'YTD' | 'ALL';
-const PORTFOLIO_CHART_PERIODS: PortfolioChartPeriod[] = ['1W', '1M', '1Y', 'YTD', 'ALL'];
 
 function getPeriodCutoff(period: PortfolioChartPeriod): number {
   const now = Date.now();
@@ -211,11 +210,14 @@ function buildChartData(
         filtered = [...filtered, { timestamp: Date.now(), totalValue }];
       }
 
-      const effectiveStart = startingBalance ?? filtered[0].totalValue;
-      if (filtered.length === 1 && Math.abs(totalValue - effectiveStart) > 0.01) {
-        const anchorTs = period === 'ALL'
-          ? (accountCreatedAt ?? cutoff)
-          : cutoff;
+      // Only anchor to the original startingBalance for the all-time view.
+      // Shorter periods (e.g. 30D) should reflect the portfolio's actual
+      // value at the start of the period, not the account's $10K starting cash.
+      const effectiveStart = period === 'ALL'
+        ? (startingBalance ?? filtered[0].totalValue)
+        : filtered[0].totalValue;
+      if (filtered.length === 1 && period === 'ALL' && Math.abs(totalValue - effectiveStart) > 0.01) {
+        const anchorTs = accountCreatedAt ?? cutoff;
         filtered = [
           { timestamp: anchorTs, totalValue: effectiveStart },
           { timestamp: Date.now(), totalValue },
@@ -247,7 +249,10 @@ function buildChartData(
         topValue = (mx + padding) - baseline;
       }
 
-      if (isFlat && Math.abs(totalValue - effectiveStart) > 0.01) {
+      // Re-anchor a flat period only when viewing all-time history;
+      // otherwise leave the line flat at the actual values so the 30D
+      // tracker doesn't artificially start at the original cash balance.
+      if (period === 'ALL' && isFlat && Math.abs(totalValue - effectiveStart) > 0.01) {
         const firstTs = filtered[0].timestamp;
         const lastTs = filtered[filtered.length - 1].timestamp;
         filtered = [
@@ -278,7 +283,10 @@ function buildChartData(
 
   // No history data — show flat line at current value
   if (totalValue > 0) {
-    const effectiveStart = startingBalance ?? totalValue;
+    // Only synthesize a from-startingBalance line for the all-time view.
+    // Without history, a 30-day chart should show flat at the current value
+    // rather than drawing a phantom rise from $10K.
+    const effectiveStart = period === 'ALL' ? (startingBalance ?? totalValue) : totalValue;
     if (Math.abs(totalValue - effectiveStart) > 0.01) {
       const mn = Math.min(effectiveStart, totalValue);
       const mx = Math.max(effectiveStart, totalValue);
@@ -463,7 +471,8 @@ export default function PortfolioScreen() {
   const removeAllowedAccount = (num: string) => {
     saveAllowedAccounts(allowedAccounts.filter(a => a !== num));
   };
-  const [chartPeriod, setChartPeriod] = useState<PortfolioChartPeriod>('1M');
+  // Chart is fixed to the 30-day view; other period options removed per design.
+  const chartPeriod: PortfolioChartPeriod = '1M';
   const [reconstructedHistory, setReconstructedHistory] = useState<HistoryPoint[] | null>(null);
   const historyCacheRef = React.useRef<Map<string, HistoryPoint[]>>(new Map());
   const portfolioHistoryStateKey = useMemo(
@@ -1015,29 +1024,7 @@ export default function PortfolioScreen() {
           </View>
         </View>
 
-        {/* Period selector buttons — ABOVE the chart */}
-        <View style={[styles.periodSelectorContainer, { backgroundColor: C.bg.secondary, borderColor: C.border.default }]}>
-          {PORTFOLIO_CHART_PERIODS.map(period => (
-            <TouchableOpacity
-              key={period}
-              style={[
-                styles.periodButton,
-                chartPeriod === period && styles.periodButtonActive,
-              ]}
-              onPress={() => setChartPeriod(period)}
-            >
-              <Text style={[
-                styles.periodButtonText,
-                { color: C.text.tertiary },
-                chartPeriod === period && styles.periodButtonTextActive,
-              ]}>
-                {period}
-              </Text>
-            </TouchableOpacity>
-          ))}
-        </View>
-
-        {/* Portfolio Chart */}
+        {/* Portfolio Chart (fixed 30-day view) */}
         <View style={[styles.chartCard, { backgroundColor: C.bg.secondary, borderColor: C.border.default }]}>
           {/* Period header inside chart card */}
           {(() => {
