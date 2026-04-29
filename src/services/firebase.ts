@@ -367,6 +367,69 @@ export async function updatePortfolioAllowedAccounts(userId: string, accountNumb
   return updatePortfolio(userId, { allowedAccountNumbers: accountNumbers });
 }
 
+// Lightweight helper used to gate UI affordances (e.g. "View Portfolio"
+// buttons) without fetching the full portfolio. Returns the privacy mode,
+// the list of allowed account numbers (for specific_friends), and the
+// owner's friendIds (for friends_only) so callers can compute viewability
+// client-side before deciding whether to render the action.
+export async function getPortfolioPrivacyMeta(userId: string): Promise<{
+  privacy: 'public' | 'friends_only' | 'specific_friends' | 'private';
+  allowedAccountNumbers: string[];
+  ownerFriendIds: string[];
+} | null> {
+  const snap = await getDoc(doc(db, 'portfolios', userId));
+  if (!snap.exists()) return null;
+  const data = snap.data();
+  const rawPrivacy = (data.privacy as string) ?? 'private';
+  const privacy =
+    rawPrivacy === 'public' ||
+    rawPrivacy === 'friends_only' ||
+    rawPrivacy === 'specific_friends'
+      ? rawPrivacy
+      : 'private';
+  const allowedAccountNumbers = (data.allowedAccountNumbers as string[]) ?? [];
+  let ownerFriendIds: string[] = [];
+  if (privacy === 'friends_only') {
+    try {
+      const userSnap = await getDoc(doc(db, 'users', userId));
+      if (userSnap.exists()) {
+        ownerFriendIds = ((userSnap.data().friendIds as string[]) ?? []);
+      }
+    } catch {
+      ownerFriendIds = [];
+    }
+  }
+  return { privacy, allowedAccountNumbers, ownerFriendIds };
+}
+
+// Pure helper — given the privacy metadata for a target user and the
+// viewer's identity, returns whether the viewer should be able to open
+// the target's portfolio. Mirrors the rules enforced by getPublicPortfolio
+// and getFriendsPortfolio.
+export function canViewPortfolioFromMeta(
+  meta: {
+    privacy: 'public' | 'friends_only' | 'specific_friends' | 'private';
+    allowedAccountNumbers?: string[];
+    ownerFriendIds?: string[];
+  } | null | undefined,
+  viewerId: string,
+  viewerAccountNumber?: string,
+  ownerId?: string,
+): boolean {
+  if (!viewerId) return false;
+  if (ownerId && ownerId === viewerId) return true;
+  if (!meta) return false;
+  if (meta.privacy === 'public') return true;
+  if (meta.privacy === 'friends_only') {
+    return (meta.ownerFriendIds ?? []).includes(viewerId);
+  }
+  if (meta.privacy === 'specific_friends') {
+    if (!viewerAccountNumber) return false;
+    return (meta.allowedAccountNumbers ?? []).includes(viewerAccountNumber);
+  }
+  return false;
+}
+
 // ─── Portfolio History Snapshot ───────────────────────────────────────────────
 // Called after every trade. Stores today's portfolio value so the weekly
 // email script can build a 7-day line chart.

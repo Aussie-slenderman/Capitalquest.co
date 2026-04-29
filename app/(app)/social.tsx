@@ -355,6 +355,11 @@ function ChatModal({
   const [viewPortfolioVisible, setViewPortfolioVisible] = useState(false);
   const [viewedPortfolio, setViewedPortfolio] = useState<any>(null);
   const [portfolioLoading, setPortfolioLoading] = useState(false);
+  // Whether the current viewer is allowed to open the DM partner's
+  // portfolio. Determined from the partner's privacy settings, prefetched
+  // when the DM opens. Defaults to false so the button stays hidden until
+  // we've confirmed access.
+  const [canViewDmPortfolio, setCanViewDmPortfolio] = useState(false);
 
   useEffect(() => {
     if (!room) return;
@@ -364,6 +369,33 @@ function ChatModal({
     });
     return () => unsubscribe();
   }, [room]);
+
+  // Prefetch the DM partner's portfolio privacy meta once the room is
+  // open so we can hide the "View Portfolio" button for private accounts.
+  useEffect(() => {
+    if (!room || !user || room.type !== 'dm') {
+      setCanViewDmPortfolio(false);
+      return;
+    }
+    const otherUserId = room.participantIds.find((id: string) => id !== user.id);
+    if (!otherUserId) {
+      setCanViewDmPortfolio(false);
+      return;
+    }
+    let cancelled = false;
+    (async () => {
+      try {
+        const { getPortfolioPrivacyMeta, canViewPortfolioFromMeta } = await import('../../src/services/firebase');
+        const meta = await getPortfolioPrivacyMeta(otherUserId);
+        if (cancelled) return;
+        const viewerAcc = (user as any)?.accountNumber as string | undefined;
+        setCanViewDmPortfolio(canViewPortfolioFromMeta(meta, user.id, viewerAcc, otherUserId));
+      } catch {
+        if (!cancelled) setCanViewDmPortfolio(false);
+      }
+    })();
+    return () => { cancelled = true; };
+  }, [room, user]);
 
   const handleSend = useCallback(async () => {
     if (!inputText.trim() || !room || !user) return;
@@ -386,12 +418,14 @@ function ChatModal({
 
   const handleViewFriendPortfolio = useCallback(async () => {
     if (!room || !user || room.type !== 'dm' || portfolioLoading) return;
+    if (!canViewDmPortfolio) return;
     const otherUserId = room.participantIds.find((id: string) => id !== user.id);
     if (!otherUserId) return;
     setPortfolioLoading(true);
     try {
       const { getFriendsPortfolio } = await import('../../src/services/firebase');
-      const data = await getFriendsPortfolio(otherUserId, user.id);
+      const viewerAcc = (user as any)?.accountNumber as string | undefined;
+      const data = await getFriendsPortfolio(otherUserId, user.id, viewerAcc);
       if (data) {
         setViewedPortfolio(data);
         setViewPortfolioVisible(true);
@@ -406,7 +440,7 @@ function ChatModal({
       }
     }
     setPortfolioLoading(false);
-  }, [room, user, portfolioLoading]);
+  }, [room, user, portfolioLoading, canViewDmPortfolio]);
 
   const handleRespondToProposal = useCallback(
     async (proposalId: string, status: 'accepted' | 'declined') => {
@@ -518,7 +552,7 @@ function ChatModal({
           <Text style={[styles.chatTitle, { color: CMC.text.primary }]} numberOfLines={1}>
             {room?.name ?? 'Chat'}
           </Text>
-          {room?.type === 'dm' ? (
+          {room?.type === 'dm' && canViewDmPortfolio ? (
             <TouchableOpacity
               onPress={handleViewFriendPortfolio}
               style={{ paddingHorizontal: 8, paddingVertical: 4 }}
@@ -1401,13 +1435,40 @@ function FindFriendsTab() {
   const [viewedPortfolio, setViewedPortfolio] = useState<any>(null);
   const [viewedFriendName, setViewedFriendName] = useState('');
   const [portfolioLoadingId, setPortfolioLoadingId] = useState<string | null>(null);
+  // Map of friendId -> privacy meta. Used to hide the "Portfolio" button
+  // for friends whose portfolio is private (or unknown).
+  type PrivacyMeta = {
+    privacy: 'public' | 'friends_only' | 'specific_friends' | 'private';
+    allowedAccountNumbers?: string[];
+    ownerFriendIds?: string[];
+  };
+  const [friendPrivacyMap, setFriendPrivacyMap] = useState<Record<string, PrivacyMeta | null>>({});
+
+  const viewerAccountNumber = (user as any)?.accountNumber as string | undefined;
+  const canViewFriendPortfolio = useCallback(
+    (friendId: string): boolean => {
+      if (!user) return false;
+      const meta = friendPrivacyMap[friendId];
+      if (!meta) return false;
+      if (meta.privacy === 'public') return true;
+      if (meta.privacy === 'friends_only') return (meta.ownerFriendIds ?? []).includes(user.id);
+      if (meta.privacy === 'specific_friends') {
+        if (!viewerAccountNumber) return false;
+        return (meta.allowedAccountNumbers ?? []).includes(viewerAccountNumber);
+      }
+      return false;
+    },
+    [user, friendPrivacyMap, viewerAccountNumber],
+  );
 
   const handleViewFriendPortfolio = async (friend: UserResult) => {
     if (!user || portfolioLoadingId) return;
+    // Defence-in-depth: don't even attempt the fetch if the gate says no.
+    if (!canViewFriendPortfolio(friend.id)) return;
     setPortfolioLoadingId(friend.id);
     try {
       const { getFriendsPortfolio } = await import('../../src/services/firebase');
-      const data = await getFriendsPortfolio(friend.id, user.id, (user as any).accountNumber);
+      const data = await getFriendsPortfolio(friend.id, user.id, viewerAccountNumber);
       if (data) {
         setViewedPortfolio(data);
         setViewedFriendName(friend.displayName);
@@ -1424,6 +1485,7 @@ function FindFriendsTab() {
   useEffect(() => {
     if (!user?.friendIds?.length) {
       setFriends([]);
+      setFriendPrivacyMap({});
       return;
     }
     let cancelled = false;
@@ -1437,10 +1499,29 @@ function FindFriendsTab() {
           return null;
         }
       })
-    ).then((results) => {
-      if (!cancelled) {
-        setFriends(results.filter(Boolean) as UserResult[]);
-        setLoadingFriends(false);
+    ).then(async (results) => {
+      if (cancelled) return;
+      const friendList = results.filter(Boolean) as UserResult[];
+      setFriends(friendList);
+      setLoadingFriends(false);
+
+      // Prefetch each friend's portfolio privacy meta so the UI can hide
+      // the "Portfolio" action for friends who have set their portfolio
+      // to private (or don't allow this viewer).
+      try {
+        const { getPortfolioPrivacyMeta } = await import('../../src/services/firebase');
+        const metas = await Promise.all(
+          friendList.map(async (f) => {
+            try { return [f.id, await getPortfolioPrivacyMeta(f.id)] as const; }
+            catch { return [f.id, null] as const; }
+          })
+        );
+        if (cancelled) return;
+        const next: Record<string, PrivacyMeta | null> = {};
+        for (const [id, meta] of metas) next[id] = meta;
+        setFriendPrivacyMap(next);
+      } catch {
+        if (!cancelled) setFriendPrivacyMap({});
       }
     });
     return () => { cancelled = true; };
@@ -1689,17 +1770,19 @@ function FindFriendsTab() {
               >
                 <Text style={[styles.sendMsgBtnText, { color: Colors.brand.primary }]}>Chat</Text>
               </TouchableOpacity>
-              <TouchableOpacity
-                style={[styles.sendMsgBtn, { backgroundColor: Colors.brand.primary, borderColor: Colors.brand.primary }]}
-                onPress={() => handleViewFriendPortfolio(f)}
-                disabled={portfolioLoadingId === f.id}
-              >
-                {portfolioLoadingId === f.id ? (
-                  <ActivityIndicator size="small" color="#FFFFFF" />
-                ) : (
-                  <Text style={[styles.sendMsgBtnText, { color: '#FFFFFF' }]}>Portfolio</Text>
-                )}
-              </TouchableOpacity>
+              {canViewFriendPortfolio(f.id) && (
+                <TouchableOpacity
+                  style={[styles.sendMsgBtn, { backgroundColor: Colors.brand.primary, borderColor: Colors.brand.primary }]}
+                  onPress={() => handleViewFriendPortfolio(f)}
+                  disabled={portfolioLoadingId === f.id}
+                >
+                  {portfolioLoadingId === f.id ? (
+                    <ActivityIndicator size="small" color="#FFFFFF" />
+                  ) : (
+                    <Text style={[styles.sendMsgBtnText, { color: '#FFFFFF' }]}>Portfolio</Text>
+                  )}
+                </TouchableOpacity>
+              )}
               <TouchableOpacity
                 style={[styles.sendMsgBtn, { backgroundColor: Colors.market.loss + '22', borderColor: Colors.market.loss }]}
                 onPress={() => handleRemoveFriend(f)}
