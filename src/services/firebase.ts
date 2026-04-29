@@ -1,5 +1,6 @@
 import { initializeApp, getApps, getApp } from 'firebase/app';
 import {
+  initializeAuth,
   getAuth,
   createUserWithEmailAndPassword,
   signInWithEmailAndPassword,
@@ -10,6 +11,9 @@ import {
   deleteUser,
   User as FirebaseUser,
 } from 'firebase/auth';
+import * as FirebaseAuth from 'firebase/auth';
+import AsyncStorage from '@react-native-async-storage/async-storage';
+import { Platform } from 'react-native';
 import {
   getFirestore,
   doc,
@@ -70,8 +74,25 @@ export const IS_MOCK_FIREBASE = firebaseConfig.apiKey === 'YOUR_API_KEY';
 
 // Initialize Firebase (singleton pattern)
 const app = getApps().length === 0 ? initializeApp(firebaseConfig) : getApp();
-
-export const auth = getAuth(app);
+const createAuth = () => {
+  if (Platform.OS === 'web') {
+    return getAuth(app);
+  }
+  const getReactNativePersistence = (FirebaseAuth as unknown as {
+    getReactNativePersistence?: (storage: unknown) => unknown;
+  }).getReactNativePersistence;
+  try {
+    if (getReactNativePersistence) {
+      return initializeAuth(app, {
+        persistence: getReactNativePersistence(AsyncStorage) as never,
+      });
+    }
+    return initializeAuth(app);
+  } catch {
+    return getAuth(app);
+  }
+};
+export const auth = createAuth();
 export const db = getFirestore(app);
 export const rtdb = getDatabase(app);
 
@@ -409,15 +430,17 @@ export async function getPortfolioHistory(
     });
   } catch { /* hourly collection may not exist */ }
 
-  // Also fetch daily snapshots for older data coverage
   try {
     const snap = await getDocs(
       collection(db, 'portfolioHistory', userId, 'snapshots'),
     );
     snap.docs.forEach(d => {
       const data = d.data();
+      const fallbackTs = data.date
+        ? new Date(`${String(data.date)}T23:59:59.999Z`).getTime()
+        : Date.now();
       results.push({
-        timestamp: data.updatedAt ?? Date.now(),
+        timestamp: data.updatedAt ?? fallbackTs,
         totalValue: data.totalValue ?? 0,
       });
     });

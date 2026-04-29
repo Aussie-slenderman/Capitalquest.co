@@ -10,9 +10,10 @@
 import React, { useRef, useEffect, useCallback, useState } from 'react';
 import {
   View, Text, StyleSheet, ScrollView, Animated, TouchableOpacity,
-  ActivityIndicator, Modal,
+  ActivityIndicator, Modal, Dimensions,
 } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import AppHeader from '../../src/components/AppHeader';
 import Sidebar from '../../src/components/Sidebar';
 import { useAppStore } from '../../src/store/useAppStore';
@@ -24,6 +25,12 @@ import type { LeaderboardEntry, Holding } from '../../src/types';
 
 // Fixed accent color
 const FIXED_ACCENT = Colors.brand.primary;
+const SCROLL_BOTTOM_GAP = Spacing.lg;
+const SCREEN_WIDTH = Dimensions.get('window').width;
+const BOTTOM_TAB_COUNT = 5;
+const BOTTOM_TAB_ICON_SIZE = Math.min(70, Math.floor((SCREEN_WIDTH - 20) / BOTTOM_TAB_COUNT - 12));
+const BOTTOM_TAB_BAR_HEIGHT = BOTTOM_TAB_ICON_SIZE + 20;
+const SCROLL_BOTTOM_PADDING = BOTTOM_TAB_BAR_HEIGHT + SCROLL_BOTTOM_GAP;
 
 // ─── Sub-tab type ────────────────────────────────────────────────────────────
 type AwardsTab = 'trophy-road' | 'achievements' | 'ranked';
@@ -145,7 +152,10 @@ function TrophyRoadTab() {
         <ScrollView
           ref={scrollRef}
           style={styles.road}
-          contentContainerStyle={styles.roadContent}
+          contentContainerStyle={[
+            styles.roadContent,
+            { paddingBottom: SCROLL_BOTTOM_PADDING },
+          ]}
           showsVerticalScrollIndicator={false}
         >
           {reversed.map((ms, idx) => {
@@ -210,12 +220,17 @@ function TrophyRoadTab() {
               </React.Fragment>
             );
           })}
-
-          <View style={styles.bottomPad} />
         </ScrollView>
 
         <TouchableOpacity
-          style={[styles.locateMeBtn, { borderColor: `${levelColor}66`, backgroundColor: `${levelColor}18` }]}
+          style={[
+            styles.locateMeBtn,
+            {
+              bottom: BOTTOM_TAB_BAR_HEIGHT + Spacing.base,
+              borderColor: `${levelColor}66`,
+              backgroundColor: `${levelColor}18`,
+            },
+          ]}
           onPress={scrollToMe}
           activeOpacity={0.75}
         >
@@ -239,7 +254,10 @@ function AchievementsTab() {
   );
 
   return (
-    <ScrollView style={{ flex: 1 }} contentContainerStyle={{ padding: Spacing.base, paddingBottom: 32 }}>
+    <ScrollView
+      style={{ flex: 1 }}
+      contentContainerStyle={{ padding: Spacing.base, paddingBottom: SCROLL_BOTTOM_PADDING }}
+    >
       <Text style={{ fontSize: FontSize.sm, fontWeight: FontWeight.semibold, color: Colors.text.secondary, textTransform: 'uppercase', letterSpacing: 1, marginBottom: Spacing.md }}>
         {unlockedIds.size} / {ACHIEVEMENTS.length} Unlocked
       </Text>
@@ -415,7 +433,10 @@ function RankedTab() {
   }
 
   return (
-    <ScrollView style={{ flex: 1 }} contentContainerStyle={{ padding: Spacing.base, paddingBottom: 32 }}>
+    <ScrollView
+      style={{ flex: 1 }}
+      contentContainerStyle={{ padding: Spacing.base, paddingBottom: SCROLL_BOTTOM_PADDING }}
+    >
       {/* Global / Local toggle */}
       <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: Spacing.md, gap: 8 }}>
         <View style={{ flexDirection: 'row', flex: 1, backgroundColor: Colors.bg.tertiary, borderRadius: Radius.lg, borderWidth: 1, borderColor: Colors.border.default, overflow: 'hidden' }}>
@@ -616,7 +637,7 @@ export default function TrophyRoadScreen() {
   };
 
   return (
-    <View style={[styles.container, { backgroundColor: C.bg.primary }]}>
+    <SafeAreaView style={[styles.container, { backgroundColor: C.bg.primary }]} edges={['top']}>
       <AppHeader title="Awards" />
 
       {/* ── Sub-tab bar ── */}
@@ -641,7 +662,7 @@ export default function TrophyRoadScreen() {
 
       {/* ── Tab content ── */}
       <View style={{ flex: 1 }}>{renderContent()}</View>
-    </View>
+    </SafeAreaView>
   );
 }
 
@@ -833,5 +854,4 @@ const styles = StyleSheet.create({
     lineHeight: 10,
   },
 
-  bottomPad: { height: 100 },
 });

@@ -214,14 +214,13 @@ export async function reconstructPortfolioHistory(
     const first = reversed[0];
     const last = reversed[reversed.length - 1];
     if (first && last) {
-      // Linearly interpolate between start and current so the user at
-      // least sees the direction of travel.
       const start = portfolio.startingBalance ?? first.totalValue;
       const end = portfolio.totalValue;
-      const span = last.timestamp - first.timestamp || 1;
-      return reversed.map(p => ({
+      // Keep the series flat until the latest point so we do not
+      // display an invented diagonal trend when historical pricing is missing.
+      return reversed.map((p, idx) => ({
         timestamp: p.timestamp,
-        totalValue: start + ((end - start) * (p.timestamp - first.timestamp)) / span,
+        totalValue: idx === reversed.length - 1 ? end : start,
       }));
     }
   }

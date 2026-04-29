@@ -9,6 +9,7 @@ import {
   SafeAreaView,
   Modal,
   TextInput,
+  useWindowDimensions,
 } from 'react-native';
 import { router } from 'expo-router';
 import { LineChart } from 'react-native-gifted-charts';
@@ -34,6 +35,9 @@ import {
 import type { Holding, Order, Portfolio, PortfolioPrivacy, Transaction } from '../../src/types';
 import { reconstructPortfolioHistory, type HistoryPoint } from '../../src/services/portfolioHistory';
 import { getTransactions } from '../../src/services/auth';
+import { computePortfolioLiveMetrics } from '../../src/services/portfolioValuation';
+import { refreshPortfolioPrices } from '../../src/services/tradingEngine';
+import { getPortfolioHistory } from '../../src/services/firebase';
 
 // ─── Level helper ─────────────────────────────────────────────────────────────
 
@@ -100,7 +104,72 @@ interface ChartResult {
   changePercent: number;
   dataPoints: number;
   isFlat: boolean;
-  coverageRatio: number; // 0-1: what fraction of the period the data covers
+}
+
+function getChartSampleCount(period: PortfolioChartPeriod): number {
+  switch (period) {
+    case '1W': return 7;
+    case '1M': return 30;
+    case '1Y': return 52;
+    case 'YTD': return 52;
+    case 'ALL': return 90;
+  }
+}
+
+function expandSeriesToPeriod(
+  points: { timestamp: number; totalValue: number }[],
+  period: PortfolioChartPeriod,
+  cutoff: number,
+  accountCreatedAt?: number,
+): { timestamp: number; totalValue: number }[] {
+  if (points.length === 0) return points;
+
+  const now = Date.now();
+  const periodStart = period === 'ALL' && accountCreatedAt
+    ? Math.max(cutoff, accountCreatedAt)
+    : cutoff;
+
+  const sorted = [...points].sort((a, b) => a.timestamp - b.timestamp);
+  const first = sorted[0];
+  const last = sorted[sorted.length - 1];
+  if (!first || !last) return sorted;
+
+  const anchored: { timestamp: number; totalValue: number }[] = [...sorted];
+  if (first.timestamp > periodStart) {
+    anchored.unshift({ timestamp: periodStart, totalValue: first.totalValue });
+  }
+  const anchoredLast = anchored[anchored.length - 1];
+  if (anchoredLast && anchoredLast.timestamp < now) {
+    anchored.push({ timestamp: now, totalValue: anchoredLast.totalValue });
+  }
+
+  const span = Math.max(1, now - periodStart);
+  const sampleCount = getChartSampleCount(period);
+  if (sampleCount <= 2) {
+    return [
+      { timestamp: periodStart, totalValue: anchored[0].totalValue },
+      { timestamp: now, totalValue: anchored[anchored.length - 1].totalValue },
+    ];
+  }
+
+  const expanded: { timestamp: number; totalValue: number }[] = [];
+  let cursor = 0;
+
+  for (let i = 0; i < sampleCount; i++) {
+    const ratio = i / (sampleCount - 1);
+    const ts = periodStart + span * ratio;
+    while (cursor + 1 < anchored.length && anchored[cursor + 1].timestamp <= ts) {
+      cursor++;
+    }
+    const current = anchored[cursor] ?? anchored[0];
+    expanded.push({ timestamp: ts, totalValue: current.totalValue });
+  }
+
+  expanded[expanded.length - 1] = {
+    timestamp: now,
+    totalValue: anchored[anchored.length - 1].totalValue,
+  };
+  return expanded;
 }
 
 function buildChartData(
@@ -108,20 +177,53 @@ function buildChartData(
   portfolioHistory?: { timestamp: number; totalValue: number }[],
   period: PortfolioChartPeriod = '1M',
   accountCreatedAt?: number,
+  startingBalance?: number,
 ): ChartResult {
   const empty: ChartResult = {
     data: [], baseline: 0, topValue: 100,
     startValue: 0, endValue: 0, changeAmount: 0, changePercent: 0,
-    dataPoints: 0, isFlat: true, coverageRatio: 1,
+    dataPoints: 0, isFlat: true,
   };
 
   if (portfolioHistory && portfolioHistory.length > 0) {
     const cutoff = getPeriodCutoff(period);
-    const filtered = portfolioHistory
+    let filtered = portfolioHistory
       .filter(p => p.timestamp >= cutoff)
       .sort((a, b) => a.timestamp - b.timestamp);
 
     if (filtered.length > 0) {
+      const singlePointOriginalValue = filtered.length === 1 ? filtered[0].totalValue : null;
+
+      // Keep the chart's latest point aligned with the live portfolio value,
+      // even when persisted history updates less frequently.
+      const lastIdx = filtered.length - 1;
+      filtered = filtered.map((p, idx) =>
+        idx === lastIdx ? { ...p, totalValue } : p
+      );
+
+      // If only one historical point exists, append a synthetic "now" point
+      // so a non-zero move still renders a visible segment.
+      if (
+        filtered.length === 1 &&
+        singlePointOriginalValue != null &&
+        Math.abs(totalValue - singlePointOriginalValue) > 0.01
+      ) {
+        filtered = [...filtered, { timestamp: Date.now(), totalValue }];
+      }
+
+      const effectiveStart = startingBalance ?? filtered[0].totalValue;
+      if (filtered.length === 1 && Math.abs(totalValue - effectiveStart) > 0.01) {
+        const anchorTs = period === 'ALL'
+          ? (accountCreatedAt ?? cutoff)
+          : cutoff;
+        filtered = [
+          { timestamp: anchorTs, totalValue: effectiveStart },
+          { timestamp: Date.now(), totalValue },
+        ];
+      }
+
+      filtered = expandSeriesToPeriod(filtered, period, cutoff, accountCreatedAt);
+
       const values = filtered.map(p => p.totalValue);
       const mn = Math.min(...values);
       const mx = Math.max(...values);
@@ -130,15 +232,6 @@ function buildChartData(
       const changeAmount = endVal - startVal;
       const changePercent = startVal > 0 ? (changeAmount / startVal) * 100 : 0;
       const isFlat = mx - mn < 0.01;
-
-      // Calculate how much of the selected period the data actually covers
-      const now = Date.now();
-      const periodDuration = now - cutoff;
-      const dataStart = accountCreatedAt && accountCreatedAt > cutoff ? accountCreatedAt : filtered[0].timestamp;
-      const dataDuration = now - dataStart;
-      // For ALL period or when data covers entire period, ratio = 1
-      // For 1Y/YTD when account is newer than the period, ratio < 1
-      const coverageRatio = period === 'ALL' ? 1 : Math.min(1, dataDuration / periodDuration);
 
       // Calculate baseline and topValue
       let baseline: number;
@@ -154,6 +247,21 @@ function buildChartData(
         topValue = (mx + padding) - baseline;
       }
 
+      if (isFlat && Math.abs(totalValue - effectiveStart) > 0.01) {
+        const firstTs = filtered[0].timestamp;
+        const lastTs = filtered[filtered.length - 1].timestamp;
+        filtered = [
+          { timestamp: firstTs, totalValue: effectiveStart },
+          { timestamp: lastTs, totalValue },
+        ];
+        const mmn = Math.min(effectiveStart, totalValue);
+        const mmx = Math.max(effectiveStart, totalValue);
+        const rr = mmx - mmn;
+        const pp = Math.max(rr * 0.08, 1);
+        baseline = mmn - pp;
+        topValue = (mmx + pp) - baseline;
+      }
+
       let dataPoints = filtered.map(p => ({ value: p.totalValue - baseline }));
       if (dataPoints.length === 1) {
         dataPoints.push({ ...dataPoints[0] });
@@ -164,13 +272,43 @@ function buildChartData(
         startValue: startVal, endValue: endVal,
         changeAmount, changePercent,
         dataPoints: filtered.length, isFlat,
-        coverageRatio,
       };
     }
   }
 
   // No history data — show flat line at current value
   if (totalValue > 0) {
+    const effectiveStart = startingBalance ?? totalValue;
+    if (Math.abs(totalValue - effectiveStart) > 0.01) {
+      const mn = Math.min(effectiveStart, totalValue);
+      const mx = Math.max(effectiveStart, totalValue);
+      const range = mx - mn;
+      const padding = Math.max(range * 0.08, 1);
+      const baseline = mn - padding;
+      const topValue = (mx + padding) - baseline;
+      const cutoff = getPeriodCutoff(period);
+      const stepped = expandSeriesToPeriod(
+        [
+          { timestamp: period === 'ALL' ? (accountCreatedAt ?? cutoff) : cutoff, totalValue: effectiveStart },
+          { timestamp: Date.now(), totalValue },
+        ],
+        period,
+        cutoff,
+        accountCreatedAt,
+      );
+      return {
+        data: stepped.map(p => ({ value: p.totalValue - baseline })),
+        baseline,
+        topValue,
+        startValue: effectiveStart,
+        endValue: totalValue,
+        changeAmount: totalValue - effectiveStart,
+        changePercent: effectiveStart > 0 ? ((totalValue - effectiveStart) / effectiveStart) * 100 : 0,
+        dataPoints: stepped.length,
+        isFlat: false,
+      };
+    }
+
     const spread = totalValue * 0.025 || 50;
     const baseline = totalValue - spread;
     const topValue = spread * 2;
@@ -179,7 +317,7 @@ function buildChartData(
       data: pts, baseline, topValue,
       startValue: totalValue, endValue: totalValue,
       changeAmount: 0, changePercent: 0,
-      dataPoints: 1, isFlat: true, coverageRatio: 1,
+      dataPoints: 1, isFlat: true,
     };
   }
   return empty;
@@ -239,8 +377,6 @@ function getPortfolioHistoryStateKey(portfolio: Portfolio | null): string {
     .map(h => [
       h.symbol,
       h.shares,
-      h.currentPrice,
-      h.currentValue,
       h.totalCost,
     ].join(':'))
     .sort()
@@ -255,7 +391,6 @@ function getPortfolioHistoryStateKey(portfolio: Portfolio | null): string {
 
   return [
     portfolio.cashBalance,
-    portfolio.totalValue,
     portfolio.investedValue,
     holdingsKey,
     orders.length,
@@ -270,7 +405,8 @@ function getPortfolioHistoryStateKey(portfolio: Portfolio | null): string {
 
 export default function PortfolioScreen() {
   const t = useT();
-  const { user, setUser, portfolio, quotes, isSidebarOpen, setSidebarOpen, appColorMode, pendingOrders, removePendingOrder } = useAppStore();
+  const { width: windowWidth } = useWindowDimensions();
+  const { user, setUser, setPortfolio, portfolio, quotes, isSidebarOpen, setSidebarOpen, appColorMode, pendingOrders, removePendingOrder } = useAppStore();
   const [showPortfolio, setShowPortfolio] = useState(false);
   const savedName = (user as any)?.portfolioName;
   const [portfolioName, setPortfolioName] = useState(savedName || 'Portfolio 1');
@@ -284,6 +420,9 @@ export default function PortfolioScreen() {
     (portfolio as any)?.allowedAccountNumbers ?? []
   );
   const [newAccountInput, setNewAccountInput] = useState('');
+  const [isChartRefreshing, setIsChartRefreshing] = useState(false);
+  const [chartRefreshTick, setChartRefreshTick] = useState(0);
+  const [isOpeningPortfolio, setIsOpeningPortfolio] = useState(false);
 
   // Sync portfolio name when user data loads from Firestore
   React.useEffect(() => {
@@ -381,17 +520,22 @@ export default function PortfolioScreen() {
     }
     run();
     return () => { cancelled = true; };
-  }, [user?.id, chartPeriod, portfolioHistoryStateKey]);
+  }, [user?.id, chartPeriod, portfolioHistoryStateKey, chartRefreshTick]);
 
   const isLight = appColorMode === 'light';
   const C = isLight ? LightColors : Colors;
 
-  const totalValue = portfolio?.totalValue ?? 0;
-  const cashBalance = portfolio?.cashBalance ?? 0;
-  const startingBalance = portfolio?.startingBalance ?? 10000;
-  const totalGainLoss = portfolio?.totalGainLoss ?? 0;
-  const totalGainLossPercent = portfolio?.totalGainLossPercent ?? 0;
-  const holdings: Holding[] = portfolio?.holdings ?? [];
+  const livePortfolio = useMemo(
+    () => (portfolio ? computePortfolioLiveMetrics(portfolio, quotes) : null),
+    [portfolio, quotes],
+  );
+
+  const totalValue = livePortfolio?.totalValue ?? portfolio?.totalValue ?? 0;
+  const cashBalance = livePortfolio?.cashBalance ?? portfolio?.cashBalance ?? 0;
+  const startingBalance = livePortfolio?.startingBalance ?? portfolio?.startingBalance ?? 10000;
+  const totalGainLoss = livePortfolio?.totalGainLoss ?? portfolio?.totalGainLoss ?? 0;
+  const totalGainLossPercent = livePortfolio?.totalGainLossPercent ?? portfolio?.totalGainLossPercent ?? 0;
+  const holdings: Holding[] = livePortfolio?.holdings ?? portfolio?.holdings ?? [];
   const orders: Order[] = portfolio?.orders ?? [];
   const isGain = totalGainLoss >= 0;
 
@@ -399,20 +543,23 @@ export default function PortfolioScreen() {
     getLevelInfo(user?.level ?? 1, user?.xp ?? 0);
 
   const chartResult = useMemo(
-    () => buildChartData(totalValue, reconstructedHistory ?? portfolio?.history, chartPeriod, portfolio?.createdAt),
+    () => buildChartData(
+      totalValue,
+      reconstructedHistory ?? portfolio?.history,
+      chartPeriod,
+      portfolio?.createdAt,
+      startingBalance,
+    ),
     // eslint-disable-next-line react-hooks/exhaustive-deps
-    [portfolio?.userId, portfolio?.history, reconstructedHistory, totalValue, chartPeriod, portfolio?.createdAt],
+    [portfolio?.userId, portfolio?.history, reconstructedHistory, totalValue, chartPeriod, portfolio?.createdAt, startingBalance],
   );
 
-  // Chart spacing: for periods where data doesn't cover the full range (e.g. 1Y but account is 3 months old),
-  // push the line to the right so it only fills the proportional width
-  const CHART_WIDTH = 280;
-  const chartCoverage = chartResult.coverageRatio;
-  const dataWidth = CHART_WIDTH * chartCoverage;
-  const chartInitialSpacing = CHART_WIDTH - dataWidth + 4;
-  const chartSpacing = chartResult.data.length > 1
-    ? (dataWidth - 8) / (chartResult.data.length - 1)
-    : dataWidth;
+  const CHART_WIDTH = Math.max(220, windowWidth - (Spacing.base * 2) - (Spacing.sm * 2) - 64);
+  const rawSpacing = chartResult.data.length > 1
+    ? CHART_WIDTH / (chartResult.data.length - 1)
+    : CHART_WIDTH;
+  const chartSpacing = Math.max(0.5, rawSpacing);
+  const chartInitialSpacing = 0;
 
   const chartBaseline = chartResult.baseline;
   const chartTopValue = chartResult.topValue;
@@ -428,17 +575,7 @@ export default function PortfolioScreen() {
     return Math.floor((Date.now() - portfolio.createdAt) / 86_400_000);
   }, [portfolio?.createdAt]);
 
-  // Holdings with live prices merged
-  const enrichedHoldings = useMemo(() => {
-    return holdings.map(h => {
-      const q = quotes[h.symbol];
-      const currentPrice = q?.price ?? h.currentPrice ?? 0;
-      const currentValue = currentPrice * h.shares;
-      const gainLoss = currentValue - h.totalCost;
-      const gainLossPercent = h.totalCost > 0 ? (gainLoss / h.totalCost) * 100 : 0;
-      return { ...h, currentPrice, currentValue, gainLoss, gainLossPercent };
-    });
-  }, [holdings, quotes]);
+  const enrichedHoldings = holdings;
 
   // Performance stats
   const biggestWinner = useMemo(() => {
@@ -467,6 +604,54 @@ export default function PortfolioScreen() {
     router.push({ pathname: '/(app)/trade', params: { symbol } });
   };
 
+  const handleOpenPortfolio = useCallback(async () => {
+    if (!user?.id) {
+      setShowPortfolio(true);
+      return;
+    }
+
+    setIsOpeningPortfolio(true);
+    try {
+      const currentHistory = (useAppStore.getState().portfolio?.history ?? []) as { timestamp: number; totalValue: number }[];
+      const hasEnoughHistory = currentHistory.length >= 8;
+
+      if (!hasEnoughHistory) {
+        const freshHistory = await getPortfolioHistory(user.id);
+        const activePortfolio = useAppStore.getState().portfolio;
+        if (activePortfolio && freshHistory.length > 0) {
+          setPortfolio({ ...activePortfolio, history: freshHistory });
+        }
+      }
+
+      historyCacheRef.current.clear();
+      setReconstructedHistory(null);
+      setChartRefreshTick(tick => tick + 1);
+    } catch {
+      // non-critical: open details even if hydration fails
+    } finally {
+      setShowPortfolio(true);
+      setIsOpeningPortfolio(false);
+    }
+  }, [user?.id, setPortfolio]);
+
+  const handleChartRefresh = useCallback(async () => {
+    if (!user?.id || isChartRefreshing) return;
+    setIsChartRefreshing(true);
+    try {
+      await refreshPortfolioPrices(user.id);
+      const freshHistory = await getPortfolioHistory(user.id);
+      const livePortfolio = useAppStore.getState().portfolio;
+      if (livePortfolio && freshHistory.length > 0) {
+        setPortfolio({ ...livePortfolio, history: freshHistory });
+      }
+      historyCacheRef.current.clear();
+      setReconstructedHistory(null);
+      setChartRefreshTick(tick => tick + 1);
+    } finally {
+      setIsChartRefreshing(false);
+    }
+  }, [user?.id, isChartRefreshing, setPortfolio]);
+
   // Portfolio selector screen
   if (!showPortfolio) {
     const gainColor = isGain ? Colors.market.gain : Colors.market.loss;
@@ -494,8 +679,9 @@ export default function PortfolioScreen() {
               }}
             >
               <TouchableOpacity
-                onPress={() => setShowPortfolio(true)}
+                onPress={() => { void handleOpenPortfolio(); }}
                 activeOpacity={0.8}
+                disabled={isOpeningPortfolio}
               >
                 <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: Spacing.sm }}>
                   <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10 }}>
@@ -529,6 +715,11 @@ export default function PortfolioScreen() {
                     ({isGain ? '+' : ''}{totalGainLossPercent.toFixed(2)}%)
                   </Text>
                 </View>
+                {isOpeningPortfolio && (
+                  <Text style={{ fontSize: FontSize.xs, color: C.text.tertiary, marginTop: 6 }}>
+                    Loading chart history...
+                  </Text>
+                )}
               </TouchableOpacity>
 
               {/* Privacy Options — inside card */}
@@ -813,7 +1004,7 @@ export default function PortfolioScreen() {
             <View style={styles.cashItem}>
               <Text style={[styles.cashLabel, { color: C.text.tertiary }]}>{t('invested')}</Text>
               <Text style={[styles.cashValue, { color: C.text.primary }]}>
-                {formatCurrency(portfolio?.investedValue ?? 0)}
+                {formatCurrency(livePortfolio?.investedValue ?? portfolio?.investedValue ?? 0)}
               </Text>
             </View>
             <View style={[styles.cashDivider, { backgroundColor: C.border.default }]} />
@@ -863,29 +1054,43 @@ export default function PortfolioScreen() {
               <>
                 <View style={styles.chartHeaderRow}>
                   <Text style={[styles.chartHeaderTitle, { color: C.text.primary }]}>{getPeriodLabel(chartPeriod)}</Text>
-                  <Text style={{
-                    fontSize: FontSize.lg,
-                    fontWeight: FontWeight.bold as any,
-                    color: noChange ? C.text.primary : moveColor,
-                  }}>
-                    {noChange
-                      ? formatCurrency(chartResult.endValue)
-                      : `${up ? '+' : ''}${formatCurrency(displayChange)}`
-                    }
-                  </Text>
+                  <View style={styles.chartHeaderRight}>
+                    <View style={styles.chartHeaderMetrics}>
+                      <Text style={{
+                        fontSize: FontSize.lg,
+                        fontWeight: FontWeight.bold as any,
+                        color: noChange ? C.text.primary : moveColor,
+                      }}>
+                        {noChange
+                          ? formatCurrency(chartResult.endValue)
+                          : `${up ? '+' : ''}${formatCurrency(displayChange)}`
+                        }
+                      </Text>
+                      <Text style={{
+                        fontSize: FontSize.xs,
+                        color: noChange ? C.text.tertiary : moveColor,
+                      }}>
+                        {noChange
+                          ? 'No change'
+                          : `${up ? '+' : ''}${displayPercent.toFixed(2)}%`
+                        }
+                      </Text>
+                    </View>
+                    <TouchableOpacity
+                      style={[styles.chartRefreshButton, { borderColor: C.border.default, backgroundColor: C.bg.input }]}
+                      onPress={handleChartRefresh}
+                      accessibilityRole="button"
+                      accessibilityLabel={t('refresh')}
+                    >
+                      <Text style={{ color: C.text.secondary, fontSize: FontSize.base }}>
+                        {isChartRefreshing ? '…' : '↻'}
+                      </Text>
+                    </TouchableOpacity>
+                  </View>
                 </View>
                 <View style={styles.chartSubRow}>
                   <Text style={{ color: C.text.tertiary, fontSize: FontSize.xs }}>
                     {getDateRangeText(chartPeriod, portfolio?.createdAt)}
-                  </Text>
-                  <Text style={{
-                    fontSize: FontSize.xs,
-                    color: noChange ? C.text.tertiary : moveColor,
-                  }}>
-                    {noChange
-                      ? 'No change'
-                      : `${up ? '+' : ''}${displayPercent.toFixed(2)}%`
-                    }
                   </Text>
                 </View>
               </>
@@ -919,8 +1124,7 @@ export default function PortfolioScreen() {
               backgroundColor="transparent"
               spacing={chartSpacing}
               initialSpacing={chartInitialSpacing}
-              endSpacing={4}
-              minValue={0}
+              endSpacing={0}
             />
           ) : (
             <View style={{ height: 160, alignItems: 'center', justifyContent: 'center' }}>
@@ -1484,6 +1688,24 @@ const styles = StyleSheet.create({
   chartHeaderTitle: {
     fontSize: FontSize.base,
     fontWeight: FontWeight.semibold,
+  },
+  chartHeaderRight: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: Spacing.xs,
+  },
+  chartHeaderMetrics: {
+    alignItems: 'flex-end',
+    justifyContent: 'center',
+    gap: 2,
+  },
+  chartRefreshButton: {
+    width: 24,
+    height: 24,
+    borderRadius: Radius.full,
+    borderWidth: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
   },
   chartSubRow: {
     flexDirection: 'row',
