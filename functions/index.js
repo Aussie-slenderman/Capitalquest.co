@@ -1,7 +1,11 @@
 const functions = require('firebase-functions');
+const { onSchedule } = require('firebase-functions/v2/scheduler');
 const admin = require('firebase-admin');
 
 admin.initializeApp();
+
+const DAILY_SNAPSHOT_TIMEZONE = 'America/New_York';
+const DAILY_SNAPSHOT_CRON = '5 21 * * *'; // 9:05 PM ET, after market close
 
 // Allowed admin emails
 const ADMIN_EMAILS = ['theosmales1@gmail.com'];
@@ -69,3 +73,240 @@ exports.deleteUserAccount = functions.https.onCall(async (data, context) => {
   console.log(`deleteUserAccount: fully deleted uid=${uid}`);
   return { success: true };
 });
+
+function toFiniteNumber(value, fallback = 0) {
+  const num = Number(value);
+  return Number.isFinite(num) ? num : fallback;
+}
+
+function unique(items) {
+  return Array.from(new Set(items));
+}
+
+function getDateKeyInTimeZone(date, timeZone) {
+  const parts = new Intl.DateTimeFormat('en-US', {
+    timeZone,
+    year: 'numeric',
+    month: '2-digit',
+    day: '2-digit',
+  }).formatToParts(date);
+  const map = {};
+  for (const part of parts) {
+    if (part.type === 'year' || part.type === 'month' || part.type === 'day') {
+      map[part.type] = part.value;
+    }
+  }
+  return `${map.year}-${map.month}-${map.day}`;
+}
+
+function getSymbolVariants(symbol) {
+  const raw = String(symbol || '').trim().toUpperCase();
+  if (!raw) return [];
+  const dotted = raw.replace(/[_-]/g, '.');
+  const dashed = dotted.replace(/\./g, '-');
+  const underscored = dotted.replace(/\./g, '_');
+  return unique([raw, dotted, dashed, underscored]);
+}
+
+function toYahooSymbol(symbol) {
+  return String(symbol || '')
+    .trim()
+    .toUpperCase()
+    .replace(/_/g, '-')
+    .replace(/\./g, '-');
+}
+
+function chunk(items, size) {
+  const out = [];
+  for (let i = 0; i < items.length; i += size) out.push(items.slice(i, i + size));
+  return out;
+}
+
+async function fetchQuoteMap(symbols) {
+  const canonicalSymbols = unique(
+    symbols
+      .map(toYahooSymbol)
+      .filter(Boolean),
+  );
+  const quoteMap = {};
+  const symbolChunks = chunk(canonicalSymbols, 100);
+
+  for (const symbolsSlice of symbolChunks) {
+    const url = `https://query1.finance.yahoo.com/v7/finance/quote?symbols=${encodeURIComponent(symbolsSlice.join(','))}`;
+    try {
+      const res = await fetch(url, {
+        headers: { 'User-Agent': 'CapitalQuest-DailySnapshot/1.0' },
+      });
+      if (!res.ok) {
+        console.warn(`[dailySnapshot] quote request failed: ${res.status} ${res.statusText}`);
+        continue;
+      }
+      const json = await res.json();
+      const quotes = json?.quoteResponse?.result ?? [];
+      for (const quote of quotes) {
+        const symbol = String(quote.symbol || '').toUpperCase();
+        const price = Number(quote.regularMarketPrice);
+        if (symbol && Number.isFinite(price) && price > 0) {
+          quoteMap[symbol] = price;
+        }
+      }
+    } catch (error) {
+      console.warn('[dailySnapshot] quote request error:', error?.message || error);
+    }
+  }
+
+  return quoteMap;
+}
+
+function resolvePrice(holding, quoteMap) {
+  for (const variant of getSymbolVariants(holding.symbol)) {
+    const price = quoteMap[toYahooSymbol(variant)] ?? quoteMap[variant];
+    if (Number.isFinite(price) && price > 0) return price;
+  }
+  const fallbackCurrent = toFiniteNumber(holding.currentPrice, 0);
+  if (fallbackCurrent > 0) return fallbackCurrent;
+  const fallbackCostBasis = toFiniteNumber(holding.avgCostBasis, 0);
+  if (fallbackCostBasis > 0) return fallbackCostBasis;
+  return 0;
+}
+
+function computePortfolioMetrics(portfolio, quoteMap) {
+  const holdings = Array.isArray(portfolio.holdings) ? portfolio.holdings : [];
+  const cashBalance = toFiniteNumber(portfolio.cashBalance, 0);
+  const startingBalance = toFiniteNumber(portfolio.startingBalance, cashBalance);
+
+  let investedValue = 0;
+  let holdingsValue = 0;
+
+  const updatedHoldings = holdings.map((holding) => {
+    const shares = toFiniteNumber(holding.shares, 0);
+    const currentPrice = resolvePrice(holding, quoteMap);
+    const totalCost = Number.isFinite(Number(holding.totalCost))
+      ? Number(holding.totalCost)
+      : toFiniteNumber(holding.avgCostBasis, 0) * shares;
+    const currentValue = shares * currentPrice;
+    const gainLoss = currentValue - totalCost;
+    const gainLossPercent = totalCost > 0 ? (gainLoss / totalCost) * 100 : 0;
+    investedValue += totalCost;
+    holdingsValue += currentValue;
+    return {
+      ...holding,
+      shares,
+      currentPrice,
+      totalCost,
+      currentValue,
+      gainLoss,
+      gainLossPercent,
+    };
+  });
+
+  const totalValue = cashBalance + holdingsValue;
+  const totalGainLoss = totalValue - startingBalance;
+  const totalGainLossPercent = startingBalance > 0 ? (totalGainLoss / startingBalance) * 100 : 0;
+
+  return {
+    holdings: updatedHoldings,
+    investedValue,
+    totalValue,
+    totalGainLoss,
+    totalGainLossPercent,
+    cashBalance,
+    startingBalance,
+  };
+}
+
+exports.captureDailyPortfolioSnapshots = onSchedule(
+  {
+    schedule: DAILY_SNAPSHOT_CRON,
+    timeZone: DAILY_SNAPSHOT_TIMEZONE,
+    retryCount: 1,
+    timeoutSeconds: 540,
+    memory: '1GiB',
+  },
+  async () => {
+    const db = admin.firestore();
+    const now = new Date();
+    const dateKey = getDateKeyInTimeZone(now, DAILY_SNAPSHOT_TIMEZONE);
+    const updatedAt = Date.now();
+
+    const portfolioSnap = await db.collection('portfolios').get();
+    if (portfolioSnap.empty) {
+      console.log('[dailySnapshot] No portfolios found.');
+      return;
+    }
+
+    const symbolSet = new Set();
+    const portfolios = portfolioSnap.docs.map((docSnap) => {
+      const data = docSnap.data() || {};
+      const holdings = Array.isArray(data.holdings) ? data.holdings : [];
+      for (const holding of holdings) {
+        const symbol = String(holding.symbol || '').trim();
+        if (symbol) symbolSet.add(symbol);
+      }
+      return { userId: docSnap.id, data };
+    });
+
+    const quoteMap = await fetchQuoteMap(Array.from(symbolSet));
+    let writes = 0;
+    let batch = db.batch();
+    let batchWrites = 0;
+
+    const commitBatch = async () => {
+      if (batchWrites === 0) return;
+      await batch.commit();
+      writes += batchWrites;
+      batch = db.batch();
+      batchWrites = 0;
+    };
+
+    for (const { userId, data } of portfolios) {
+      const metrics = computePortfolioMetrics(data, quoteMap);
+      const snapshotRef = db
+        .collection('portfolioHistory')
+        .doc(userId)
+        .collection('snapshots')
+        .doc(dateKey);
+
+      batch.set(
+        snapshotRef,
+        {
+          date: dateKey,
+          totalValue: metrics.totalValue,
+          cashBalance: metrics.cashBalance,
+          totalGainLoss: metrics.totalGainLoss,
+          totalGainLossPercent: metrics.totalGainLossPercent,
+          investedValue: metrics.investedValue,
+          holdingsValue: metrics.totalValue - metrics.cashBalance,
+          holdingsCount: metrics.holdings.length,
+          updatedAt,
+          source: 'daily-scheduler',
+        },
+        { merge: true },
+      );
+      batchWrites++;
+
+      batch.set(
+        db.collection('portfolios').doc(userId),
+        {
+          holdings: metrics.holdings,
+          investedValue: metrics.investedValue,
+          totalValue: metrics.totalValue,
+          totalGainLoss: metrics.totalGainLoss,
+          totalGainLossPercent: metrics.totalGainLossPercent,
+          lastUpdated: updatedAt,
+        },
+        { merge: true },
+      );
+      batchWrites++;
+
+      if (batchWrites >= 400) {
+        await commitBatch();
+      }
+    }
+
+    await commitBatch();
+    console.log(
+      `[dailySnapshot] Completed ${dateKey}. portfolios=${portfolios.length}, writes=${writes}, symbols=${symbolSet.size}`,
+    );
+  },
+);

@@ -4,7 +4,9 @@
   "description": "Server-side scripts for CapitalQuest",
   "main": "send-weekly-emails.js",
   "scripts": {
-    "send-emails": "node send-weekly-emails.js"
+    "send-emails": "node send-weekly-emails.js",
+    "backfill-daily-snapshots": "node backfill-daily-snapshots-from-hourly.js",
+    "backfill-daily-snapshots:dry-run": "node backfill-daily-snapshots-from-hourly.js --dry-run"
   },
   "dependencies": {
     "firebase-admin": "^12.0.0",

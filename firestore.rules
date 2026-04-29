@@ -28,6 +28,12 @@ service cloud.firestore {
                    || request.auth.token.email == 'theosmales1@gmail.com';
     }
 
+    // Portfolio history: owner/admin read-write on all nested docs
+    match /portfolioHistory/{userId}/{document=**} {
+      allow read, write: if request.auth.uid == userId
+                         || request.auth.token.email == 'theosmales1@gmail.com';
+    }
+
     // Transactions: owner only
     match /transactions/{txId} {
       allow read: if request.auth.uid == resource.data.userId;

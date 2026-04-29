@@ -1,4 +1,4 @@
-import React, { useEffect, useRef } from 'react';
+import React, { useEffect, useMemo, useRef } from 'react';
 import { View, Text, Image, StyleSheet, TouchableOpacity, Platform, AppState, Dimensions } from 'react-native';
 import { Tabs, router } from 'expo-router';
 
@@ -28,6 +28,7 @@ import { updateUser } from '../../src/services/auth';
 import type { Portfolio, ChatRoom, Achievement } from '../../src/types';
 import AchievementToast from '../../src/components/AchievementToast';
 import Sidebar from '../../src/components/Sidebar';
+import { computePortfolioLiveMetrics } from '../../src/services/portfolioValuation';
 
 export default function AppLayout() {
   const t = useT();
@@ -217,12 +218,30 @@ export default function AppLayout() {
 
   // Subscribe to real-time WebSocket prices for watchlist
   const watchlist = useAppStore(s => s.watchlist);
+  const watchlistKey = [...watchlist].sort().join('|');
+  const heldSymbolsKey = (portfolio?.holdings ?? []).map(h => h.symbol).sort().join('|');
+  const subscribedSymbols = useMemo(() => {
+    const fromWatchlist = watchlistKey ? watchlistKey.split('|') : [];
+    const fromHoldings = heldSymbolsKey ? heldSymbolsKey.split('|') : [];
+    return Array.from(new Set([...fromWatchlist, ...fromHoldings]));
+  }, [watchlistKey, heldSymbolsKey]);
+
   useEffect(() => {
-    const unsub = subscribeToPrices(watchlist, (symbol, quote) => {
+    const unsub = subscribeToPrices(subscribedSymbols, (symbol, quote) => {
       setQuote(symbol, quote);
+
+      const state = useAppStore.getState();
+      const activePortfolio = state.portfolio;
+      if (!activePortfolio || !activePortfolio.holdings?.length) return;
+
+      const livePortfolio = computePortfolioLiveMetrics(activePortfolio, {
+        ...state.quotes,
+        [symbol]: quote,
+      });
+      state.setPortfolio(livePortfolio);
     });
     return unsub;
-  }, [watchlist]);
+  }, [subscribedSymbols, setQuote]);
 
   // Listen to chat rooms and track unread messages
   useEffect(() => {

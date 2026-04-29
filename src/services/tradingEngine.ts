@@ -25,6 +25,7 @@ import { POPULAR_STOCKS } from '../constants/stocks';
 import { useAppStore } from '../store/useAppStore';
 import type { Holding, Order, Portfolio, Transaction, Achievement } from '../types';
 import { nanoid } from '../utils/nanoid';
+import { computePortfolioLiveMetrics } from './portfolioValuation';
 
 // ─── Place Order ──────────────────────────────────────────────────────────────
 
@@ -347,30 +348,10 @@ export async function refreshPortfolioPrices(userId: string): Promise<void> {
   const symbols = portfolio.holdings.map(h => h.symbol);
   const { getQuotes } = await import('./stockApi');
   const quotes = await getQuotes(symbols);
-
-  const updatedHoldings = portfolio.holdings.map(h => {
-    const q = quotes[h.symbol];
-    const currentPrice = q?.price ?? h.currentPrice;
-    const currentValue = h.shares * currentPrice;
-    const gainLoss = currentValue - h.totalCost;
-    const gainLossPercent = h.totalCost > 0 ? (gainLoss / h.totalCost) * 100 : 0;
-    return { ...h, currentPrice, currentValue, gainLoss, gainLossPercent };
-  });
-
-  const currentHoldingsValue = updatedHoldings.reduce((sum, h) => sum + h.currentValue, 0);
-  const totalValue = portfolio.cashBalance + currentHoldingsValue;
-  const gainLoss = totalValue - portfolio.startingBalance;
-  const gainLossPercent = portfolio.startingBalance > 0
-    ? (gainLoss / portfolio.startingBalance) * 100
-    : 0;
-
-  const updatedPortfolio: Portfolio = {
-    ...portfolio,
-    holdings: updatedHoldings,
-    totalValue,
-    totalGainLoss: gainLoss,
-    totalGainLossPercent: gainLossPercent,
-  };
+  const updatedPortfolio = computePortfolioLiveMetrics(portfolio, quotes);
+  const totalValue = updatedPortfolio.totalValue;
+  const gainLoss = updatedPortfolio.totalGainLoss;
+  const gainLossPercent = updatedPortfolio.totalGainLossPercent;
 
   // Always update Zustand for immediate UI refresh
   useAppStore.getState().setPortfolio(updatedPortfolio);
@@ -378,7 +359,8 @@ export async function refreshPortfolioPrices(userId: string): Promise<void> {
   if (!IS_MOCK_FIREBASE) {
     try {
       await updatePortfolio(userId, {
-        holdings: updatedHoldings,
+        holdings: updatedPortfolio.holdings,
+        investedValue: updatedPortfolio.investedValue,
         totalValue,
         totalGainLoss: gainLoss,
         totalGainLossPercent: gainLossPercent,
@@ -409,6 +391,7 @@ export async function refreshPortfolioPrices(userId: string): Promise<void> {
       const { saveHourlySnapshot } = await import('./firebase');
       await saveHourlySnapshot(userId, totalValue);
     } catch { /* non-critical */ }
+
   }
 }
 
