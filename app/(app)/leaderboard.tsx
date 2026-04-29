@@ -60,6 +60,32 @@ function getRankStyle(rank: number) {
   return RANK_STYLES[rank] ?? { color: Colors.text.secondary, bg: 'transparent', label: String(rank) };
 }
 
+// ─── Portfolio privacy gate ──────────────────────────────────────────────────
+// Determines whether the current viewer is allowed to open another player's
+// portfolio. Mirrors the rules enforced server-side by getFriendsPortfolio /
+// getPublicPortfolio so the UI doesn't even offer the option for portfolios
+// the viewer can't see.
+function canViewLeaderboardPortfolio(
+  entry: LeaderboardEntry,
+  viewerId?: string,
+  viewerAccountNumber?: string,
+): boolean {
+  if (!viewerId) return false;
+  if (entry.isCurrentUser || entry.userId === viewerId) return true;
+  const privacy = entry.portfolioPrivacy ?? 'private';
+  if (privacy === 'public') return true;
+  if (privacy === 'friends_only') {
+    const friends = entry.ownerFriendIds ?? [];
+    return friends.includes(viewerId);
+  }
+  if (privacy === 'specific_friends') {
+    if (!viewerAccountNumber) return false;
+    const allowed = entry.allowedAccountNumbers ?? [];
+    return allowed.includes(viewerAccountNumber);
+  }
+  return false;
+}
+
 // ─── Build a single-entry leaderboard for when no real data exists yet ────────
 
 function buildUserEntry(
@@ -246,12 +272,24 @@ export default function LeaderboardScreen() {
 
   // ─── Helpers ──────────────────────────────────────────────────────────────
 
+  const viewerAccountNumber = (user as any)?.accountNumber as string | undefined;
+
   const handleViewPortfolio = useCallback(async (entry: LeaderboardEntry) => {
     if (portfolioLoadingUserId) return;
+    // Defence-in-depth: refuse to open the modal if the viewer isn't
+    // allowed to see this entry. The button is hidden in the UI as well.
+    if (!canViewLeaderboardPortfolio(entry, user?.id, viewerAccountNumber)) {
+      return;
+    }
     setPortfolioLoadingUserId(entry.userId);
     try {
-      const { getPublicPortfolio } = await import('../../src/services/firebase');
-      const data = await getPublicPortfolio(entry.userId);
+      const { getPublicPortfolio, getFriendsPortfolio } = await import('../../src/services/firebase');
+      const isOwn = entry.isCurrentUser || entry.userId === user?.id;
+      const data = isOwn
+        ? null // owner views their own portfolio elsewhere
+        : (entry.portfolioPrivacy === 'public'
+            ? await getPublicPortfolio(entry.userId)
+            : await getFriendsPortfolio(entry.userId, user?.id ?? '', viewerAccountNumber));
       if (data) {
         setViewedPortfolio(data);
         setViewedPlayerName(entry.displayName);
@@ -267,7 +305,7 @@ export default function LeaderboardScreen() {
       }
     }
     setPortfolioLoadingUserId(null);
-  }, [portfolioLoadingUserId]);
+  }, [portfolioLoadingUserId, user?.id, viewerAccountNumber]);
 
   function getInitials(name: string): string {
     return name
@@ -432,15 +470,19 @@ export default function LeaderboardScreen() {
           </View>
         ) : (
           <View style={styles.leaderboardList}>
-            {visibleEntries.map(entry => (
-              <LeaderboardRow
-                key={entry.userId + entry.rank}
-                entry={entry}
-                getInitials={getInitials}
-                onPress={() => handleViewPortfolio(entry)}
-                isLoading={portfolioLoadingUserId === entry.userId}
-              />
-            ))}
+            {visibleEntries.map(entry => {
+              const canView = canViewLeaderboardPortfolio(entry, user?.id, viewerAccountNumber);
+              return (
+                <LeaderboardRow
+                  key={entry.userId + entry.rank}
+                  entry={entry}
+                  getInitials={getInitials}
+                  onPress={canView ? () => handleViewPortfolio(entry) : undefined}
+                  isLoading={portfolioLoadingUserId === entry.userId}
+                  canViewPortfolio={canView}
+                />
+              );
+            })}
             {entries.length > 20 && (
               <Text style={[styles.moreEntriesText, { color: C.text.tertiary }]}>
                 +{entries.length - 20} more traders
@@ -592,9 +634,12 @@ interface LeaderboardRowProps {
   isSticky?: boolean;
   onPress?: () => void;
   isLoading?: boolean;
+  // When false, the "Portfolio" button is hidden because the viewer is not
+  // permitted to open this entry's portfolio (e.g. private accounts).
+  canViewPortfolio?: boolean;
 }
 
-function LeaderboardRow({ entry, getInitials, isSticky, onPress, isLoading }: LeaderboardRowProps) {
+function LeaderboardRow({ entry, getInitials, isSticky, onPress, isLoading, canViewPortfolio = true }: LeaderboardRowProps) {
   const { appColorMode } = useAppStore();
   const LC = appColorMode === 'light' ? LightColors : Colors;
   const isLight = appColorMode === 'light';
@@ -656,23 +701,25 @@ function LeaderboardRow({ entry, getInitials, isSticky, onPress, isLoading }: Le
               <Text style={styles.youBadgeText}>YOU</Text>
             </View>
           )}
-          <TouchableOpacity
-            onPress={() => { if (onPress) onPress(); }}
-            activeOpacity={0.7}
-            style={{
-              backgroundColor: '#FF3D57',
-              borderRadius: 6,
-              paddingHorizontal: 10,
-              paddingVertical: 4,
-              marginLeft: 8,
-            }}
-          >
-            {isLoading ? (
-              <ActivityIndicator size="small" color="#FFFFFF" />
-            ) : (
-              <Text style={{ fontSize: 12, fontWeight: '700', color: '#FFFFFF' }}>Portfolio</Text>
-            )}
-          </TouchableOpacity>
+          {canViewPortfolio && (
+            <TouchableOpacity
+              onPress={() => { if (onPress) onPress(); }}
+              activeOpacity={0.7}
+              style={{
+                backgroundColor: '#FF3D57',
+                borderRadius: 6,
+                paddingHorizontal: 10,
+                paddingVertical: 4,
+                marginLeft: 8,
+              }}
+            >
+              {isLoading ? (
+                <ActivityIndicator size="small" color="#FFFFFF" />
+              ) : (
+                <Text style={{ fontSize: 12, fontWeight: '700', color: '#FFFFFF' }}>Portfolio</Text>
+              )}
+            </TouchableOpacity>
+          )}
         </View>
         <Text ref={usernameRef} style={{ fontSize: FontSize.xs, color: isLight ? '#374151' : '#94A3B8', marginTop: 2 }}>@{entry.username}</Text>
       </View>
