@@ -107,7 +107,7 @@ export default function DashboardScreen() {
         <StatusBar barStyle="light-content" backgroundColor={C.bg.primary} />
 
         {/* ── Top bar ── */}
-        <AppHeader title="CapitalQuest" />
+        <AppHeader title="Rookie Markets" />
 
         <ScrollView
           style={styles.scroll}
@@ -200,7 +200,7 @@ export default function DashboardScreen() {
 
             <Text style={styles.welcomeBody}>
               You have now created your{' '}
-              <Text style={styles.welcomeBrand}>CapitalQuest</Text>{' '}
+              <Text style={styles.welcomeBrand}>Rookie Markets</Text>{' '}
               account and have been awarded{' '}
               <Text style={styles.welcomeMoney}>$10,000</Text>{' '}
               virtual dollars.

@@ -2,13 +2,15 @@ import React, { useState, useMemo } from 'react';
 import {
   View, Text, StyleSheet, TouchableOpacity,
   TextInput, ScrollView, KeyboardAvoidingView, Platform,
-  FlatList, Modal,
+  FlatList, Modal, Image,
 } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { router } from 'expo-router';
 import { registerUser } from '../../src/services/auth';
 import { setRegistrationInProgress } from '../_layout';
 import { Colors, FontSize, FontWeight, Spacing, Radius } from '../../src/constants/theme';
+
+const ROOKIE_MARKETS_LOGO = require('../../assets/rookie-markets-logo.png');
 
 const COUNTRIES = [
   'Afghanistan','Albania','Algeria','Andorra','Angola','Antigua and Barbuda','Argentina','Armenia',
@@ -107,8 +109,17 @@ export default function RegisterScreen() {
           <Text style={styles.backText}>← Back</Text>
         </TouchableOpacity>
 
-        <Text style={styles.title}>Create Account</Text>
-        <Text style={styles.subtitle}>Join thousands of virtual traders</Text>
+        <View style={styles.brand}>
+          <Image
+            source={ROOKIE_MARKETS_LOGO}
+            style={styles.brandLogo}
+            resizeMode="contain"
+            accessibilityLabel="Rookie Markets"
+          />
+        </View>
+
+        <Text style={styles.title}>Create your account</Text>
+        <Text style={styles.subtitle}>Join thousands of rookie traders learning the markets risk-free</Text>
 
         {!!error && (
           <View style={styles.errorBanner}>
@@ -256,16 +267,35 @@ function Field({
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: Colors.bg.primary },
   scrollView: { flex: 1 },
-  scroll: { padding: Spacing['2xl'], paddingTop: 60, paddingBottom: 60 },
+  scroll: {
+    padding: Spacing['2xl'],
+    paddingTop: 40,
+    paddingBottom: 60,
+    maxWidth: 480,
+    width: '100%',
+    alignSelf: 'center',
+  },
   back: { marginBottom: Spacing.lg },
   backText: { color: Colors.brand.primary, fontSize: FontSize.base },
+  brand: {
+    alignItems: 'center',
+    marginBottom: Spacing.lg,
+  },
+  brandLogo: {
+    width: 100,
+    height: 100,
+    borderRadius: 20,
+  },
   title: {
     fontSize: FontSize['2xl'], fontWeight: FontWeight.extrabold,
     color: Colors.text.primary, marginBottom: 6,
+    textAlign: 'center',
   },
   subtitle: {
     fontSize: FontSize.base, color: Colors.text.secondary,
     marginBottom: Spacing.lg,
+    textAlign: 'center',
+    lineHeight: 22,
   },
   errorBanner: {
     flexDirection: 'row', alignItems: 'center', gap: 8,

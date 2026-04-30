@@ -1,8 +1,11 @@
 import React from 'react';
-import { View, Text, TouchableOpacity, StyleSheet } from 'react-native';
+import { View, Text, TouchableOpacity, StyleSheet, Image } from 'react-native';
 import { router } from 'expo-router';
 import { useAppStore } from '../store/useAppStore';
 import { Colors, LightColors, FontSize, FontWeight, Spacing } from '../constants/theme';
+
+// Static require so Metro bundles the asset alongside the JS bundle.
+const ROOKIE_MARKETS_LOGO = require('../../assets/rookie-markets-logo.png');
 
 interface AppHeaderProps {
   /** Screen name shown on the left */
@@ -24,11 +27,21 @@ export default function AppHeader({ title }: AppHeaderProps) {
 
   return (
     <View style={[styles.header, { backgroundColor: C.bg.primary, borderBottomColor: C.border.default }]}>
-      {/* Left: logo — taps go to dashboard */}
-      <TouchableOpacity onPress={() => router.push('/(app)/dashboard' as never)} activeOpacity={0.7} style={{ flex: 1 }}>
-        <Text style={styles.logoText}>
-          <Text style={styles.logoCapital}>Capital</Text>
-          <Text style={styles.logoQuest}>Quest</Text>
+      {/* Left: logo + wordmark — taps go to dashboard */}
+      <TouchableOpacity
+        onPress={() => router.push('/(app)/dashboard' as never)}
+        activeOpacity={0.7}
+        style={styles.logoTouchable}
+        accessibilityRole="link"
+        accessibilityLabel="Rookie Markets home"
+      >
+        <Image
+          source={ROOKIE_MARKETS_LOGO}
+          style={styles.logoImage}
+          resizeMode="contain"
+        />
+        <Text style={[styles.logoWordmark, { color: C.text.primary }]}>
+          Rookie Markets
         </Text>
       </TouchableOpacity>
 
@@ -76,16 +89,22 @@ const styles = StyleSheet.create({
     borderBottomWidth: 1,
     borderBottomColor: Colors.border.default,
   },
-  logoText: {
-    fontSize: 22,
+  logoTouchable: {
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+  },
+  // Square R-icon logo, sized to match the old text logo height.
+  logoImage: {
+    width: 36,
+    height: 36,
+    borderRadius: 8,
+  },
+  logoWordmark: {
+    fontSize: 18,
     fontWeight: FontWeight.extrabold,
-    letterSpacing: 0.5,
-  },
-  logoCapital: {
-    color: '#C9A84C',
-  },
-  logoQuest: {
-    color: '#00B3E6',
+    letterSpacing: 0.3,
   },
   right: {
     flexDirection: 'row',

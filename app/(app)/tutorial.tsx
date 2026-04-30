@@ -430,7 +430,7 @@ export default function TutorialScreen() {
 
           <View style={styles.footer}>
             <Text style={styles.footerText}>
-              💡 CapitalQuest uses virtual money so you can practice risk-free. Apply what you learn here in your trades!
+              💡 Rookie Markets uses virtual money so you can practice risk-free. Apply what you learn here in your trades!
             </Text>
           </View>
         </View>

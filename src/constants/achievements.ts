@@ -4,8 +4,8 @@ export const ACHIEVEMENTS: Achievement[] = [
   {
     id: 'first_login',
     title: 'Beginner Trader',
-    description: 'Welcome to CapitalQuest! You made your first login.',
-    requirement: 'Log into Capital Quest for the first time.',
+    description: 'Welcome to Rookie Markets! You made your first login.',
+    requirement: 'Log into Rookie Markets for the first time.',
     icon: '🌱',
     category: 'milestone',
     xpReward: 100,

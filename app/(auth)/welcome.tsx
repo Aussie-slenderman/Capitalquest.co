@@ -106,7 +106,7 @@ export default function WelcomeScreen() {
             </Svg>
           </View>
 
-          <Text style={styles.appName}>CapitalQuest</Text>
+          <Text style={styles.appName}>Rookie Markets</Text>
           <Text style={styles.tagline}>Practice. Trade. Prosper.</Text>
         </View>
 

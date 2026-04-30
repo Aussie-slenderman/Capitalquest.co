@@ -1,16 +1,16 @@
 {
   "expo": {
-    "name": "CapitalQuest",
-    "slug": "capitalquest",
+    "name": "Rookie Markets",
+    "slug": "rookie-markets",
     "version": "1.0.0",
     "orientation": "portrait",
     "icon": "./app-icon-main.png",
-    "scheme": "capitalquest",
+    "scheme": "rookie-markets",
     "userInterfaceStyle": "dark",
     "splash": {
-      "image": "./assets/logo.png",
+      "image": "./assets/rookie-markets-logo.png",
       "resizeMode": "contain",
-      "backgroundColor": "#0A0E1A"
+      "backgroundColor": "#FFFFFF"
     },
     "assetBundlePatterns": ["**/*"],
     "ios": {
@@ -24,8 +24,8 @@
     },
     "android": {
       "adaptiveIcon": {
-        "foregroundImage": "./assets/logo.png",
-        "backgroundColor": "#0A0E1A"
+        "foregroundImage": "./assets/rookie-markets-logo.png",
+        "backgroundColor": "#FFFFFF"
       },
       "package": "com.capitalquest.app",
       "versionCode": 1
@@ -33,9 +33,9 @@
     "web": {
       "bundler": "metro",
       "output": "static",
-      "favicon": "./assets/logo.png",
-      "name": "CapitalQuest",
-      "shortName": "CapitalQuest",
+      "favicon": "./assets/rookie-markets-logo.png",
+      "name": "Rookie Markets",
+      "shortName": "Rookie Markets",
       "description": "Master the stock market risk-free. Trade with real-time prices, compete on leaderboards, and level up your investing skills — completely free.",
       "lang": "en",
       "themeColor": "#00B3E6",
@@ -47,7 +47,7 @@
       [
         "expo-notifications",
         {
-          "icon": "./assets/logo.png",
+          "icon": "./assets/rookie-markets-logo.png",
           "color": "#00D4AA"
         }
       ]

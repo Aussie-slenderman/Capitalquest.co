@@ -441,7 +441,7 @@ export default function ProfileScreen() {
         <Text style={styles.deleteAccountText}>{t('delete_account')}</Text>
       </TouchableOpacity>
 
-      <Text style={[styles.version, { color: C.text.tertiary }]}>CapitalQuest v1.0.0 · Virtual trading only · No real money involved</Text>
+      <Text style={[styles.version, { color: C.text.tertiary }]}>Rookie Markets v1.0.0 · Virtual trading only · No real money involved</Text>
       </>
     </ScrollView>
 

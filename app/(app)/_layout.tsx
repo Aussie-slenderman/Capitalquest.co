@@ -196,11 +196,11 @@ export default function AppLayout() {
     }
   }, [user?.id, portfolio]);
 
-  // Refresh portfolio prices every 30s
+  // Refresh portfolio prices every 60s
   useEffect(() => {
     if (!user?.id) return;
     refreshPortfolioPrices(user.id);
-    const interval = setInterval(() => refreshPortfolioPrices(user.id!), 30_000);
+    const interval = setInterval(() => refreshPortfolioPrices(user.id!), 60_000);
     return () => clearInterval(interval);
   }, [user?.id]);
 

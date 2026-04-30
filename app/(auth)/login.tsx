@@ -1,13 +1,15 @@
 import React, { useState } from 'react';
 import {
   View, Text, StyleSheet, TouchableOpacity,
-  TextInput, KeyboardAvoidingView, Platform, ScrollView,
+  TextInput, KeyboardAvoidingView, Platform, ScrollView, Image,
 } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { router } from 'expo-router';
 import { loginUser } from '../../src/services/auth';
 import { setLoginInProgress } from '../_layout';
 import { Colors, FontSize, FontWeight, Spacing, Radius } from '../../src/constants/theme';
+
+const ROOKIE_MARKETS_LOGO = require('../../assets/rookie-markets-logo.png');
 
 export default function LoginScreen() {
   const [username, setUsername] = useState('');
@@ -49,9 +51,18 @@ export default function LoginScreen() {
           <Text style={styles.backText}>← Back</Text>
         </TouchableOpacity>
 
+        <View style={styles.brand}>
+          <Image
+            source={ROOKIE_MARKETS_LOGO}
+            style={styles.brandLogo}
+            resizeMode="contain"
+            accessibilityLabel="Rookie Markets"
+          />
+        </View>
+
         <View style={styles.header}>
-          <Text style={styles.title}>Welcome Back</Text>
-          <Text style={styles.subtitle}>Sign in to your CapitalQuest account</Text>
+          <Text style={styles.title}>Welcome back</Text>
+          <Text style={styles.subtitle}>Sign in to your Rookie Markets account</Text>
         </View>
 
         {!!error && (
@@ -123,17 +134,43 @@ export default function LoginScreen() {
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: Colors.bg.primary },
   scrollView: { flex: 1 },
-  content: { flexGrow: 1, padding: Spacing['2xl'], paddingTop: 100, paddingBottom: 60, justifyContent: 'center' },
-  back: { position: 'absolute', top: 60, left: Spacing['2xl'] },
+  content: {
+    flexGrow: 1,
+    padding: Spacing['2xl'],
+    paddingTop: 80,
+    paddingBottom: 60,
+    justifyContent: 'center',
+    maxWidth: 480,
+    width: '100%',
+    alignSelf: 'center',
+  },
+  back: { position: 'absolute', top: 24, left: Spacing['2xl'] },
   backText: { color: Colors.brand.primary, fontSize: FontSize.base },
-  header: { marginBottom: Spacing['2xl'] },
+  brand: {
+    alignItems: 'center',
+    marginBottom: Spacing.xl,
+  },
+  brandLogo: {
+    width: 120,
+    height: 120,
+    borderRadius: 24,
+  },
+  header: {
+    marginBottom: Spacing.xl,
+    alignItems: 'center',
+  },
   title: {
     fontSize: FontSize['2xl'],
     fontWeight: FontWeight.extrabold,
     color: Colors.text.primary,
-    marginBottom: 8,
+    marginBottom: 6,
+    textAlign: 'center',
   },
-  subtitle: { fontSize: FontSize.base, color: Colors.text.secondary },
+  subtitle: {
+    fontSize: FontSize.base,
+    color: Colors.text.secondary,
+    textAlign: 'center',
+  },
   form: { gap: Spacing.base, marginBottom: Spacing.xl },
   field: { gap: 6 },
   label: { fontSize: FontSize.sm, fontWeight: FontWeight.medium, color: Colors.text.secondary },

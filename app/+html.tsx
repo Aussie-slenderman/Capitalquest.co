@@ -17,20 +17,20 @@ export default function Root({ children }: PropsWithChildren) {
         />
 
         {/* ── Primary SEO ── */}
-        <title>CapitalQuest — Free Virtual Stock Trading Simulator</title>
+        <title>Rookie Markets — Free Virtual Stock Trading Simulator</title>
         <meta
           name="title"
-          content="CapitalQuest — Free Virtual Stock Trading Simulator"
+          content="Rookie Markets — Free Virtual Stock Trading Simulator"
         />
         <meta
           name="description"
-          content="Master the stock market risk-free on CapitalQuest. Trade with real-time prices, climb global leaderboards, earn achievements, and level up your investing skills — completely free."
+          content="Master the stock market risk-free on Rookie Markets. Trade with real-time prices, climb global leaderboards, earn achievements, and level up your investing skills — completely free."
         />
         <meta
           name="keywords"
           content="stock trading simulator, virtual trading, paper trading, practice investing, stock market game, learn to invest, free trading app, investing for beginners, stock market simulator"
         />
-        <meta name="author" content="CapitalQuest" />
+        <meta name="author" content="Rookie Markets" />
         <meta name="robots" content="index, follow" />
         <meta name="theme-color" content="#0A0E1A" />
 
@@ -39,11 +39,11 @@ export default function Root({ children }: PropsWithChildren) {
 
         {/* ── Open Graph (Facebook / LinkedIn / Discord) ── */}
         <meta property="og:type" content="website" />
-        <meta property="og:site_name" content="CapitalQuest" />
+        <meta property="og:site_name" content="Rookie Markets" />
         <meta property="og:url" content="https://capitalquest.app/" />
         <meta
           property="og:title"
-          content="CapitalQuest — Free Virtual Stock Trading Simulator"
+          content="Rookie Markets — Free Virtual Stock Trading Simulator"
         />
         <meta
           property="og:description"
@@ -57,10 +57,10 @@ export default function Root({ children }: PropsWithChildren) {
 
         {/* ── Twitter Card ── */}
         <meta name="twitter:card" content="summary_large_image" />
-        <meta name="twitter:site" content="@capitalquest" />
+        <meta name="twitter:site" content="@rookiemarkets" />
         <meta
           name="twitter:title"
-          content="CapitalQuest — Free Virtual Stock Trading Simulator"
+          content="Rookie Markets — Free Virtual Stock Trading Simulator"
         />
         <meta
           name="twitter:description"
@@ -78,7 +78,7 @@ export default function Root({ children }: PropsWithChildren) {
             __html: JSON.stringify({
               '@context': 'https://schema.org',
               '@type': 'WebApplication',
-              name: 'CapitalQuest',
+              name: 'Rookie Markets',
               url: 'https://capitalquest.app',
               description:
                 'A free virtual stock trading simulator where players trade with real-time prices, compete on leaderboards, and learn investing skills risk-free.',

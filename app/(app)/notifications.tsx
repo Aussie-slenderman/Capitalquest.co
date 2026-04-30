@@ -12,7 +12,7 @@ import { Colors, FontSize, FontWeight, Spacing, Radius } from '../../src/constan
 // ─── Fallback news (used only if Yahoo Finance fetch fails) ──────────────────
 
 const FALLBACK_NEWS: YahooNewsItem[] = [
-  { id: 'f1', headline: 'Markets update — check back shortly for the latest stories', source: 'CapitalQuest', publishedAt: Date.now(), relatedSymbols: [] },
+  { id: 'f1', headline: 'Markets update — check back shortly for the latest stories', source: 'Rookie Markets', publishedAt: Date.now(), relatedSymbols: [] },
 ];
 
 // Keep the export so dashboard.tsx doesn't break if it imports ALL_NEWS
