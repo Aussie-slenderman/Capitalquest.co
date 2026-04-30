@@ -1,6 +1,6 @@
 import React, { useMemo, useState } from 'react';
 import {
-  View, Text, Image, ScrollView, TouchableOpacity, TextInput,
+  View, Text, ScrollView, TouchableOpacity, TextInput,
   StyleSheet, StatusBar, SafeAreaView, Modal, Platform,
 } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
@@ -41,12 +41,15 @@ const ALL_COUNTRIES = [
   "Zambia","Zimbabwe",
 ];
 
+// Emoji-based, transparent quick actions — no rounded-square gradient
+// background per icon. Each tile shows just the symbol on the dashboard's
+// own background.
 const QUICK_ACTIONS = [
-  { key: 'home', route: '/(app)/home', image: require('../../assets/tabs/buy-sell.png') },
-  { key: 'portfolio', route: '/(app)/portfolio', image: require('../../assets/tabs/portfolio.png') },
-  { key: 'trophy-road', route: '/(app)/trophy-road', image: require('../../assets/tabs/awards.png') },
-  { key: 'social', route: '/(app)/social', image: require('../../assets/tabs/social.png'), hasBadge: true },
-  { key: 'tutorial', route: '/(app)/tutorial', image: require('../../assets/tabs/learn.png') },
+  { key: 'home', route: '/(app)/home', emoji: '🔁', label: 'Trade' },
+  { key: 'portfolio', route: '/(app)/portfolio', emoji: '💼', label: 'Portfolio' },
+  { key: 'trophy-road', route: '/(app)/trophy-road', emoji: '🏆', label: 'Rankings' },
+  { key: 'social', route: '/(app)/social', emoji: '👥', label: 'Social', hasBadge: true },
+  { key: 'tutorial', route: '/(app)/tutorial', emoji: '📚', label: 'Learn' },
 ] as const;
 
 export default function DashboardScreen() {
@@ -161,7 +164,12 @@ export default function DashboardScreen() {
                   onPress={() => router.push(action.route as never)}
                 >
                   <View style={styles.quickImageFrame}>
-                    <Image source={action.image} style={styles.quickGridImage} resizeMode="contain" />
+                    <Text style={styles.quickGridEmoji} accessibilityLabel={action.label}>
+                      {action.emoji}
+                    </Text>
+                    <Text style={[styles.quickGridLabel, { color: C.text.secondary }]} numberOfLines={1}>
+                      {action.label}
+                    </Text>
                     {action.hasBadge && (
                       <View style={styles.socialBadge}>
                         <Text style={styles.socialBadgeText} adjustsFontSizeToFit numberOfLines={1}>
@@ -377,10 +385,21 @@ const styles = StyleSheet.create({
     position: 'relative',
     alignItems: 'center',
     justifyContent: 'center',
+    gap: 4,
   },
   quickGridImage: {
     width: '100%',
     height: '100%',
+  },
+  quickGridEmoji: {
+    fontSize: 44,
+    textAlign: 'center',
+  },
+  quickGridLabel: {
+    fontSize: FontSize.xs,
+    fontWeight: FontWeight.semibold as any,
+    textAlign: 'center',
+    marginTop: 2,
   },
   socialBadge: {
     position: 'absolute',

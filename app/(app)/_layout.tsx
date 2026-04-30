@@ -1,13 +1,14 @@
 import React, { useEffect, useMemo, useRef } from 'react';
-import { View, Text, Image, StyleSheet, TouchableOpacity, Platform, AppState, Dimensions } from 'react-native';
+import { View, Text, StyleSheet, TouchableOpacity, Platform, AppState, Dimensions } from 'react-native';
 import { Tabs, router } from 'expo-router';
 
-const TAB_ICONS = {
-  learn: require('../../assets/tabs/learn.png'),
-  buySell: require('../../assets/tabs/buy-sell.png'),
-  portfolio: require('../../assets/tabs/portfolio.png'),
-  social: require('../../assets/tabs/social.png'),
-  awards: require('../../assets/tabs/awards.png'),
+// Emoji-based tab icons render with no rounded-square gradient background.
+const TAB_ICONS: Record<string, string> = {
+  learn: '📚',
+  buySell: '🔁',
+  portfolio: '💼',
+  social: '👥',
+  awards: '🏆',
 };
 import { useAppStore } from '../../src/store/useAppStore';
 import {
@@ -334,27 +335,27 @@ export default function AppLayout() {
         name="tutorial"
         options={{
           title: t('learn'),
-          tabBarIcon: ({ focused }) => <TabImageIcon source={TAB_ICONS.learn} focused={focused} />,
+          tabBarIcon: ({ focused }) => <TabEmojiIcon emoji={TAB_ICONS.learn} focused={focused} />,
         }}
       />
       <Tabs.Screen
         name="home"
         options={{
-          title: 'Buy & Sell',
-          tabBarIcon: ({ focused }) => <TabImageIcon source={TAB_ICONS.buySell} focused={focused} />,
+          title: 'Trade',
+          tabBarIcon: ({ focused }) => <TabEmojiIcon emoji={TAB_ICONS.buySell} focused={focused} />,
         }}
       />
       <Tabs.Screen
         name="portfolio"
         options={{
           title: t('portfolio'),
-          tabBarIcon: ({ focused }) => <TabImageIcon source={TAB_ICONS.portfolio} focused={focused} />,
+          tabBarIcon: ({ focused }) => <TabEmojiIcon emoji={TAB_ICONS.portfolio} focused={focused} />,
         }}
       />
       <Tabs.Screen name="leaderboard" options={{ href: null }} />
       <Tabs.Screen name="advisor" options={{ href: null }} />
 
-      {/* ── Dashboard (hidden — accessible via CapitalQuest title tap) ── */}
+      {/* ── Dashboard (hidden — accessible via Rookie Markets title tap) ── */}
       <Tabs.Screen name="dashboard" options={{ href: null, tabBarStyle: { display: 'none' } }} />
 
       <Tabs.Screen
@@ -362,8 +363,8 @@ export default function AppLayout() {
         options={{
           title: t('social'),
           tabBarIcon: ({ focused }) => (
-            <View style={{ width: TAB_ICON_SIZE, height: TAB_ICON_SIZE }}>
-              <TabImageIcon source={TAB_ICONS.social} focused={focused} />
+            <View style={{ width: TAB_ICON_SIZE, height: TAB_ICON_SIZE, alignItems: 'center', justifyContent: 'center' }}>
+              <TabEmojiIcon emoji={TAB_ICONS.social} focused={focused} />
               <View style={styles.badge}>
                 <Text style={styles.badgeText}>{socialBadgeCount > 9 ? '9+' : socialBadgeCount}</Text>
               </View>
@@ -374,8 +375,8 @@ export default function AppLayout() {
       <Tabs.Screen
         name="trophy-road"
         options={{
-          title: 'Awards',
-          tabBarIcon: ({ focused }) => <TabImageIcon source={TAB_ICONS.awards} focused={focused} />,
+          title: 'Rankings',
+          tabBarIcon: ({ focused }) => <TabEmojiIcon emoji={TAB_ICONS.awards} focused={focused} />,
         }}
       />
       <Tabs.Screen name="shop" options={{ href: null }} />
@@ -401,19 +402,25 @@ const TAB_COUNT = 5;
 const TAB_ICON_SIZE = Math.min(70, Math.floor((SCREEN_WIDTH - 20) / TAB_COUNT - 12));
 const TAB_BAR_HEIGHT = TAB_ICON_SIZE + 20;
 
-function TabImageIcon({
-  source,
+function TabEmojiIcon({
+  emoji,
   focused,
 }: {
-  source: any;
+  emoji: string;
   focused: boolean;
 }) {
   return (
-    <Image
-      source={source}
-      style={[styles.tabImage, { width: TAB_ICON_SIZE, height: TAB_ICON_SIZE, opacity: focused ? 1 : 0.5 }]}
-      resizeMode="contain"
-    />
+    <Text
+      style={[
+        styles.tabEmoji,
+        {
+          fontSize: Math.round(TAB_ICON_SIZE * 0.55),
+          opacity: focused ? 1 : 0.5,
+        },
+      ]}
+    >
+      {emoji}
+    </Text>
   );
 }
 
@@ -434,10 +441,10 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
   },
-  // Tab image icon
-  tabImage: {
-    width: TAB_ICON_SIZE,
-    height: TAB_ICON_SIZE,
+  // Tab emoji icon
+  tabEmoji: {
+    textAlign: 'center',
+    lineHeight: TAB_ICON_SIZE,
   },
   // Notification badge
   badge: {
