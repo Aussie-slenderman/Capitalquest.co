@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
 <meta charset="utf-8"/><meta name="viewport" content="width=device-width,initial-scale=1"/>
-<title>Admin Dashboard — CapitalQuest</title>
+<title>Admin Dashboard — Rookie Markets</title>
 <style>
 *{box-sizing:border-box;margin:0;padding:0}
 body{background:#0A0E1A;color:#F1F5F9;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;min-height:100vh}
@@ -32,6 +32,7 @@ tr:hover td{background:#0A0E1A66}
 .gain-neg{color:#FF3D57;font-weight:700}
 .action-btn{padding:6px 12px;border-radius:8px;font-size:12px;font-weight:700;cursor:pointer;border:none;margin-right:4px}
 .btn-reset{background:#F5C51822;color:#F5C518;border:1px solid #F5C51844}
+.btn-rename{background:#A855F722;color:#A855F7;border:1px solid #A855F744}
 .btn-delete{background:#FF3D5722;color:#FF3D57;border:1px solid #FF3D5744}
 .btn-view{background:#00B3E622;color:#00B3E6;border:1px solid #00B3E644}
 .spinner-full{display:flex;align-items:center;justify-content:center;height:200px;gap:12px;color:#475569}
@@ -84,11 +85,24 @@ tr:hover td{background:#0A0E1A66}
 <div class="modal-overlay" id="reset-modal">
   <div class="modal">
     <h2>🔑 Reset Password</h2>
-    <p id="reset-desc">Set a new temporary password for this player. Share it with them to regain access.</p>
-    <input id="new-pw" type="text" placeholder="New temporary password" />
+    <p id="reset-desc">Set a new password for this player. They'll be able to sign in with it immediately.</p>
+    <input id="new-pw" type="text" placeholder="New password (min 6 chars)" />
     <div class="modal-btns">
       <button class="modal-btn-cancel" onclick="closeModal('reset-modal')">Cancel</button>
       <button class="modal-btn-confirm" style="background:linear-gradient(90deg,#F5C518,#E5B000);color:#0A0E1A" onclick="confirmReset()">Set Password</button>
+    </div>
+  </div>
+</div>
+
+<!-- Reset Username Modal -->
+<div class="modal-overlay" id="rename-modal">
+  <div class="modal">
+    <h2>✏️ Reset Username</h2>
+    <p id="rename-desc">Set a new username for this player. They'll be able to sign in with the new username and their existing password.</p>
+    <input id="new-username" type="text" placeholder="new_username" maxlength="20" autocapitalize="none" autocorrect="off" spellcheck="false" />
+    <div class="modal-btns">
+      <button class="modal-btn-cancel" onclick="closeModal('rename-modal')">Cancel</button>
+      <button class="modal-btn-confirm" style="background:linear-gradient(90deg,#A855F7,#7C3AED);color:#fff" onclick="confirmRename()">Set Username</button>
     </div>
   </div>
 </div>
@@ -241,6 +255,7 @@ function renderTable(users){
       <td>
         <button class="action-btn btn-view" onclick="viewInfo('${u.uid}')">View</button>
         <button class="action-btn btn-reset" onclick="openReset('${u.uid}','${esc(u.username)}')">Reset PW</button>
+        <button class="action-btn btn-rename" onclick="openRename('${u.uid}','${esc(u.username)}')">Reset User</button>
         ${!u.accountDeleted?`<button class="action-btn btn-delete" onclick="openDelete('${u.uid}','${esc(u.username)}')">Delete</button>`:''}
       </td>
     </tr>`;
@@ -279,7 +294,7 @@ function viewInfo(uid){
 
 function openReset(uid,username){
   targetUid=uid; targetUsername=username;
-  document.getElementById('reset-desc').textContent='Set a new temporary password for @'+username+'. Share it with them.';
+  document.getElementById('reset-desc').textContent='Set a new password for @'+username+'. They will be able to sign in with it immediately.';
   document.getElementById('new-pw').value='';
   document.getElementById('reset-modal').classList.add('show');
   setTimeout(()=>document.getElementById('new-pw').focus(),100);
@@ -288,11 +303,47 @@ function openReset(uid,username){
 async function confirmReset(){
   const pw=document.getElementById('new-pw').value.trim();
   if(!pw||pw.length<6){showToast('Password must be at least 6 characters');return;}
+  const btn=document.querySelector('#reset-modal .modal-btn-confirm');
+  btn.disabled=true; const orig=btn.textContent; btn.textContent='Saving…';
   try{
-    await db.collection('users').doc(targetUid).update({adminTempPassword:pw,adminTempPasswordSetAt:Date.now()});
+    // Calls the adminResetPassword Cloud Function which uses the Admin
+    // SDK to actually update the player's Firebase Auth password — so
+    // the player can immediately sign in with the new value.
+    const fn=fns.httpsCallable('adminResetPassword');
+    await fn({uid:targetUid,newPassword:pw});
     closeModal('reset-modal');
-    showToast('✅ Temp password saved. Share "'+pw+'" with @'+targetUsername);
-  }catch(e){showToast('⚠️ Error: '+e.message);}
+    showToast('✅ Password updated. @'+targetUsername+' can sign in with "'+pw+'"');
+  }catch(e){showToast('⚠️ Error: '+(e.message||'unknown'));}
+  finally{btn.disabled=false; btn.textContent=orig;}
+}
+
+function openRename(uid,username){
+  targetUid=uid; targetUsername=username;
+  document.getElementById('rename-desc').textContent='Rename @'+username+'. They will sign in with the new username and their existing password.';
+  document.getElementById('new-username').value='';
+  document.getElementById('rename-modal').classList.add('show');
+  setTimeout(()=>document.getElementById('new-username').focus(),100);
+}
+
+async function confirmRename(){
+  const inp=document.getElementById('new-username');
+  const raw=inp.value.trim().toLowerCase().replace(/\s/g,'');
+  if(raw.length<3||raw.length>20){showToast('Username must be 3–20 characters');return;}
+  if(!/^[a-z0-9_]+$/.test(raw)){showToast('Only letters, numbers, and underscores');return;}
+  if(raw===targetUsername){showToast('That is already the current username');return;}
+  const btn=document.querySelector('#rename-modal .modal-btn-confirm');
+  btn.disabled=true; const orig=btn.textContent; btn.textContent='Saving…';
+  try{
+    // Calls adminResetUsername Cloud Function which updates Firestore.
+    // The login flow looks up the player's Firebase Auth email by
+    // username, so once renamed they can sign in with the new username.
+    const fn=fns.httpsCallable('adminResetUsername');
+    await fn({uid:targetUid,newUsername:raw});
+    closeModal('rename-modal');
+    showToast('✅ Username updated. @'+targetUsername+' is now @'+raw);
+    loadUsers();
+  }catch(e){showToast('⚠️ Error: '+(e.message||'unknown'));}
+  finally{btn.disabled=false; btn.textContent=orig;}
 }
 
 function openDelete(uid,username){

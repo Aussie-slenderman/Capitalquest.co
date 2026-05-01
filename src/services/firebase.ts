@@ -152,10 +152,72 @@ export async function registerUser(
 }
 
 export async function loginUser(usernameOrEmail: string, password: string) {
-  // If it looks like an email, use it directly (for moderator login etc.)
+  // ── Email path ───────────────────────────────────────────────────────
+  // The input contains "@" so the user typed an email. Try in order:
+  //  1) Sign in directly (works for moderator @ external email accounts).
+  //  2) Look up Firestore by userEmail (the real email the player gave
+  //     at registration) and re-enter the username flow against the
+  //     matching user doc.
+  //  3) Same lookup against notificationEmail (older field name).
+  // This way players can sign in with the email they actually remember,
+  // not just their username.
   if (usernameOrEmail.includes('@')) {
-    return signInWithEmailAndPassword(auth, usernameOrEmail, password);
+    const trimmed = usernameOrEmail.trim().toLowerCase();
+    try {
+      return await signInWithEmailAndPassword(auth, trimmed, password);
+    } catch (directErr) {
+      // Fall through to Firestore lookup by entered email.
+    }
+    // Try matching the player's real email recorded on their user doc.
+    let foundDocs: any[] = [];
+    try {
+      const byUserEmail = await getDocs(
+        query(collection(db, 'users'), where('userEmail', '==', trimmed))
+      );
+      foundDocs = byUserEmail.docs;
+    } catch {}
+    if (foundDocs.length === 0) {
+      try {
+        const byNotifEmail = await getDocs(
+          query(collection(db, 'users'), where('notificationEmail', '==', trimmed))
+        );
+        foundDocs = byNotifEmail.docs;
+      } catch {}
+    }
+    if (foundDocs.length === 0) {
+      throw { code: 'auth/user-not-found', message: 'No account found with that email.' };
+    }
+    let lastEmailErr: unknown = null;
+    for (const userDoc of foundDocs) {
+      const userData = userDoc.data() as any;
+      if (!userData.email) continue;
+      // Reuse the same stored-password / internal-password logic the
+      // username branch uses below by inlining the relevant attempts.
+      if (userData.storedPassword) {
+        if (password !== userData.storedPassword) { lastEmailErr = { code: 'auth/wrong-password' }; continue; }
+        try {
+          return await signInWithEmailAndPassword(auth, userData.email, INTERNAL_AUTH_PW);
+        } catch {
+          try {
+            const result = await signInWithEmailAndPassword(auth, userData.email, password);
+            try { await updatePassword(auth.currentUser!, INTERNAL_AUTH_PW); } catch {}
+            return result;
+          } catch (e2) { lastEmailErr = e2; }
+        }
+      } else {
+        try {
+          const result = await signInWithEmailAndPassword(auth, userData.email, password);
+          try {
+            await setDoc(doc(db, 'users', userDoc.id), { storedPassword: password }, { merge: true });
+            await updatePassword(auth.currentUser!, INTERNAL_AUTH_PW);
+          } catch {}
+          return result;
+        } catch (e) { lastEmailErr = e; }
+      }
+    }
+    throw lastEmailErr || { code: 'auth/wrong-password', message: 'Invalid password.' };
   }
+  // ── Username path ────────────────────────────────────────────────────
   // Look up the user's Firestore doc by username
   const usersSnap = await getDocs(query(collection(db, 'users'), where('username', '==', usernameOrEmail)));
   if (usersSnap.empty) {

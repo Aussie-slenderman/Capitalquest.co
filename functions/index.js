@@ -74,6 +74,117 @@ exports.deleteUserAccount = functions.https.onCall(async (data, context) => {
   return { success: true };
 });
 
+/**
+ * adminResetPassword — callable function
+ * Admin-only. Sets a new Firebase Auth password for `uid` so the player
+ * can log in with it immediately. Clears any legacy adminTempPassword
+ * fields on the user doc.
+ *
+ * Called with: { uid: string, newPassword: string }
+ */
+exports.adminResetPassword = functions.https.onCall(async (data, context) => {
+  if (!context.auth) {
+    throw new functions.https.HttpsError('unauthenticated', 'You must be signed in.');
+  }
+  const callerEmail = (context.auth.token.email || '').toLowerCase();
+  if (!ADMIN_EMAILS.includes(callerEmail)) {
+    throw new functions.https.HttpsError('permission-denied', 'Not authorised.');
+  }
+
+  const uid = data && data.uid;
+  const newPassword = data && data.newPassword;
+  if (!uid || typeof uid !== 'string') {
+    throw new functions.https.HttpsError('invalid-argument', 'uid is required.');
+  }
+  if (!newPassword || typeof newPassword !== 'string' || newPassword.length < 6) {
+    throw new functions.https.HttpsError(
+      'invalid-argument',
+      'newPassword must be at least 6 characters.'
+    );
+  }
+
+  // 1. Update Firebase Auth password — this is what the player will
+  //    actually use to sign in.
+  await admin.auth().updateUser(uid, { password: newPassword });
+
+  // 2. Clear the old adminTempPassword fields (no longer used) and stamp
+  //    a reset timestamp so the dashboard / audits know when this happened.
+  try {
+    await admin.firestore().collection('users').doc(uid).update({
+      adminTempPassword: admin.firestore.FieldValue.delete(),
+      adminTempPasswordSetAt: admin.firestore.FieldValue.delete(),
+      adminPasswordResetAt: Date.now(),
+      adminPasswordResetBy: callerEmail,
+    });
+  } catch (e) {
+    console.warn('adminResetPassword: user doc update skipped:', e.message);
+  }
+
+  console.log(`adminResetPassword: uid=${uid} by ${callerEmail}`);
+  return { success: true };
+});
+
+/**
+ * adminResetUsername — callable function
+ * Admin-only. Renames a player's username (and displayName so the UI
+ * mirrors it). The login flow looks up the Firebase Auth email by
+ * username, so after this call the player can sign in with the new
+ * username and their existing password.
+ *
+ * Called with: { uid: string, newUsername: string }
+ */
+exports.adminResetUsername = functions.https.onCall(async (data, context) => {
+  if (!context.auth) {
+    throw new functions.https.HttpsError('unauthenticated', 'You must be signed in.');
+  }
+  const callerEmail = (context.auth.token.email || '').toLowerCase();
+  if (!ADMIN_EMAILS.includes(callerEmail)) {
+    throw new functions.https.HttpsError('permission-denied', 'Not authorised.');
+  }
+
+  const uid = data && data.uid;
+  const rawUsername = data && data.newUsername;
+  if (!uid || typeof uid !== 'string') {
+    throw new functions.https.HttpsError('invalid-argument', 'uid is required.');
+  }
+  if (!rawUsername || typeof rawUsername !== 'string') {
+    throw new functions.https.HttpsError('invalid-argument', 'newUsername is required.');
+  }
+  const newUsername = rawUsername.trim().toLowerCase().replace(/\s+/g, '');
+  if (newUsername.length < 3 || newUsername.length > 20) {
+    throw new functions.https.HttpsError(
+      'invalid-argument',
+      'Username must be 3–20 characters.'
+    );
+  }
+  if (!/^[a-z0-9_]+$/.test(newUsername)) {
+    throw new functions.https.HttpsError(
+      'invalid-argument',
+      'Username may only contain lowercase letters, numbers, and underscores.'
+    );
+  }
+
+  const db = admin.firestore();
+  const userRef = db.collection('users').doc(uid);
+  const snap = await userRef.get();
+  if (!snap.exists) {
+    throw new functions.https.HttpsError('not-found', 'User not found.');
+  }
+
+  // Username uniqueness is not enforced in this app (per CLAUDE.md), so
+  // no collision check is needed. We still mirror the new username into
+  // displayName so dashboard / leaderboard labels follow.
+  await userRef.update({
+    username: newUsername,
+    displayName: newUsername,
+    adminUsernameResetAt: Date.now(),
+    adminUsernameResetBy: callerEmail,
+  });
+
+  console.log(`adminResetUsername: uid=${uid} -> @${newUsername} by ${callerEmail}`);
+  return { success: true, newUsername };
+});
+
 function toFiniteNumber(value, fallback = 0) {
   const num = Number(value);
   return Number.isFinite(num) ? num : fallback;

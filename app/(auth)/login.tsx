@@ -19,7 +19,7 @@ export default function LoginScreen() {
 
   const handleLogin = async () => {
     setError('');
-    if (!username.trim()) { setError('Please enter your username.'); return; }
+    if (!username.trim()) { setError('Please enter your username or email.'); return; }
     if (!password) { setError('Please enter your password.'); return; }
     setLoading(true);
     // Prevent the auth listener from redirecting to welcome during sign-in
@@ -73,12 +73,12 @@ export default function LoginScreen() {
 
         <View style={styles.form}>
           <View style={styles.field}>
-            <Text style={styles.label}>Username</Text>
+            <Text style={styles.label}>Username or email</Text>
             <TextInput
               style={styles.input}
               value={username}
               onChangeText={setUsername}
-              placeholder="your_username"
+              placeholder="your_username or your@email.com"
               placeholderTextColor={Colors.text.tertiary}
               keyboardType="default"
               autoCapitalize="none"
