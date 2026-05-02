@@ -8,15 +8,16 @@
     "scheme": "rookie-markets",
     "userInterfaceStyle": "dark",
     "splash": {
-      "image": "./assets/rookie-markets-logo.png",
+      "image": "./assets/rookie-markets-splash.png",
       "resizeMode": "contain",
-      "backgroundColor": "#FFFFFF"
+      "backgroundColor": "#000000"
     },
     "assetBundlePatterns": ["**/*"],
     "ios": {
       "supportsTablet": true,
       "bundleIdentifier": "com.capitalquest.app",
       "buildNumber": "1",
+      "icon": "./assets/rookie-markets-logo.png",
       "infoPlist": {
         "NSCameraUsageDescription": "Used for profile photos",
         "NSMicrophoneUsageDescription": "Used for voice meetings"
