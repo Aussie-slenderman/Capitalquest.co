@@ -11,29 +11,13 @@ import { Colors, FontSize, FontWeight, Spacing, Radius } from '../../src/constan
 
 type Step = 'email' | 'code' | 'reset' | 'success';
 
-// EmailJS config (same as email-settings.html)
-const EJ_SERVICE = 'service_upj3ydy';
-const EJ_OTP_TPL = 'template_4teeuzl';
-const EJ_PUBLIC_KEY = 'lneCy8iqRXbKjHt2A';
-
+// Calls the sendOtpEmail Cloud Function (server-side Resend) instead of
+// the previous client-side EmailJS API. See Sidebar.tsx for context.
 async function sendOTPEmail(toEmail: string, code: string, toName: string) {
-  // Use EmailJS REST API directly (no SDK import needed)
-  const resp = await fetch('https://api.emailjs.com/api/v1.0/email/send', {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({
-      service_id: EJ_SERVICE,
-      template_id: EJ_OTP_TPL,
-      user_id: EJ_PUBLIC_KEY,
-      template_params: {
-        email: toEmail,
-        passcode: code,
-        time: new Date(Date.now() + 15 * 60_000).toLocaleTimeString(),
-        to_name: toName || 'Player',
-      },
-    }),
-  });
-  if (!resp.ok) throw new Error('EmailJS failed: ' + resp.status);
+  const { getFunctions, httpsCallable } = await import('firebase/functions');
+  const fns = getFunctions();
+  const fn = httpsCallable(fns, 'sendOtpEmail');
+  await fn({ email: toEmail, code, toName: toName || 'Player' });
 }
 
 export default function ForgotPasswordScreen() {

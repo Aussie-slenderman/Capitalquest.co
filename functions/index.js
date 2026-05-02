@@ -1,8 +1,20 @@
 const functions = require('firebase-functions');
 const { onSchedule } = require('firebase-functions/v2/scheduler');
 const admin = require('firebase-admin');
+const { Resend } = require('resend');
 
 admin.initializeApp();
+
+// Lazy-init the Resend client so deploys without RESEND_API_KEY still
+// load the module without throwing.
+let _resend = null;
+function getResend() {
+  if (_resend) return _resend;
+  const key = process.env.RESEND_API_KEY || functions.config().resend?.api_key;
+  if (!key) throw new functions.https.HttpsError('failed-precondition', 'RESEND_API_KEY is not configured');
+  _resend = new Resend(key);
+  return _resend;
+}
 
 const DAILY_SNAPSHOT_TIMEZONE = 'America/New_York';
 const DAILY_SNAPSHOT_CRON = '5 21 * * *'; // 9:05 PM ET, after market close
@@ -184,6 +196,110 @@ exports.adminResetUsername = functions.https.onCall(async (data, context) => {
   console.log(`adminResetUsername: uid=${uid} -> @${newUsername} by ${callerEmail}`);
   return { success: true, newUsername };
 });
+
+/**
+ * sendOtpEmail — public callable function (no auth required)
+ * Sends a 6-digit verification code to `email` via Resend. This replaces
+ * the client-side EmailJS call that was used by the "Add email" sidebar
+ * action and the forgot-password flow. EmailJS's free tier is 200/month
+ * and silently fails for many provider/recipient combinations (school
+ * email systems, corporate inboxes, etc.); Resend's verified domain has
+ * far better deliverability and 3000/month free.
+ *
+ * Called with: { email, code, toName }
+ *   - email   : recipient address (string, must contain "@")
+ *   - code    : the 6-digit OTP the client generated and stored locally
+ *   - toName  : optional display name shown in the email body
+ *
+ * Per-IP rate limit: max 5 OTPs per email address per 10 minutes
+ * (tracked in Firestore otpRateLimit/{emailLowercase}). Prevents abuse
+ * of an unauthenticated function.
+ */
+exports.sendOtpEmail = functions.https.onCall(async (data, context) => {
+  const rawEmail = data && data.email;
+  const code = data && data.code;
+  const toName = (data && data.toName) || 'Player';
+
+  if (!rawEmail || typeof rawEmail !== 'string' || !rawEmail.includes('@') || !rawEmail.includes('.')) {
+    throw new functions.https.HttpsError('invalid-argument', 'Valid email is required.');
+  }
+  if (!code || typeof code !== 'string' || !/^\d{4,8}$/.test(code)) {
+    throw new functions.https.HttpsError('invalid-argument', '4–8 digit numeric code is required.');
+  }
+
+  const email = rawEmail.trim().toLowerCase();
+
+  // ── Rate limit: 5 sends / 10 minutes per email ─────────────────────
+  const db = admin.firestore();
+  const limitDoc = db.collection('otpRateLimit').doc(email.replace(/[^a-z0-9._-]/g, '_'));
+  const now = Date.now();
+  const windowMs = 10 * 60 * 1000;
+  try {
+    const snap = await limitDoc.get();
+    const data = snap.exists ? snap.data() : {};
+    const sends = (data.sends || []).filter((t) => now - t < windowMs);
+    if (sends.length >= 5) {
+      throw new functions.https.HttpsError(
+        'resource-exhausted',
+        'Too many verification codes requested for this email. Please wait a few minutes.'
+      );
+    }
+    sends.push(now);
+    await limitDoc.set({ sends, lastEmail: email }, { merge: true });
+  } catch (err) {
+    if (err && err.code === 'resource-exhausted') throw err;
+    // Non-fatal: don't block sending if Firestore rate-limit write fails.
+    console.warn('sendOtpEmail: rate-limit check skipped:', err.message);
+  }
+
+  // ── Build & send email ─────────────────────────────────────────────
+  const expiresAt = new Date(now + 15 * 60_000).toLocaleTimeString();
+  const html = `<!DOCTYPE html>
+<html>
+<head><meta charset="utf-8"><title>Rookie Markets verification</title></head>
+<body style="font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;background:#0A0E1A;color:#F1F5F9;margin:0;padding:40px 20px;">
+  <div style="max-width:480px;margin:0 auto;background:#111827;border:1px solid #1E2940;border-radius:16px;padding:32px;">
+    <h1 style="color:#00B3E6;margin:0 0 8px;font-size:20px;">📈 Rookie Markets</h1>
+    <h2 style="color:#F1F5F9;margin:0 0 16px;font-size:18px;">Hey ${escapeHtml(toName)},</h2>
+    <p style="color:#94A3B8;line-height:1.6;margin:0 0 16px;">Use this 6-digit code to verify your email on Rookie Markets:</p>
+    <div style="background:#1A2235;border:1px solid #1E2940;border-radius:12px;padding:18px;text-align:center;margin:0 0 16px;">
+      <div style="font-size:36px;font-weight:800;letter-spacing:6px;color:#00B3E6;font-family:'SF Mono','Menlo',monospace;">${code}</div>
+    </div>
+    <p style="color:#64748B;font-size:13px;line-height:1.6;margin:0 0 8px;">This code expires at <strong>${expiresAt}</strong>.</p>
+    <p style="color:#64748B;font-size:13px;line-height:1.6;margin:0;">If you didn't request this, you can safely ignore this email.</p>
+    <hr style="border:none;border-top:1px solid #1E2940;margin:24px 0;"/>
+    <p style="color:#475569;font-size:11px;margin:0;">Rookie Markets · Virtual stock trading · No real money involved</p>
+  </div>
+</body>
+</html>`;
+
+  const text = `Rookie Markets verification code\n\nHey ${toName},\n\nYour 6-digit code is: ${code}\n\nThis code expires at ${expiresAt}. If you didn't request this, ignore this email.\n\n— Rookie Markets`;
+
+  try {
+    const result = await getResend().emails.send({
+      from: 'Rookie Markets <reports@capitalquest.co>',
+      to: email,
+      subject: `Your Rookie Markets verification code: ${code}`,
+      html,
+      text,
+    });
+    if (result && result.error) {
+      console.error('sendOtpEmail Resend error:', JSON.stringify(result.error));
+      throw new functions.https.HttpsError('internal', `Resend rejected: ${result.error.message || 'unknown'}`);
+    }
+    const id = result && result.data && result.data.id;
+    console.log(`sendOtpEmail: queued for ${email} id=${id}`);
+    return { success: true, messageId: id || null };
+  } catch (err) {
+    if (err && err.code && typeof err.code === 'string' && err.code.startsWith('functions/')) throw err;
+    console.error('sendOtpEmail failed:', err && err.message);
+    throw new functions.https.HttpsError('internal', `Failed to send verification email: ${err && err.message ? err.message : 'unknown'}`);
+  }
+});
+
+function escapeHtml(s) {
+  return String(s).replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+}
 
 function toFiniteNumber(value, fallback = 0) {
   const num = Number(value);
