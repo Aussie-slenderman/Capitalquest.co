@@ -29,25 +29,25 @@ const db = admin.firestore();
 
 const resend = new Resend(process.env.RESEND_API_KEY);
 
-const FROM = 'CapitalQuest <reports@capitalquest.co>';
-const SUBJECT = 'Test Email from CapitalQuest';
+const FROM = 'Rookie Markets <reports@capitalquest.co>';
+const SUBJECT = 'Test email from Rookie Markets';
 
 const HTML_BODY = `<!DOCTYPE html>
 <html>
-<head><meta charset="utf-8"><title>CapitalQuest Test</title></head>
+<head><meta charset="utf-8"><title>Rookie Markets Test</title></head>
 <body style="font-family: -apple-system, BlinkMacSystemFont, sans-serif; background: #0A0E1A; color: #F1F5F9; margin: 0; padding: 40px 20px;">
   <div style="max-width: 560px; margin: 0 auto; background: #111827; border: 1px solid #1E2940; border-radius: 12px; padding: 32px;">
-    <h1 style="color: #00B3E6; margin: 0 0 16px;">📈 CapitalQuest</h1>
+    <h1 style="color: #00B3E6; margin: 0 0 16px;">📈 Rookie Markets</h1>
     <h2 style="color: #F1F5F9; margin: 0 0 16px; font-size: 18px;">Test email — delivery confirmed ✅</h2>
-    <p style="color: #94A3B8; line-height: 1.6;">This is a test email sent via Resend from <code style="background: #1A2235; padding: 2px 6px; border-radius: 4px;">reports@capitalquest.co</code> to confirm the email pipeline is working.</p>
-    <p style="color: #94A3B8; line-height: 1.6; margin-top: 24px;">If you received this, your Resend integration, DNS records, and domain verification are all functioning correctly. Weekly performance emails will arrive every Monday.</p>
+    <p style="color: #94A3B8; line-height: 1.6;">This is a test email sent from <code style="background: #1A2235; padding: 2px 6px; border-radius: 4px;">reports@capitalquest.co</code> to confirm the email pipeline is working for your Rookie Markets account.</p>
+    <p style="color: #94A3B8; line-height: 1.6; margin-top: 24px;">If this lands in spam, please mark it as <strong>Not spam</strong> so future Rookie Markets weekly performance reports arrive in your inbox.</p>
     <hr style="border: none; border-top: 1px solid #1E2940; margin: 24px 0;"/>
-    <p style="color: #64748B; font-size: 12px; margin: 0;">CapitalQuest · capitalquest.co</p>
+    <p style="color: #64748B; font-size: 12px; margin: 0;">Rookie Markets · capitalquest.co</p>
   </div>
 </body>
 </html>`;
 
-const TEXT_BODY = 'CapitalQuest test email — delivery confirmed.';
+const TEXT_BODY = 'Rookie Markets test email — delivery confirmed. If this landed in spam, please mark it as Not spam so future weekly performance reports arrive in your inbox.';
 
 // Resend free tier rate limit: 10 req/sec. Use 150ms gap to stay safely under.
 const SEND_DELAY_MS = 150;
