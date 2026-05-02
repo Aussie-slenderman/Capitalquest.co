@@ -268,14 +268,19 @@ export default function TutorialScreen() {
     <SafeAreaView style={[styles.safe, { backgroundColor: isLight ? LightColors.bg.primary : Colors.bg.primary }]}>
       <AppHeader title={t('learn')} />
       <ScrollView style={styles.scroll} showsVerticalScrollIndicator={false}>
-        {/* Header */}
+        {/* Header — gradient adapts to theme so the band blends rather
+            than appearing as a hardcoded dark stripe on light mode. */}
         <LinearGradient
-          colors={['#0A1628', Colors.bg.primary]}
+          colors={isLight
+            ? [LightColors.bg.secondary, LightColors.bg.primary]
+            : ['#0A1628', Colors.bg.primary]}
           style={styles.header}
         >
           <Text style={styles.headerEmoji}>🎓</Text>
-          <Text style={styles.headerTitle}>{t('stock_trading_101')}</Text>
-          <Text style={styles.headerSubtitle}>
+          <Text style={[styles.headerTitle, { color: isLight ? LightColors.text.primary : Colors.text.primary }]}>
+            {t('stock_trading_101')}
+          </Text>
+          <Text style={[styles.headerSubtitle, { color: isLight ? LightColors.text.secondary : Colors.text.secondary }]}>
             {t('tutorial_subtitle')}
           </Text>
 
