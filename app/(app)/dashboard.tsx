@@ -166,13 +166,6 @@ export default function DashboardScreen() {
                 >
                   <View style={styles.quickImageFrame}>
                     <Image source={action.image} style={styles.quickGridImage} resizeMode="contain" />
-                    {action.hasBadge && (
-                      <View style={styles.socialBadge}>
-                        <Text style={styles.socialBadgeText} adjustsFontSizeToFit numberOfLines={1}>
-                          {socialBadgeCount > 9 ? '9+' : socialBadgeCount}
-                        </Text>
-                      </View>
-                    )}
                   </View>
                 </TouchableOpacity>
               ))}
