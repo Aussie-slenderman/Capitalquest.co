@@ -1,10 +1,14 @@
-name: Weekly Portfolio Email
+name: Weekly Portfolio Email (legacy — disabled)
 
+# Legacy workflow that uses Gmail SMTP via an older copy of
+# send-weekly-emails.js in .github/scripts/. The active workflow is
+# weekly-email.yml which uses Resend + the rebranded script in
+# scripts/. Schedule has been removed here so only the Resend-based
+# workflow fires automatically; recipients won't get duplicate emails.
+# Manual workflow_dispatch is kept in case Gmail SMTP needs to be
+# used as a fallback.
 on:
-  schedule:
-    # Every Monday at 8:00 AM UTC
-    - cron: '0 8 * * 1'
-  workflow_dispatch:  # Allow manual trigger for testing
+  workflow_dispatch:
 
 jobs:
   send-emails:

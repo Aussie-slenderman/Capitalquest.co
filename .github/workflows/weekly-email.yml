@@ -2,8 +2,9 @@ name: Weekly Performance Emails
 
 on:
   schedule:
-    # Every Monday at 9:00 AM UTC (7pm AEST / 9am UK)
-    - cron: '0 9 * * 1'
+    # Every Monday at 8:00 AM UTC
+    # (= 6pm AEST / 9am BST / 8am GMT / 4am ET / 1am PT)
+    - cron: '0 8 * * 1'
   # Allow manual trigger from GitHub Actions tab
   workflow_dispatch:
 
