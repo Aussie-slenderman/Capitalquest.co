@@ -366,14 +366,7 @@ export default function AppLayout() {
         name="social"
         options={{
           title: t('social'),
-          tabBarIcon: ({ focused }) => (
-            <View style={{ width: TAB_ICON_SIZE, height: TAB_ICON_SIZE, alignItems: 'center', justifyContent: 'center' }}>
-              <TabImageIcon source={TAB_ICONS.social} focused={focused} />
-              <View style={styles.badge}>
-                <Text style={styles.badgeText}>{socialBadgeCount > 9 ? '9+' : socialBadgeCount}</Text>
-              </View>
-            </View>
-          ),
+          tabBarIcon: ({ focused }) => <TabImageIcon source={TAB_ICONS.social} focused={focused} />,
         }}
       />
       <Tabs.Screen
