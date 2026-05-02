@@ -340,18 +340,35 @@ async function main() {
       // Build & send email
       const html = buildEmail(user, weeklyGain, weeklyGainPct, currentValue, chartUrl, dayLabels, values, marketRecap);
 
-      await resend.emails.send({
-        from: 'CapitalQuest <reports@capitalquest.co>',
+      const result = await resend.emails.send({
+        from: 'Rookie Markets <reports@capitalquest.co>',
         to: sendTo,
         subject: `Your Weekly Report ${weeklyGain >= 0 ? '📈' : '📉'} ${weeklyGain >= 0 ? '+' : ''}${formatCurrency(weeklyGain)} this week`,
         html,
       });
 
-      console.log(`✅ Sent to ${sendTo} (${formatCurrency(weeklyGain)} this week)`);
-      sent++;
+      // Resend returns { data: { id }, error } — log the full shape so
+      // domain-verification / restricted-account errors aren't hidden.
+      if (result && result.error) {
+        console.error(`❌ Resend error for ${sendTo}:`, JSON.stringify(result.error));
+        errors++;
+      } else if (result && result.data && result.data.id) {
+        console.log(`✅ Queued for ${sendTo} (${formatCurrency(weeklyGain)} this week) — id=${result.data.id}`);
+        sent++;
+      } else {
+        console.warn(`⚠️ Unexpected Resend response for ${sendTo}:`, JSON.stringify(result));
+        sent++;
+      }
 
     } catch (err) {
-      console.error(`❌ Failed for ${sendTo}:`, err.message);
+      // Resend SDK throws for HTTP errors / domain-not-verified responses.
+      // Surface the full payload so the GitHub Actions log shows the
+      // "domain not verified" or "you can only send to your account email"
+      // message that explains why most recipients silently get nothing.
+      const detail = err && err.response && err.response.body
+        ? JSON.stringify(err.response.body)
+        : (err && err.message) || String(err);
+      console.error(`❌ Failed for ${sendTo}:`, detail);
       errors++;
     }
   }
