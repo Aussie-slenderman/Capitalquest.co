@@ -22,7 +22,20 @@ export const ALL_NEWS = FALLBACK_NEWS;
 
 function ArticleCard({ article, isHoldings }: { article: YahooNewsItem; isHoldings?: boolean }) {
   return (
-    <TouchableOpacity style={[styles.card, isHoldings && styles.cardHighlighted]} activeOpacity={0.8}>
+    <TouchableOpacity
+      style={[styles.card, isHoldings && styles.cardHighlighted]}
+      activeOpacity={0.8}
+      onPress={() => router.push({
+        pathname: '/(app)/news-article',
+        params: {
+          headline: article.headline,
+          source: article.source,
+          publishedAt: String(article.publishedAt),
+          symbols: article.relatedSymbols.join(','),
+          link: article.link ?? '',
+        },
+      })}
+    >
       <View style={styles.cardContent}>
         <View style={styles.cardMeta}>
           <Text style={styles.cardSource}>{article.source}</Text>

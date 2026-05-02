@@ -463,7 +463,7 @@ export default function HomeScreen() {
         )}
         {liveNews.map((article) => (
           <TouchableOpacity key={article.id} style={[styles.newsCard, { backgroundColor: C.bg.secondary, borderColor: C.border.default }]} activeOpacity={0.8}
-            onPress={() => router.push({ pathname: '/(app)/news-article', params: { headline: article.headline, source: article.source, publishedAt: String(article.publishedAt), symbols: article.relatedSymbols.join(',') } })}>
+            onPress={() => router.push({ pathname: '/(app)/news-article', params: { headline: article.headline, source: article.source, publishedAt: String(article.publishedAt), symbols: article.relatedSymbols.join(','), link: article.link ?? '' } })}>
             <View style={styles.newsContent}>
               <View style={styles.newsMeta}>
                 <Text style={styles.newsSource}>{article.source}</Text>

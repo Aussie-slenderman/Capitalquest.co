@@ -1,6 +1,6 @@
-import React from 'react';
+import React, { useEffect, useState } from 'react';
 import {
-  View, Text, ScrollView, TouchableOpacity, StyleSheet,
+  View, Text, ScrollView, TouchableOpacity, StyleSheet, ActivityIndicator,
 } from 'react-native';
 import { router, useLocalSearchParams } from 'expo-router';
 import { LinearGradient } from 'expo-linear-gradient';
@@ -9,7 +9,68 @@ import { useT } from '../../src/constants/translations';
 import { formatRelativeTime } from '../../src/utils/formatters';
 import { Colors, LightColors, FontSize, FontWeight, Spacing, Radius } from '../../src/constants/theme';
 
-// Mock article bodies keyed by headline (first 40 chars)
+// CORS proxy used to bypass browser CORS when fetching article HTML.
+const CQ_PROXY = 'https://cq-yahoo-proxy.capitalquest.workers.dev';
+
+// Strip HTML to readable text. Order matters:
+//   1) drop <script> / <style> / <noscript> blocks entirely
+//   2) collapse common block tags into paragraph breaks
+//   3) drop remaining tags
+//   4) decode common entities
+//   5) collapse whitespace
+function htmlToText(html: string): string {
+  let s = html;
+  s = s.replace(/<script[\s\S]*?<\/script>/gi, '');
+  s = s.replace(/<style[\s\S]*?<\/style>/gi, '');
+  s = s.replace(/<noscript[\s\S]*?<\/noscript>/gi, '');
+  s = s.replace(/<\/(p|div|section|article|li|h[1-6]|br)>/gi, '\n\n');
+  s = s.replace(/<br\s*\/?>(\n)?/gi, '\n');
+  s = s.replace(/<[^>]+>/g, '');
+  s = s.replace(/&nbsp;/g, ' ')
+       .replace(/&amp;/g, '&')
+       .replace(/&lt;/g, '<')
+       .replace(/&gt;/g, '>')
+       .replace(/&quot;/g, '"')
+       .replace(/&#39;/g, "'")
+       .replace(/&rsquo;/g, '\u2019')
+       .replace(/&lsquo;/g, '\u2018')
+       .replace(/&rdquo;/g, '\u201d')
+       .replace(/&ldquo;/g, '\u201c')
+       .replace(/&mdash;/g, '\u2014')
+       .replace(/&ndash;/g, '\u2013')
+       .replace(/&hellip;/g, '\u2026')
+       .replace(/&#(\d+);/g, (_m: string, d: string) => String.fromCharCode(parseInt(d, 10)));
+  s = s.replace(/\r\n?/g, '\n');
+  s = s.replace(/[ \t]+\n/g, '\n');
+  s = s.replace(/\n{3,}/g, '\n\n');
+  s = s.replace(/[ \t]{2,}/g, ' ');
+  return s.trim();
+}
+
+// Pick the best body text from a fetched article HTML page.
+function extractArticleBody(html: string): string {
+  const articleMatch = html.match(/<article[\s\S]*?<\/article>/i);
+  if (articleMatch) {
+    const text = htmlToText(articleMatch[0]);
+    if (text.length > 200) return text;
+  }
+  const paragraphs: string[] = [];
+  const pRe = /<p[\s>][\s\S]*?<\/p>/gi;
+  let m: RegExpExecArray | null;
+  while ((m = pRe.exec(html)) !== null) {
+    const txt = htmlToText(m[0]);
+    if (txt.length >= 40) paragraphs.push(txt);
+  }
+  if (paragraphs.length >= 3) return paragraphs.join('\n\n');
+  const ogMatch = html.match(/<meta[^>]+property=["']og:description["'][^>]+content=["']([^"']+)["']/i);
+  const descMatch = html.match(/<meta[^>]+name=["']description["'][^>]+content=["']([^"']+)["']/i);
+  const og = ogMatch ? htmlToText(ogMatch[1]) : '';
+  const desc = descMatch ? htmlToText(descMatch[1]) : '';
+  const combined = [og, desc].filter(Boolean).join('\n\n');
+  return combined || paragraphs.join('\n\n');
+}
+
+// Last-resort fallback for items with no link (legacy fallback news item).
 const ARTICLE_BODIES: Record<string, string> = {
   'Markets selloff': `Global markets continued their sharp decline on Friday as mounting trade tensions and fresh tariff threats rattled investors worldwide. The S&P 500 fell over 1.5%, with the tech-heavy NASDAQ dropping nearly 2%.
 
@@ -80,6 +141,7 @@ export default function NewsArticleScreen() {
     publishedAt?: string;
     symbols?: string;
     category?: string;
+    link?: string;
   }>();
 
   const headline = params.headline ?? 'Article';
@@ -87,7 +149,45 @@ export default function NewsArticleScreen() {
   const publishedAt = params.publishedAt ? Number(params.publishedAt) : Date.now();
   const symbols = params.symbols ? params.symbols.split(',') : [];
   const category = params.category ?? '';
-  const body = getArticleBody(headline);
+  const link = params.link ?? '';
+
+  // Live-fetch the real article body when we have a link. Falls back to
+  // the bundled mock if the fetch fails or returns nothing useful — and
+  // to a final generic message for legacy items with no link at all.
+  const [body, setBody] = useState<string>('');
+  const [loading, setLoading] = useState<boolean>(!!link);
+  const [fetchedFromLink, setFetchedFromLink] = useState(false);
+
+  useEffect(() => {
+    if (!link) {
+      setBody(getArticleBody(headline));
+      setLoading(false);
+      return;
+    }
+    let cancelled = false;
+    setLoading(true);
+    (async () => {
+      try {
+        const proxied = `${CQ_PROXY}?url=${encodeURIComponent(link)}`;
+        const resp = await fetch(proxied, { method: 'GET' });
+        if (!resp.ok) throw new Error('HTTP ' + resp.status);
+        const html = await resp.text();
+        const extracted = extractArticleBody(html);
+        if (cancelled) return;
+        if (extracted && extracted.length > 80) {
+          setBody(extracted);
+          setFetchedFromLink(true);
+        } else {
+          setBody(getArticleBody(headline));
+        }
+      } catch {
+        if (!cancelled) setBody(getArticleBody(headline));
+      } finally {
+        if (!cancelled) setLoading(false);
+      }
+    })();
+    return () => { cancelled = true; };
+  }, [link, headline]);
 
   return (
     <View style={[styles.container, { backgroundColor: C.bg.primary }]}>
@@ -135,17 +235,30 @@ export default function NewsArticleScreen() {
 
       {/* Article body */}
       <ScrollView style={styles.bodyScroll} contentContainerStyle={styles.bodyContent}>
-        {body.split('\n\n').map((paragraph, i) => (
-          <Text key={i} style={[styles.paragraph, { color: C.text.secondary }]}>
-            {paragraph}
-          </Text>
-        ))}
+        {loading ? (
+          <View style={{ paddingVertical: Spacing['2xl'], alignItems: 'center' }}>
+            <ActivityIndicator color={Colors.brand.primary} />
+            <Text style={{ color: C.text.tertiary, marginTop: 12, fontSize: FontSize.sm }}>
+              Loading article...
+            </Text>
+          </View>
+        ) : (
+          body.split('\n\n').map((paragraph, i) => (
+            <Text key={i} style={[styles.paragraph, { color: C.text.secondary }]}>
+              {paragraph}
+            </Text>
+          ))
+        )}
 
-        <View style={[styles.disclaimer, { borderColor: C.border.default }]}>
-          <Text style={[styles.disclaimerText, { color: C.text.tertiary }]}>
-            This article is simulated for the StockQuest virtual trading game. No real financial advice is provided.
-          </Text>
-        </View>
+        {!loading && (
+          <View style={[styles.disclaimer, { borderColor: C.border.default }]}>
+            <Text style={[styles.disclaimerText, { color: C.text.tertiary }]}>
+              {fetchedFromLink
+                ? `Article text from ${source || 'the original publisher'}. Rookie Markets uses virtual money only — no real financial advice is provided.`
+                : 'This article is a placeholder for the Rookie Markets virtual trading game. No real financial advice is provided.'}
+            </Text>
+          </View>
+        )}
       </ScrollView>
     </View>
   );
