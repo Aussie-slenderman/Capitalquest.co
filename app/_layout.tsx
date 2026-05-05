@@ -236,21 +236,79 @@ export default function RootLayout() {
 }
 
 // ─── Moderation Gate ──────────────────────────────────────────────────────────
-// Reads pendingModerationWarning from the current user (set server-side by
-// the moderateChatMessage Cloud Function trigger) and surfaces it in a non-
-// dismissible modal. After acknowledgement the warning is cleared in
-// Firestore. If the warning indicates the account has just been banned
-// (offenseNumber >= 2 / banned:true) we sign the user out and bounce them
-// to the welcome screen — the login screen will then refuse re-entry.
+// Subscribes to the signed-in user's Firestore doc in real time so any
+// moderation action taken by the server-side trigger surfaces immediately
+// — the player doesn't have to log out and back in.
+//
+// Behaviour:
+//   - accountBanned:true → sign out + bounce to welcome with a banned flag
+//     so the login screen shows the explanation.
+//   - pendingModerationWarning present → render the (non-dismissable)
+//     warning modal. On acknowledge, the modal clears the field in
+//     Firestore.
 function ModerationGate() {
   const user = useAppStore((s) => s.user);
+  const setUser = useAppStore((s) => s.setUser);
   const resetUserData = useAppStore((s) => s.resetUserData);
-  const warning = (user as any)?.pendingModerationWarning as ModerationWarning | undefined;
+  const [warning, setWarning] = React.useState<ModerationWarning | null>(null);
   const [dismissed, setDismissed] = React.useState(false);
 
-  // Reset our local "dismissed" flag whenever the user changes (e.g. after
-  // a fresh login) so a brand-new warning will show.
+  // Reset our local "dismissed" flag whenever the user changes so brand-
+  // new warnings always show.
   React.useEffect(() => { setDismissed(false); }, [user?.id]);
+
+  // Live subscription to the user doc — fires whenever moderation updates
+  // it server-side.
+  React.useEffect(() => {
+    if (!user?.id) { setWarning(null); return; }
+    let cancelled = false;
+    let unsub: undefined | (() => void);
+    (async () => {
+      try {
+        const { listenToUser } = await import('../src/services/firebase');
+        unsub = listenToUser(user.id, async (raw) => {
+          if (cancelled) return;
+          const data = raw as Record<string, unknown> | null;
+          if (!data) return;
+
+          // 1. Hard ban — sign the player out immediately.
+          if (data.accountBanned) {
+            try {
+              if (typeof window !== 'undefined' && (window as any).sessionStorage) {
+                (window as any).sessionStorage.setItem('cqAccountBanned', '1');
+              }
+            } catch { /* non-fatal */ }
+            try { await signOut(); } catch { /* non-fatal */ }
+            resetUserData();
+            router.replace('/(auth)/welcome');
+            return;
+          }
+
+          // 2. Pending warning — keep the local user object in sync so
+          //    other parts of the app see the latest fields, then surface
+          //    the modal.
+          const pmw = (data.pendingModerationWarning as unknown) as
+            | ModerationWarning
+            | undefined;
+          if (pmw) {
+            setUser({ ...(user as any), ...data } as any);
+            setWarning(pmw);
+            setDismissed(false);
+          } else {
+            setWarning(null);
+          }
+        });
+      } catch (e) {
+        // Non-fatal — moderation just won't be live in this session.
+        // eslint-disable-next-line no-console
+        console.warn('Moderation listener failed to attach:', e);
+      }
+    })();
+    return () => {
+      cancelled = true;
+      try { if (unsub) unsub(); } catch { /* non-fatal */ }
+    };
+  }, [user?.id]);
 
   if (!warning || dismissed) return null;
 
