@@ -86,7 +86,10 @@ export default function RegisterScreen() {
         email,
       );
       setLoading(false);
-      router.replace('/(auth)/setup');
+      // Send the player to the Terms of Service screen first; once they
+      // tick the acceptance box and tap Continue, they'll be moved on
+      // to /(auth)/setup to choose their starting balance.
+      router.replace('/(auth)/terms' as any);
     } catch (e: unknown) {
       const msg = (e as { message?: string }).message || 'Registration failed. Please try again.';
       setError(msg);

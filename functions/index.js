@@ -501,14 +501,19 @@ Admin dashboard: https://capitalquest.co/admin-dashboard.html
 `;
 
   try {
-    const result = await getResend().emails.send({
+    const sendPayload = {
       from: 'Rookie Markets Reports <reports@capitalquest.co>',
       to: 'rookiemarkets@gmail.com',
-      reply_to: reporterNotificationEmail || undefined,
       subject,
       html,
       text,
-    });
+    };
+    // Only include reply_to when we actually have an address; some SDK
+    // versions reject `undefined` fields with a validation error.
+    if (reporterNotificationEmail && reporterNotificationEmail.includes('@')) {
+      sendPayload.reply_to = reporterNotificationEmail;
+    }
+    const result = await getResend().emails.send(sendPayload);
     if (result && result.error) {
       console.error('reportPlayer Resend error:', JSON.stringify(result.error));
       throw new functions.https.HttpsError('internal', `Resend rejected: ${result.error.message || 'unknown'}`);
