@@ -33,6 +33,7 @@ tr:hover td{background:#0A0E1A66}
 .action-btn{padding:6px 12px;border-radius:8px;font-size:12px;font-weight:700;cursor:pointer;border:none;margin-right:4px}
 .btn-reset{background:#F5C51822;color:#F5C518;border:1px solid #F5C51844}
 .btn-rename{background:#A855F722;color:#A855F7;border:1px solid #A855F744}
+.btn-mod{background:#00B3E622;color:#00B3E6;border:1px solid #00B3E644}
 .btn-delete{background:#FF3D5722;color:#FF3D57;border:1px solid #FF3D5744}
 .btn-view{background:#00B3E622;color:#00B3E6;border:1px solid #00B3E644}
 .spinner-full{display:flex;align-items:center;justify-content:center;height:200px;gap:12px;color:#475569}
@@ -260,6 +261,7 @@ function renderTable(users){
         <button class="action-btn btn-view" onclick="viewInfo('${u.uid}')">View</button>
         <button class="action-btn btn-reset" onclick="openReset('${u.uid}','${esc(u.username)}')">Reset PW</button>
         <button class="action-btn btn-rename" onclick="openRename('${u.uid}','${esc(u.username)}')">Reset User</button>
+        <button class="action-btn btn-mod" onclick="resetModeration('${u.uid}','${esc(u.username)}')">Reset Mod</button>
         ${!u.accountDeleted?`<button class="action-btn btn-delete" onclick="openDelete('${u.uid}','${esc(u.username)}')">Delete</button>`:''}
       </td>
     </tr>`;
@@ -354,6 +356,19 @@ function openDelete(uid,username){
   targetUid=uid; targetUsername=username;
   document.getElementById('delete-desc').textContent='Delete @'+username+'\'s account? Their profile and portfolio data will be removed. This cannot be undone.';
   document.getElementById('delete-modal').classList.add('show');
+}
+
+// Reset chat-moderation state on a player (clears accountBanned, offence
+// counter, and any pendingModerationWarning) so they can sign in again
+// from a clean slate. Useful for QA + reversing a wrongful ban.
+async function resetModeration(uid,username){
+  if(!confirm('Reset moderation state for @'+username+'?\n\nThis will:\n• Clear any active ban\n• Reset offence count to 0\n• Remove any pending warning\n\nThe player can then sign in normally.')) return;
+  try{
+    const fn=fns.httpsCallable('adminResetModeration');
+    await fn({uid});
+    showToast('✅ Moderation reset for @'+username);
+    loadUsers();
+  }catch(e){showToast('⚠️ Error: '+(e.message||'unknown'));}
 }
 
 // Purge all accounts that were soft-deleted (accountDeleted:true) in the old system

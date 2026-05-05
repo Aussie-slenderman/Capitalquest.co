@@ -528,6 +528,40 @@ Admin dashboard: https://capitalquest.co/admin-dashboard.html
   }
 });
 
+/**
+ * adminResetModeration — admin-only callable
+ * Clears the moderation state on a user account: zeroes out
+ * moderationOffenses, removes accountBanned + banReason, and deletes any
+ * pendingModerationWarning. Useful for unbanning a player after review or
+ * for resetting a test account between QA runs.
+ *
+ * Called with: { uid: string }
+ */
+exports.adminResetModeration = functions.https.onCall(async (data, context) => {
+  if (!context.auth) {
+    throw new functions.https.HttpsError('unauthenticated', 'You must be signed in.');
+  }
+  const callerEmail = (context.auth.token.email || '').toLowerCase();
+  if (!ADMIN_EMAILS.includes(callerEmail)) {
+    throw new functions.https.HttpsError('permission-denied', 'Not authorised.');
+  }
+  const uid = data && data.uid;
+  if (!uid || typeof uid !== 'string') {
+    throw new functions.https.HttpsError('invalid-argument', 'uid is required.');
+  }
+  await admin.firestore().collection('users').doc(uid).update({
+    moderationOffenses: 0,
+    accountBanned: admin.firestore.FieldValue.delete(),
+    banReason: admin.firestore.FieldValue.delete(),
+    bannedAt: admin.firestore.FieldValue.delete(),
+    pendingModerationWarning: admin.firestore.FieldValue.delete(),
+    moderationResetAt: admin.firestore.FieldValue.serverTimestamp(),
+    moderationResetBy: callerEmail,
+  });
+  console.log(`adminResetModeration: cleared uid=${uid} by ${callerEmail}`);
+  return { success: true };
+});
+
 /* ════════════════════════════════════════════════════════════════════════════
  *  AUTOMATED CHAT MODERATION
  * ════════════════════════════════════════════════════════════════════════════
