@@ -1,13 +1,19 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   View, Text, StyleSheet, TouchableOpacity,
   TextInput, KeyboardAvoidingView, Platform, ScrollView, Image,
 } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { router } from 'expo-router';
-import { loginUser } from '../../src/services/auth';
+import { loginUser, signOut } from '../../src/services/auth';
 import { setLoginInProgress } from '../_layout';
 import { Colors, FontSize, FontWeight, Spacing, Radius } from '../../src/constants/theme';
+import { auth, db } from '../../src/services/firebase';
+import { doc, getDoc } from 'firebase/firestore';
+
+const BANNED_MESSAGE =
+  'Your account has been banned for repeated violations of our community guidelines. ' +
+  'If you believe this was a mistake, contact rookiemarkets@gmail.com.';
 
 const ROOKIE_MARKETS_LOGO = require('../../assets/rookie-markets-logo.png');
 
@@ -16,6 +22,19 @@ export default function LoginScreen() {
   const [password, setPassword] = useState('');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
+
+  // If the user was just signed out due to a ban (set by the moderation
+  // gate or root layout), surface that message immediately on mount.
+  useEffect(() => {
+    try {
+      if (typeof window !== 'undefined' && (window as any).sessionStorage) {
+        if ((window as any).sessionStorage.getItem('cqAccountBanned') === '1') {
+          setError(BANNED_MESSAGE);
+          (window as any).sessionStorage.removeItem('cqAccountBanned');
+        }
+      }
+    } catch { /* non-fatal */ }
+  }, []);
 
   const handleLogin = async () => {
     setError('');
@@ -26,6 +45,22 @@ export default function LoginScreen() {
     setLoginInProgress(true);
     try {
       await loginUser(username.trim().toLowerCase(), password);
+      // Server-side ban check — refuse the session if the account doc has
+      // accountBanned: true. Pulled directly so we don't rely on the auth
+      // listener race.
+      try {
+        const u = auth.currentUser;
+        if (u) {
+          const snap = await getDoc(doc(db, 'users', u.uid));
+          if (snap.exists() && (snap.data() as any).accountBanned) {
+            try { await signOut(); } catch { /* non-fatal */ }
+            setLoginInProgress(false);
+            setError(BANNED_MESSAGE);
+            setLoading(false);
+            return;
+          }
+        }
+      } catch { /* non-fatal — auth listener will catch it as fallback */ }
       // Navigate immediately to dashboard. The auth listener will still fire
       // and load user data / portfolio in the background.
       router.replace('/(app)/dashboard');

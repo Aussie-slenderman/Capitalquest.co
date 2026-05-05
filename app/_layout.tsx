@@ -10,6 +10,8 @@ import { getPortfolio, getPortfolioHistory } from '../src/services/firebase';
 import { useAppStore } from '../src/store/useAppStore';
 import { Colors } from '../src/constants/theme';
 import AchievementOverlay from '../src/components/AchievementOverlay';
+import ModerationWarningModal, { ModerationWarning } from '../src/components/ModerationWarningModal';
+import { signOut } from '../src/services/auth';
 
 // ─── Error Boundary ───────────────────────────────────────────────────────────
 interface EBState { hasError: boolean; error: Error | null }
@@ -116,6 +118,28 @@ export default function RootLayout() {
           });
         }
 
+        // ── Ban enforcement ──────────────────────────────────────────────
+        // If the moderator system has flagged this account as banned, sign
+        // them out immediately and bounce to the welcome screen with a
+        // session-storage flag the welcome / login screen can read to show
+        // the "Your account has been banned" message.
+        {
+          const banFlag = (userData as Record<string, unknown>).accountBanned;
+          if (banFlag) {
+            try {
+              if (typeof window !== 'undefined' && (window as any).sessionStorage) {
+                (window as any).sessionStorage.setItem('cqAccountBanned', '1');
+              }
+            } catch { /* non-fatal */ }
+            try { await signOut(); } catch { /* non-fatal */ }
+            resetUserData();
+            setAuthLoading(false);
+            try { await SplashScreen.hideAsync(); } catch { /* non-fatal */ }
+            router.replace('/(auth)/welcome');
+            return;
+          }
+        }
+
         // Always set the user — even if a newer auth event fired while we were
         // awaiting, the user should never be left as null when authenticated.
         setUser(userData as import('../src/types').User);
@@ -205,7 +229,49 @@ export default function RootLayout() {
         </Stack>
         <Toast />
         <AchievementOverlay />
+        <ModerationGate />
       </GestureHandlerRootView>
     </ErrorBoundary>
+  );
+}
+
+// ─── Moderation Gate ──────────────────────────────────────────────────────────
+// Reads pendingModerationWarning from the current user (set server-side by
+// the moderateChatMessage Cloud Function trigger) and surfaces it in a non-
+// dismissible modal. After acknowledgement the warning is cleared in
+// Firestore. If the warning indicates the account has just been banned
+// (offenseNumber >= 2 / banned:true) we sign the user out and bounce them
+// to the welcome screen — the login screen will then refuse re-entry.
+function ModerationGate() {
+  const user = useAppStore((s) => s.user);
+  const resetUserData = useAppStore((s) => s.resetUserData);
+  const warning = (user as any)?.pendingModerationWarning as ModerationWarning | undefined;
+  const [dismissed, setDismissed] = React.useState(false);
+
+  // Reset our local "dismissed" flag whenever the user changes (e.g. after
+  // a fresh login) so a brand-new warning will show.
+  React.useEffect(() => { setDismissed(false); }, [user?.id]);
+
+  if (!warning || dismissed) return null;
+
+  return (
+    <ModerationWarningModal
+      visible={true}
+      warning={warning}
+      onAcknowledged={async () => {
+        setDismissed(true);
+        if (warning.banned) {
+          // Ban becomes effective immediately on acknowledge.
+          try {
+            if (typeof window !== 'undefined' && (window as any).sessionStorage) {
+              (window as any).sessionStorage.setItem('cqAccountBanned', '1');
+            }
+          } catch { /* non-fatal */ }
+          try { await signOut(); } catch { /* non-fatal */ }
+          resetUserData();
+          router.replace('/(auth)/welcome');
+        }
+      }}
+    />
   );
 }

@@ -528,6 +528,226 @@ Admin dashboard: https://capitalquest.co/admin-dashboard.html
   }
 });
 
+/* ════════════════════════════════════════════════════════════════════════════
+ *  AUTOMATED CHAT MODERATION
+ * ════════════════════════════════════════════════════════════════════════════
+ * Firestore trigger that fires on every new chat message in any chat room
+ * (clubs, DMs, etc.). The message text is normalized (lower-cased, leet-
+ * speak un-obfuscated, punctuation-stripped) and matched against curated
+ * wordlists + theme phrases for: sexual content, anatomy, profanity, hate
+ * speech / slurs, bullying, and mental-health red flags.
+ *
+ * On match:
+ *   - First offence  → set pendingModerationWarning on the user doc; the
+ *                      client shows it on next sign-in and clears it.
+ *   - Second offence → flip accountBanned=true; the client signs them out
+ *                      and the login flow refuses any further sign-in.
+ *   - Either way the offending message is deleted so other players never
+ *     see it, and a record is written to moderationLog/ for audit.
+ * ──────────────────────────────────────────────────────────────────────── */
+
+const MODERATION_WORDLISTS = {
+  // Single-word matches (whole-word, after normalization). Keep this list
+  // tight to avoid false positives like "assassin" or "Scunthorpe".
+  sexual: [
+    'sex', 'sexy', 'porn', 'pornhub', 'nude', 'nudes', 'naked', 'horny',
+    'orgasm', 'erection', 'cum', 'jizz', 'masturbate', 'masturbation',
+    'fuckme', 'sext', 'sexting', 'blowjob', 'handjob', 'anal',
+  ],
+  anatomy: [
+    'penis', 'dick', 'cock', 'vagina', 'pussy', 'boobs', 'tits', 'titties',
+    'nipples', 'balls', 'scrotum', 'butthole', 'asshole', 'arsehole',
+  ],
+  profanity: [
+    'fuck', 'fucker', 'fucking', 'fuckin', 'motherfucker',
+    'fuk', 'fuking', 'fukin', 'fck', 'fcking',
+    'shit', 'bullshit', 'bitch', 'bitches', 'bastard', 'asshat',
+    'crap', 'piss', 'pissed', 'damn', 'goddamn', 'wtf', 'stfu', 'fml',
+  ],
+  hate: [
+    // Racial / ethnic / sexual-orientation slurs. Listed only because the
+    // moderator must catch them; not used or repeated anywhere else.
+    'nigger', 'nigga', 'kike', 'spic', 'chink', 'gook', 'wetback',
+    'faggot', 'fag', 'tranny', 'dyke', 'retard', 'retarded',
+  ],
+  bullying: [
+    'kys', // "kill yourself" abbreviated
+    'loser', 'losers', 'idiot', 'idiots', 'stupid', 'moron', 'dumbass',
+    'ugly', 'fatso', 'fat',
+  ],
+};
+
+const MODERATION_PHRASES = {
+  bullying: [
+    'kill yourself', 'kill your self', 'go die', 'you should die', 'i hate you',
+    'no one likes you', 'nobody likes you', 'no one cares', 'nobody cares',
+    'you are worthless', "you're worthless", 'you are stupid', "you're stupid",
+    'shut up', 'shut the fuck up',
+  ],
+  mental_health: [
+    'want to die', 'wanna die', 'want to kill myself', 'wanna kill myself',
+    'kill myself', 'end it all', 'end my life', 'hurt myself', 'cut myself',
+    'self harm', 'self-harm', 'suicide', 'suicidal',
+  ],
+};
+
+const CATEGORY_LABELS = {
+  sexual: 'Sexual content',
+  anatomy: 'Anatomical / private-parts language',
+  profanity: 'Profanity / swearing',
+  hate: 'Hate speech or a slur',
+  bullying: 'Bullying language',
+  mental_health: 'Mental-health-related language',
+};
+
+// Convert common leet-speak / obfuscation back to letters so "f*ck",
+// "f.u.c.k", "fuk", "fu_ck" all normalize to "fuck" before we search.
+function normalizeForModeration(input) {
+  if (!input || typeof input !== 'string') return '';
+  let t = input.toLowerCase();
+  // Replace common substitutions
+  t = t.replace(/[@4]/g, 'a')
+       .replace(/[3]/g, 'e')
+       .replace(/[1|]/g, 'i')
+       .replace(/[0]/g, 'o')
+       .replace(/[5$]/g, 's')
+       .replace(/[7]/g, 't');
+  // Strip everything that isn't a letter or whitespace so things like
+  // "f.u.c.k" or "f*u*c*k" collapse to "fuck".
+  t = t.replace(/[^a-z\s]+/g, '');
+  // Collapse repeated spaces
+  t = t.replace(/\s+/g, ' ').trim();
+  return t;
+}
+
+// Returns the first violation found, or null if the message is clean.
+function detectModerationViolation(rawText) {
+  const norm = normalizeForModeration(rawText);
+  if (!norm) return null;
+  // Words: split into tokens for whole-word matching, plus check the
+  // unspaced version so things like "fuckyou" still trip "fuck".
+  const tokens = new Set(norm.split(' '));
+  const collapsed = norm.replace(/\s+/g, '');
+  for (const [category, words] of Object.entries(MODERATION_WORDLISTS)) {
+    for (const w of words) {
+      if (tokens.has(w)) {
+        return { category, matched: w, kind: 'word' };
+      }
+      // Catch concatenations like "fuckyou", "killyourself", etc. We
+      // require length >= 6 to avoid false positives like "anal" matching
+      // inside "analyst" or "ass" inside "assassin".
+      if (w.length >= 6 && collapsed.includes(w)) {
+        return { category, matched: w, kind: 'word' };
+      }
+    }
+  }
+  // Phrases: check substring against the spaced normalized text.
+  for (const [category, phrases] of Object.entries(MODERATION_PHRASES)) {
+    for (const p of phrases) {
+      if (norm.includes(p)) {
+        return { category, matched: p, kind: 'phrase' };
+      }
+    }
+  }
+  return null;
+}
+
+exports.moderateChatMessage = functions.firestore
+  .document('chatRooms/{roomId}/messages/{messageId}')
+  .onCreate(async (snap, context) => {
+    const msg = snap.data() || {};
+    const text = String(msg.text || '');
+    const senderId = msg.senderId;
+    const roomId = context.params.roomId;
+    const messageId = context.params.messageId;
+
+    // Skip non-text messages (trade proposals etc.) — there's no free-text
+    // content to moderate.
+    if (!text || msg.type !== 'text') return null;
+    if (!senderId) return null;
+
+    const violation = detectModerationViolation(text);
+    if (!violation) return null;
+
+    const db = admin.firestore();
+    const userRef = db.collection('users').doc(senderId);
+
+    try {
+      // Run the offence escalation in a transaction so two concurrent bad
+      // messages can't both register as "first offence".
+      const decision = await db.runTransaction(async (tx) => {
+        const userSnap = await tx.get(userRef);
+        if (!userSnap.exists) {
+          return { action: 'no_user', offences: 0 };
+        }
+        const data = userSnap.data() || {};
+        const prior = Number(data.moderationOffenses || 0);
+        const newCount = prior + 1;
+
+        const warningPayload = {
+          category: violation.category,
+          categoryLabel: CATEGORY_LABELS[violation.category] || violation.category,
+          matched: violation.matched,
+          messageExcerpt: text.slice(0, 200),
+          roomId,
+          messageId,
+          detectedAt: Date.now(),
+          offenseNumber: newCount,
+        };
+
+        if (prior === 0) {
+          tx.update(userRef, {
+            moderationOffenses: newCount,
+            pendingModerationWarning: warningPayload,
+            lastModerationAt: admin.firestore.FieldValue.serverTimestamp(),
+          });
+          return { action: 'warn', offences: newCount, payload: warningPayload };
+        }
+
+        // Second (or later) offence — ban the account.
+        tx.update(userRef, {
+          moderationOffenses: newCount,
+          accountBanned: true,
+          banReason: `Repeated chat-moderation violation (${warningPayload.categoryLabel.toLowerCase()})`,
+          bannedAt: admin.firestore.FieldValue.serverTimestamp(),
+          pendingModerationWarning: { ...warningPayload, banned: true },
+          lastModerationAt: admin.firestore.FieldValue.serverTimestamp(),
+        });
+        return { action: 'ban', offences: newCount, payload: warningPayload };
+      });
+
+      // Delete the offending message so other players never see it.
+      try { await snap.ref.delete(); } catch (e) {
+        console.warn('moderateChatMessage: could not delete message:', e && e.message);
+      }
+
+      // Audit log entry — admin can review via /admin-dashboard.html.
+      try {
+        await db.collection('moderationLog').add({
+          senderId,
+          senderUsername: msg.senderName || '',
+          roomId,
+          messageId,
+          messageText: text,
+          violation,
+          decision: decision.action,
+          offences: decision.offences,
+          createdAt: admin.firestore.FieldValue.serverTimestamp(),
+        });
+      } catch (e) {
+        console.warn('moderationLog write failed:', e && e.message);
+      }
+
+      console.log(
+        `moderateChatMessage: ${decision.action} for uid=${senderId} category=${violation.category} matched="${violation.matched}" offences=${decision.offences}`,
+      );
+      return null;
+    } catch (err) {
+      console.error('moderateChatMessage failed:', err && err.message);
+      return null;
+    }
+  });
+
 function toFiniteNumber(value, fallback = 0) {
   const num = Number(value);
   return Number.isFinite(num) ? num : fallback;
