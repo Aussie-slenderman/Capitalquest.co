@@ -76,11 +76,13 @@ try{firebase.initializeApp({apiKey:'AIzaSyCP1AcnDTU2umjR3cGycRxQ5mwOFq4Xjgg',aut
 const auth = firebase.auth();
 
 // ── Credentials ──────────────────────────────────────────────────────────────
-const ALLOWED = { 'theosmales1@gmail.com': 'Bondi2025' };
+// Only theosmales1@gmail.com / Bondi2025 is authorised. The same credentials
+// are used to sign in to Firebase Auth so the Cloud Functions see the real
+// admin email and grant full permissions.
+const ADMIN_EMAIL = 'theosmales1@gmail.com';
+const ADMIN_PW    = 'Bondi2025';
+const ALLOWED = { [ADMIN_EMAIL]: ADMIN_PW };
 const MOD_SESSION_KEY = 'cqModSession';
-// Internal Firebase Auth account (email/password — never shown to user)
-const MOD_FB_EMAIL = 'cq.admin.mod@capitalquest.app';
-const MOD_FB_PW    = 'CQAdmin!Mod2026';
 
 // ── EmailJS ───────────────────────────────────────────────────────────────────
 const EJ_PUBLIC_KEY  = 'lneCy8iqRXbKjHt2A';
@@ -132,13 +134,9 @@ async function doStep2(){
   try{
     // Ensure auth state persists across page navigation
     await auth.setPersistence(firebase.auth.Auth.Persistence.LOCAL);
-    // Try to sign in with internal Firebase account
-    try{
-      await auth.signInWithEmailAndPassword(MOD_FB_EMAIL, MOD_FB_PW);
-    }catch(e){
-      // Account doesn't exist yet — create it (only happens once ever)
-      await auth.createUserWithEmailAndPassword(MOD_FB_EMAIL, MOD_FB_PW);
-    }
+    // Sign in directly as the real admin account so the Cloud Functions
+    // see callerEmail === theosmales1@gmail.com and grant full permissions.
+    await auth.signInWithEmailAndPassword(ADMIN_EMAIL, ADMIN_PW);
     // Wait for auth state to fully persist before redirecting
     await new Promise(r => setTimeout(r, 500));
     sessionStorage.setItem(MOD_SESSION_KEY, 'granted');

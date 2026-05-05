@@ -301,6 +301,228 @@ function escapeHtml(s) {
   return String(s).replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
 }
 
+/**
+ * reportPlayer — authenticated callable
+ * Lets a player report another player. Sends a formatted email to the
+ * moderation inbox (rookiemarkets@gmail.com) and stores a record in
+ * Firestore `reports/` for audit.
+ *
+ * Called with: {
+ *   reportedUid:       string,           // UID of reported player
+ *   reportedUsername:  string,           // username of reported player
+ *   reason:            'sexual_hateful' | 'scamming' | 'harassment'
+ *                    | 'spam' | 'other',
+ *   details:           string,           // free-text description
+ *   context:           'friend' | 'club' | 'chat' | 'unknown',
+ *   clubName?:         string,           // when context === 'club'
+ *   chatMessage?:      string,           // when context === 'chat'
+ *   chatRoomId?:       string,           // when context === 'chat'
+ * }
+ *
+ * Per-reporter rate limit: max 10 reports / 1 hour.
+ */
+const REPORT_REASON_LABELS = {
+  sexual_hateful: 'Sexual or hateful comment',
+  scamming: 'Scamming',
+  harassment: 'Harassment / bullying',
+  spam: 'Spam / unwanted messages',
+  other: 'Other',
+};
+
+exports.reportPlayer = functions.https.onCall(async (data, context) => {
+  if (!context.auth) {
+    throw new functions.https.HttpsError('unauthenticated', 'You must be signed in to report a player.');
+  }
+  const reporterUid = context.auth.uid;
+  const reporterEmail = (context.auth.token.email || '').toLowerCase();
+
+  const reportedUid = data && data.reportedUid;
+  const reportedUsername = data && data.reportedUsername;
+  const reason = data && data.reason;
+  const details = (data && typeof data.details === 'string') ? data.details.trim().slice(0, 2000) : '';
+  const ctx = (data && data.context) || 'unknown';
+  const clubName = (data && typeof data.clubName === 'string') ? data.clubName.trim().slice(0, 100) : '';
+  const chatMessage = (data && typeof data.chatMessage === 'string') ? data.chatMessage.trim().slice(0, 1000) : '';
+  const chatRoomId = (data && typeof data.chatRoomId === 'string') ? data.chatRoomId.slice(0, 200) : '';
+
+  if (!reportedUid || typeof reportedUid !== 'string') {
+    throw new functions.https.HttpsError('invalid-argument', 'reportedUid is required.');
+  }
+  if (!reportedUsername || typeof reportedUsername !== 'string') {
+    throw new functions.https.HttpsError('invalid-argument', 'reportedUsername is required.');
+  }
+  if (!reason || !REPORT_REASON_LABELS[reason]) {
+    throw new functions.https.HttpsError('invalid-argument', 'Valid reason is required.');
+  }
+  if (reportedUid === reporterUid) {
+    throw new functions.https.HttpsError('invalid-argument', 'You cannot report yourself.');
+  }
+
+  const db = admin.firestore();
+
+  // ── Rate limit: max 10 reports / 1 hour per reporter ───────────────
+  const now = Date.now();
+  const limitDoc = db.collection('reportRateLimit').doc(reporterUid);
+  try {
+    const snap = await limitDoc.get();
+    const rl = snap.exists ? (snap.data() || {}) : {};
+    const recent = (rl.sends || []).filter((t) => now - t < 60 * 60 * 1000);
+    if (recent.length >= 10) {
+      throw new functions.https.HttpsError(
+        'resource-exhausted',
+        'Too many reports submitted recently. Please try again later.'
+      );
+    }
+    recent.push(now);
+    await limitDoc.set({ sends: recent }, { merge: true });
+  } catch (err) {
+    if (err && err.code === 'resource-exhausted') throw err;
+    console.warn('reportPlayer: rate-limit check skipped:', err && err.message);
+  }
+
+  // ── Look up reporter's username for the email ──────────────────────
+  let reporterUsername = '';
+  let reporterDisplayName = '';
+  let reporterNotificationEmail = '';
+  try {
+    const rDoc = await db.collection('users').doc(reporterUid).get();
+    if (rDoc.exists) {
+      const rd = rDoc.data() || {};
+      reporterUsername = rd.username || '';
+      reporterDisplayName = rd.displayName || rd.username || '';
+      reporterNotificationEmail = rd.notificationEmail || '';
+    }
+  } catch (e) { /* non-fatal */ }
+
+  const reasonLabel = REPORT_REASON_LABELS[reason];
+  const submittedAt = new Date(now).toISOString();
+
+  // ── Persist to Firestore for audit ─────────────────────────────────
+  const reportRef = db.collection('reports').doc();
+  const reportRecord = {
+    id: reportRef.id,
+    reportedUid,
+    reportedUsername,
+    reporterUid,
+    reporterUsername,
+    reporterEmail,
+    reporterNotificationEmail,
+    reason,
+    reasonLabel,
+    details,
+    context: ctx,
+    clubName: clubName || null,
+    chatMessage: chatMessage || null,
+    chatRoomId: chatRoomId || null,
+    createdAt: admin.firestore.FieldValue.serverTimestamp(),
+    status: 'open',
+  };
+  try { await reportRef.set(reportRecord); } catch (e) {
+    console.warn('reportPlayer: Firestore write failed:', e && e.message);
+  }
+
+  // ── Build context-specific email sections ──────────────────────────
+  const ctxLabel = ctx === 'friend' ? 'Friends list'
+                 : ctx === 'club'   ? `Club roster${clubName ? ` — “${clubName}”` : ''}`
+                 : ctx === 'chat'   ? 'Chat message'
+                 : 'Unknown';
+
+  let reasonExtraHtml = '';
+  let reasonExtraText = '';
+  if (reason === 'sexual_hateful' || reason === 'harassment') {
+    reasonExtraHtml += `<p style="margin:0 0 6px;color:#94A3B8;font-size:13px;"><strong style="color:#F1F5F9;">⚠️ Action priority:</strong> High — possible community-guideline violation.</p>`;
+    reasonExtraText += `\nAction priority: High — possible community-guideline violation.`;
+  }
+  if (reason === 'scamming') {
+    reasonExtraHtml += `<p style="margin:0 0 6px;color:#94A3B8;font-size:13px;"><strong style="color:#F1F5F9;">💰 Action priority:</strong> Investigate trade proposals & friend interactions involving the reported user.</p>`;
+    reasonExtraText += `\nAction priority: Investigate trade proposals & friend interactions involving the reported user.`;
+  }
+  if (reason === 'spam') {
+    reasonExtraHtml += `<p style="margin:0 0 6px;color:#94A3B8;font-size:13px;"><strong style="color:#F1F5F9;">📨 Action priority:</strong> Review chat history for repeated/unsolicited messages.</p>`;
+    reasonExtraText += `\nAction priority: Review chat history for repeated/unsolicited messages.`;
+  }
+
+  const chatBlockHtml = chatMessage
+    ? `<div style="background:#1A2235;border:1px solid #1E2940;border-radius:12px;padding:14px;margin:8px 0 16px;">
+         <div style="color:#64748B;font-size:11px;text-transform:uppercase;letter-spacing:.05em;margin:0 0 6px;">Reported message</div>
+         <div style="color:#F1F5F9;font-size:14px;line-height:1.5;white-space:pre-wrap;">${escapeHtml(chatMessage)}</div>
+         ${chatRoomId ? `<div style="color:#475569;font-size:11px;margin-top:8px;">room: ${escapeHtml(chatRoomId)}</div>` : ''}
+       </div>` : '';
+  const chatBlockText = chatMessage
+    ? `\n\n--- Reported message ---\n${chatMessage}${chatRoomId ? `\n(room: ${chatRoomId})` : ''}\n------------------------\n` : '';
+
+  const detailsBlockHtml = details
+    ? `<div style="background:#1A2235;border:1px solid #1E2940;border-radius:12px;padding:14px;margin:8px 0 16px;">
+         <div style="color:#64748B;font-size:11px;text-transform:uppercase;letter-spacing:.05em;margin:0 0 6px;">Reporter's details</div>
+         <div style="color:#F1F5F9;font-size:14px;line-height:1.5;white-space:pre-wrap;">${escapeHtml(details)}</div>
+       </div>` : '<p style="color:#64748B;font-size:13px;margin:0 0 16px;"><em>No additional details provided.</em></p>';
+  const detailsBlockText = details
+    ? `\n\nReporter's details:\n${details}` : '\n\nNo additional details provided.';
+
+  const subject = `[Report] @${reportedUsername} — ${reasonLabel}`;
+
+  const html = `<!DOCTYPE html>
+<html><head><meta charset="utf-8"><title>${escapeHtml(subject)}</title></head>
+<body style="font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;background:#0A0E1A;color:#F1F5F9;margin:0;padding:40px 20px;">
+  <div style="max-width:560px;margin:0 auto;background:#111827;border:1px solid #1E2940;border-radius:16px;padding:32px;">
+    <h1 style="color:#FF3D57;margin:0 0 4px;font-size:18px;">🚩 New Player Report</h1>
+    <p style="color:#64748B;font-size:12px;margin:0 0 20px;">Submitted ${submittedAt}</p>
+
+    <table style="width:100%;border-collapse:collapse;margin:0 0 16px;font-size:14px;">
+      <tr><td style="padding:6px 0;color:#94A3B8;width:130px;">Reported player</td><td style="padding:6px 0;color:#F1F5F9;font-weight:700;">@${escapeHtml(reportedUsername)}</td></tr>
+      <tr><td style="padding:6px 0;color:#94A3B8;">Reported UID</td><td style="padding:6px 0;color:#F1F5F9;font-family:'SF Mono','Menlo',monospace;font-size:12px;">${escapeHtml(reportedUid)}</td></tr>
+      <tr><td style="padding:6px 0;color:#94A3B8;">Reason</td><td style="padding:6px 0;color:#F5C518;font-weight:700;">${escapeHtml(reasonLabel)}</td></tr>
+      <tr><td style="padding:6px 0;color:#94A3B8;">Where reported</td><td style="padding:6px 0;color:#F1F5F9;">${escapeHtml(ctxLabel)}</td></tr>
+      <tr><td style="padding:6px 0;color:#94A3B8;">Reporter</td><td style="padding:6px 0;color:#F1F5F9;">@${escapeHtml(reporterUsername || '(unknown)')} <span style="color:#64748B;font-size:12px;">(${escapeHtml(reporterEmail || '—')})</span></td></tr>
+      <tr><td style="padding:6px 0;color:#94A3B8;">Reporter UID</td><td style="padding:6px 0;color:#F1F5F9;font-family:'SF Mono','Menlo',monospace;font-size:12px;">${escapeHtml(reporterUid)}</td></tr>
+    </table>
+
+    ${reasonExtraHtml}
+    ${chatBlockHtml}
+    ${detailsBlockHtml}
+
+    <hr style="border:none;border-top:1px solid #1E2940;margin:20px 0;"/>
+    <p style="color:#64748B;font-size:12px;line-height:1.6;margin:0 0 6px;">Report ID: <code style="color:#94A3B8;">${reportRef.id}</code></p>
+    <p style="color:#64748B;font-size:12px;line-height:1.6;margin:0;">Open the admin dashboard to review the reported account: <a href="https://capitalquest.co/admin-dashboard.html" style="color:#00B3E6;">admin-dashboard.html</a></p>
+  </div>
+</body></html>`;
+
+  const text = `New Player Report
+Submitted ${submittedAt}
+
+Reported player:    @${reportedUsername}  (uid: ${reportedUid})
+Reason:             ${reasonLabel}
+Where reported:     ${ctxLabel}
+Reporter:           @${reporterUsername || '(unknown)'} (${reporterEmail || '—'}) (uid: ${reporterUid})
+${reasonExtraText}${chatBlockText}${detailsBlockText}
+
+Report ID: ${reportRef.id}
+Admin dashboard: https://capitalquest.co/admin-dashboard.html
+`;
+
+  try {
+    const result = await getResend().emails.send({
+      from: 'Rookie Markets Reports <reports@capitalquest.co>',
+      to: 'rookiemarkets@gmail.com',
+      reply_to: reporterNotificationEmail || undefined,
+      subject,
+      html,
+      text,
+    });
+    if (result && result.error) {
+      console.error('reportPlayer Resend error:', JSON.stringify(result.error));
+      throw new functions.https.HttpsError('internal', `Resend rejected: ${result.error.message || 'unknown'}`);
+    }
+    const id = result && result.data && result.data.id;
+    console.log(`reportPlayer: ${reason} report by ${reporterUid} for ${reportedUid} sent (msg=${id || '?'} reportId=${reportRef.id})`);
+    return { success: true, reportId: reportRef.id };
+  } catch (err) {
+    if (err && err.code && typeof err.code === 'string' && err.code.startsWith('functions/')) throw err;
+    console.error('reportPlayer failed:', err && err.message);
+    throw new functions.https.HttpsError('internal', `Failed to send report: ${err && err.message ? err.message : 'unknown'}`);
+  }
+});
+
 function toFiniteNumber(value, fallback = 0) {
   const num = Number(value);
   return Number.isFinite(num) ? num : fallback;

@@ -43,6 +43,7 @@ import {
 } from '../../src/services/auth';
 import AppHeader from '../../src/components/AppHeader';
 import Sidebar from '../../src/components/Sidebar';
+import ReportPlayerModal, { ReportContext, ReportReason } from '../../src/components/ReportPlayerModal';
 import { useAppStore } from '../../src/store/useAppStore';
 import { Colors, LightColors, FontSize, FontWeight, Spacing, Radius } from '../../src/constants/theme';
 import { formatCurrency, formatShares, formatRelativeTime } from '../../src/utils/formatters';
@@ -112,6 +113,7 @@ function ClubDigestHeader({ club }: { club: Club }) {
   const DC = dgAppColorMode === 'light' ? LightColors : Colors;
   const [sorted, setSorted] = useState<LeaderboardEntry[]>([]);
   const [digestLoading, setDigestLoading] = useState(true);
+  const [reportTarget, setReportTarget] = useState<{ uid: string; username: string } | null>(null);
 
   // Fetch leaderboard data for club members on mount
   useEffect(() => {
@@ -211,11 +213,30 @@ function ClubDigestHeader({ club }: { club: Club }) {
             <Text style={[digestStyles.memberGain, { color: gainColor }]}>
               {m.gainDollars >= 0 ? '+' : ''}{formatCurrency(m.gainDollars)}
             </Text>
+            {!isCurrentUser && (
+              <TouchableOpacity
+                style={digestStyles.reportBtn}
+                onPress={() => setReportTarget({ uid: m.userId, username: m.username })}
+                hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+                accessibilityLabel={`Report ${m.username}`}
+              >
+                <Text style={digestStyles.reportBtnText}>🚩</Text>
+              </TouchableOpacity>
+            )}
           </View>
         );
       })}
 
       <View style={digestStyles.divider} />
+
+      <ReportPlayerModal
+        visible={!!reportTarget}
+        onClose={() => setReportTarget(null)}
+        reportedUid={reportTarget?.uid || ''}
+        reportedUsername={reportTarget?.username || ''}
+        context="club"
+        clubName={club.name}
+      />
     </View>
   );
 }
@@ -305,6 +326,16 @@ const digestStyles = StyleSheet.create({
     fontSize: FontSize.base,
     fontWeight: FontWeight.bold,
   },
+  reportBtn: {
+    marginLeft: Spacing.xs,
+    paddingHorizontal: 6,
+    paddingVertical: 4,
+    borderRadius: Radius.sm,
+  },
+  reportBtnText: {
+    fontSize: 14,
+    color: Colors.market.loss,
+  },
   youBadge: {
     backgroundColor: Colors.brand.primary,
     paddingHorizontal: 5,
@@ -360,6 +391,9 @@ function ChatModal({
   // when the DM opens. Defaults to false so the button stays hidden until
   // we've confirmed access.
   const [canViewDmPortfolio, setCanViewDmPortfolio] = useState(false);
+  const [reportTarget, setReportTarget] = useState<
+    { uid: string; username: string; message: string } | null
+  >(null);
 
   useEffect(() => {
     if (!room) return;
@@ -527,7 +561,18 @@ function ChatModal({
         {!isOwn && (
           <Text style={styles.messageSenderName}>{item.senderName}</Text>
         )}
-        <View
+        <TouchableOpacity
+          activeOpacity={0.85}
+          delayLongPress={350}
+          onLongPress={() => {
+            // Don't allow reporting your own messages.
+            if (isOwn) return;
+            setReportTarget({
+              uid: item.senderId,
+              username: item.senderName || 'player',
+              message: item.text || '',
+            });
+          }}
           style={[
             styles.messageBubble,
             isOwn ? styles.bubbleOwn : styles.bubbleOther,
@@ -536,7 +581,7 @@ function ChatModal({
           <Text style={[styles.messageText, { color: '#FFFFFF' }]}>
             {item.text}
           </Text>
-        </View>
+        </TouchableOpacity>
         <Text style={[styles.messageTime, { color: CMC.text.tertiary }]}>{formatRelativeTime(item.timestamp)}</Text>
       </View>
     );
@@ -694,6 +739,16 @@ function ChatModal({
             </View>
           </View>
         </Modal>
+
+        <ReportPlayerModal
+          visible={!!reportTarget}
+          onClose={() => setReportTarget(null)}
+          reportedUid={reportTarget?.uid || ''}
+          reportedUsername={reportTarget?.username || ''}
+          context="chat"
+          chatMessage={reportTarget?.message || ''}
+          chatRoomId={room?.id || ''}
+        />
 
       </SafeAreaView>
     </Modal>
@@ -1426,6 +1481,9 @@ function FindFriendsTab() {
   const [friendChatRoom, setFriendChatRoom] = useState<ChatRoom | null>(null);
   const [friendChatVisible, setFriendChatVisible] = useState(false);
 
+  // ── Report modal state ──
+  const [reportTarget, setReportTarget] = useState<{ uid: string; username: string } | null>(null);
+
   // ── Load friends list ──
   const [friends, setFriends] = useState<UserResult[]>([]);
   const [loadingFriends, setLoadingFriends] = useState(false);
@@ -1789,6 +1847,13 @@ function FindFriendsTab() {
               >
                 <Text style={[styles.sendMsgBtnText, { color: Colors.market.loss }]}>Remove</Text>
               </TouchableOpacity>
+              <TouchableOpacity
+                style={[styles.sendMsgBtn, { backgroundColor: Colors.market.loss, borderColor: Colors.market.loss }]}
+                onPress={() => setReportTarget({ uid: f.id, username: f.username })}
+                accessibilityLabel={`Report ${f.username}`}
+              >
+                <Text style={[styles.sendMsgBtnText, { color: '#FFFFFF' }]}>🚩 Report</Text>
+              </TouchableOpacity>
             </View>
           </View>
         ))
@@ -1959,6 +2024,14 @@ function FindFriendsTab() {
         </View>
       </View>
     </Modal>
+
+    <ReportPlayerModal
+      visible={!!reportTarget}
+      onClose={() => setReportTarget(null)}
+      reportedUid={reportTarget?.uid || ''}
+      reportedUsername={reportTarget?.username || ''}
+      context="friend"
+    />
     </>
   );
 }

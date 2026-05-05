@@ -140,7 +140,10 @@ tr:hover td{background:#0A0E1A66}
 try{firebase.initializeApp({apiKey:'AIzaSyCP1AcnDTU2umjR3cGycRxQ5mwOFq4Xjgg',authDomain:'capitalquest-4d20b.firebaseapp.com',projectId:'capitalquest-4d20b',storageBucket:'capitalquest-4d20b.firebasestorage.app',messagingSenderId:'407589569541',appId:'1:407589569541:web:3b8a543f03ad9f110ec86c'});}catch(e){}
 const auth=firebase.auth(), db=firebase.firestore(), fns=firebase.functions();
 const MOD_SESSION_KEY='cqModSession';
-const ALLOWED_EMAILS=['theosmales1@gmail.com','moderator@capitalquest.app','cq.admin.mod@capitalquest.app'];
+// Only the real admin account is allowed. Cloud Functions also enforce
+// this same email, so admin actions (reset PW, rename, delete) only work
+// when logged in as theosmales1@gmail.com.
+const ALLOWED_EMAILS=['theosmales1@gmail.com'];
 
 let allUsers=[], targetUid=null, targetUsername='';
 
@@ -148,8 +151,9 @@ let allUsers=[], targetUid=null, targetUsername='';
 auth.onAuthStateChanged(u=>{
   if(!u){window.location.replace('/moderator-login.html');return;}
   const okEmail=ALLOWED_EMAILS.includes(u.email?.toLowerCase());
-  const okSession=sessionStorage.getItem(MOD_SESSION_KEY)==='granted';
-  if(!okEmail&&!okSession){auth.signOut();window.location.replace('/moderator-login.html');return;}
+  // Email match is required — the session flag alone is no longer enough,
+  // because the Cloud Functions only authorise theosmales1@gmail.com.
+  if(!okEmail){sessionStorage.removeItem(MOD_SESSION_KEY);auth.signOut();window.location.replace('/moderator-login.html');return;}
   console.log('Moderator auth OK:', u.email, '| Loading users...');
   loadUsers().catch(e => console.error('loadUsers failed:', e));
 });
