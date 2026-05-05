@@ -753,23 +753,34 @@ const MODERATION_WORDLISTS = {
   sexual: [
     'sex', 'sexy', 'porn', 'pornhub', 'nude', 'nudes', 'naked', 'horny',
     'orgasm', 'erection', 'cum', 'jizz', 'masturbate', 'masturbation',
-    'fuckme', 'sext', 'sexting', 'blowjob', 'handjob', 'anal',
+    'fuckme', 'sext', 'sexting', 'blowjob', 'handjob', 'anal', 'rape',
+    'rapist', 'molest', 'pedo', 'pedophile', 'paedo', 'paedophile',
   ],
   anatomy: [
     'penis', 'dick', 'cock', 'vagina', 'pussy', 'boobs', 'tits', 'titties',
     'nipples', 'balls', 'scrotum', 'butthole', 'asshole', 'arsehole',
+    'cunt', 'twat', 'clit', 'minge', 'fanny', 'snatch', 'wank', 'wanker',
+    'jerkoff', 'jackoff', 'masturbator',
   ],
   profanity: [
     'fuck', 'fucker', 'fucking', 'fuckin', 'motherfucker',
     'fuk', 'fuking', 'fukin', 'fck', 'fcking',
-    'shit', 'bullshit', 'bitch', 'bitches', 'bastard', 'asshat',
-    'crap', 'piss', 'pissed', 'damn', 'goddamn', 'wtf', 'stfu', 'fml',
+    'shit', 'shitty', 'shithead', 'bullshit', 'bitch', 'bitches', 'bitchy',
+    'bastard', 'asshat', 'asshole', 'arse', 'arsehole', 'arsewipe',
+    'crap', 'crappy', 'piss', 'pissed', 'pissoff', 'damn', 'damnit', 'goddamn',
+    'wtf', 'stfu', 'fml', 'lmfao', 'omfg',
+    'bollocks', 'bugger', 'bloody', 'wanker', 'twat', 'tosser',
   ],
   hate: [
     // Racial / ethnic / sexual-orientation slurs. Listed only because the
     // moderator must catch them; not used or repeated anywhere else.
-    'nigger', 'nigga', 'kike', 'spic', 'chink', 'gook', 'wetback',
-    'faggot', 'fag', 'tranny', 'dyke', 'retard', 'retarded',
+    'nigger', 'nigga', 'niggah', 'niggas', 'niggaz', 'kike', 'spic',
+    'chink', 'gook', 'wetback', 'beaner', 'cracker', 'honky', 'jap',
+    'paki', 'raghead', 'towelhead',
+    'faggot', 'faggy', 'fag', 'fags', 'queer', 'tranny', 'trannie',
+    'dyke', 'homo', 'lezzy',
+    'retard', 'retarded', 'tard', 'spaz', 'spastic', 'mongoloid',
+    'hitler', 'nazi', 'kkk',
   ],
   bullying: [
     'kys', // "kill yourself" abbreviated
