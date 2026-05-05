@@ -153,6 +153,20 @@ export default function WelcomeScreen() {
 
         <Text style={styles.ageNote}>Recommended ages 8–18 · No real money involved</Text>
 
+        {/* Terms of Service link — opens the standalone HTML page */}
+        <TouchableOpacity
+          style={styles.legalLink}
+          onPress={() => {
+            if (Platform.OS === 'web') {
+              window.location.href = '/terms-of-service.html';
+            }
+          }}
+          activeOpacity={0.6}
+          accessibilityLabel="View Terms of Service"
+        >
+          <Text style={styles.legalLinkText}>Terms of Service</Text>
+        </TouchableOpacity>
+
         <TouchableOpacity
           style={styles.modButton}
           onPress={() => {
@@ -290,6 +304,17 @@ const styles = StyleSheet.create({
     fontSize: FontSize.xs,
     color: Colors.text.tertiary,
     textAlign: 'center',
+  },
+  legalLink: {
+    alignSelf: 'center',
+    paddingVertical: 6,
+    paddingHorizontal: 10,
+  },
+  legalLinkText: {
+    fontSize: FontSize.xs,
+    color: Colors.brand.primary,
+    fontWeight: FontWeight.semibold,
+    textDecorationLine: 'underline',
   },
   modButton: {
     paddingVertical: 12,
