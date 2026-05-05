@@ -109,6 +109,28 @@ export async function registerUser(
   country: string,
   userEmail?: string
 ) {
+  // ── Server-side moderation gate ─────────────────────────────────────
+  // Defence in depth: even if the register screen's pre-flight call to
+  // validateUsername was skipped (cached old client, modified client,
+  // direct service call), this synchronous check refuses to create the
+  // Firebase Auth account if the username trips the moderation filter.
+  try {
+    const { getFunctions: gf, httpsCallable: hc } = await import('firebase/functions');
+    const validate = hc(gf(), 'validateUsername');
+    const r = (await validate({ username })) as any;
+    const data = (r && r.data) || {};
+    if (data.ok !== true) {
+      const label = data.categoryLabel || 'community guidelines';
+      throw new Error(`Username not allowed (${label}). Please choose another.`);
+    }
+  } catch (err: any) {
+    // If our own thrown error, propagate; otherwise (network failure
+    // etc.) be defensive and refuse — better to block one signup than
+    // let a profanity username through.
+    if (err && err.message && err.message.startsWith('Username not allowed')) throw err;
+    throw new Error('Could not validate username. Please try again in a moment.');
+  }
+
   // Use a unique ID for Firebase Auth email so multiple users can share the same username
   const uniqueId = Date.now().toString(36) + Math.random().toString(36).slice(2, 8);
   const email = `${uniqueId}@capitalquest.app`;

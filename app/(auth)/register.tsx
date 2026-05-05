@@ -78,24 +78,35 @@ export default function RegisterScreen() {
       const username = form.username.trim().toLowerCase();
       const email = form.email.trim().toLowerCase();
 
-      // Server-side username moderation — same wordlist + theme detector
-      // used for chat moderation. Refuse to even create the account if
-      // the username trips the filter.
+      // ── Server-side username moderation ─────────────────────────────
+      // Use uniquely-named variables so the minifier can't accidentally
+      // alias the response into another scope's variable. Treat anything
+      // that isn't an explicit `ok: true` as a block (default-deny).
+      let usernameValidationOk = false;
+      let usernameValidationLabel = '';
       try {
-        const fn = httpsCallable(getFunctions(), 'validateUsername');
-        const res = await fn({ username });
-        const r = (res.data || {}) as { ok?: boolean; categoryLabel?: string; matched?: string };
-        if (r.ok === false) {
-          setError(
-            `Username not allowed (${r.categoryLabel || 'community guidelines'}). Please choose another.`
-          );
-          setLoading(false);
-          return;
+        const validateFn = httpsCallable(getFunctions(), 'validateUsername');
+        const validateResult = await validateFn({ username });
+        const validateData = (validateResult && (validateResult as any).data) as
+          | { ok?: boolean; categoryLabel?: string; matched?: string }
+          | null
+          | undefined;
+        if (validateData && validateData.ok === true) {
+          usernameValidationOk = true;
+        } else {
+          usernameValidationLabel = (validateData && validateData.categoryLabel) || 'community guidelines';
         }
-      } catch (e: unknown) {
-        // If the validator itself fails, refuse the registration rather
-        // than silently letting a forbidden username through.
-        setError('Could not validate username. Please try again in a moment.');
+      } catch (validateErr) {
+        // Swallow into the default-deny path below.
+        // eslint-disable-next-line no-console
+        console.warn('validateUsername call failed:', validateErr);
+      }
+      if (!usernameValidationOk) {
+        setError(
+          usernameValidationLabel
+            ? `Username not allowed (${usernameValidationLabel}). Please choose another.`
+            : 'Could not validate username. Please try again in a moment.'
+        );
         setLoading(false);
         return;
       }
