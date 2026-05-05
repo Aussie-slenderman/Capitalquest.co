@@ -210,7 +210,8 @@ export default function RegisterScreen() {
         <View style={styles.form}>
           <Field label="Username" value={form.username}
             onChangeText={v => update('username', v.toLowerCase().replace(/\s/g, ''))}
-            placeholder="johnathansmith" autoCapitalize="none" />
+            placeholder="johnathansmith" autoCapitalize="none"
+            invalid={!!usernameViolation} />
 
           {/* Live inline username warning — fires the moment the user
               types something forbidden, before they can even hit submit. */}
@@ -341,7 +342,7 @@ export default function RegisterScreen() {
 
 function Field({
   label, value, onChangeText, placeholder,
-  secureTextEntry, keyboardType, autoCapitalize,
+  secureTextEntry, keyboardType, autoCapitalize, invalid,
 }: {
   label: string;
   value: string;
@@ -350,12 +351,14 @@ function Field({
   secureTextEntry?: boolean;
   keyboardType?: 'default' | 'email-address' | 'numeric';
   autoCapitalize?: 'none' | 'words' | 'sentences';
+  /** When true, render the input with a red border + red-tinted background. */
+  invalid?: boolean;
 }) {
   return (
     <View style={styles.fieldContainer}>
       <Text style={styles.label}>{label}</Text>
       <TextInput
-        style={styles.input}
+        style={[styles.input, invalid && styles.inputInvalid]}
         value={value}
         onChangeText={onChangeText}
         placeholder={placeholder}
@@ -463,6 +466,12 @@ const styles = StyleSheet.create({
     paddingHorizontal: Spacing.base, paddingVertical: 14,
     borderWidth: 1, borderColor: Colors.border.default,
     color: Colors.text.primary, fontSize: FontSize.base,
+  },
+  inputInvalid: {
+    borderColor: Colors.market.loss,
+    borderWidth: 2,
+    backgroundColor: `${Colors.market.loss}11`,
+    color: Colors.market.loss,
   },
 
   // Country selector
