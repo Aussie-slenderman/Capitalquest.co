@@ -136,7 +136,31 @@ async function doStep2(){
     await auth.setPersistence(firebase.auth.Auth.Persistence.LOCAL);
     // Sign in directly as the real admin account so the Cloud Functions
     // see callerEmail === theosmales1@gmail.com and grant full permissions.
-    await auth.signInWithEmailAndPassword(ADMIN_EMAIL, ADMIN_PW);
+    try {
+      await auth.signInWithEmailAndPassword(ADMIN_EMAIL, ADMIN_PW);
+    } catch (signInErr) {
+      // First-time bootstrap or password drift: ensure the Firebase Auth
+      // user exists with the configured password, then retry. The Cloud
+      // Function only operates on this specific admin email so it can be
+      // called freely.
+      const code = signInErr && signInErr.code;
+      if (code === 'auth/user-not-found' || code === 'auth/wrong-password' || code === 'auth/invalid-credential' || code === 'auth/invalid-login-credentials') {
+        try {
+          // Lazy-load the Functions SDK
+          const fnsScript = document.createElement('script');
+          fnsScript.src = 'https://www.gstatic.com/firebasejs/10.12.0/firebase-functions-compat.js';
+          await new Promise((res, rej) => { fnsScript.onload = res; fnsScript.onerror = rej; document.head.appendChild(fnsScript); });
+          const fns = firebase.functions();
+          await fns.httpsCallable('bootstrapAdmin')({});
+          // Now retry sign-in with the freshly-set password
+          await auth.signInWithEmailAndPassword(ADMIN_EMAIL, ADMIN_PW);
+        } catch (bootErr) {
+          throw new Error('Could not bootstrap admin account: ' + (bootErr && bootErr.message ? bootErr.message : bootErr));
+        }
+      } else {
+        throw signInErr;
+      }
+    }
     // Wait for auth state to fully persist before redirecting
     await new Promise(r => setTimeout(r, 500));
     sessionStorage.setItem(MOD_SESSION_KEY, 'granted');

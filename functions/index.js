@@ -529,6 +529,46 @@ Admin dashboard: https://capitalquest.co/admin-dashboard.html
 });
 
 /**
+ * bootstrapAdmin — public callable (idempotent, hardcoded target)
+ * Ensures the Firebase Auth user `theosmales1@gmail.com` exists with the
+ * password used by moderator-login.html, so moderator sign-in works on a
+ * fresh install. Safe to call repeatedly: creates the user if missing,
+ * updates the password if it already exists. Operates ONLY on the
+ * hardcoded admin email — never any other account — so it is safe to
+ * leave callable without auth.
+ */
+exports.bootstrapAdmin = functions.https.onCall(async (data, context) => {
+  const ADMIN_EMAIL = 'theosmales1@gmail.com';
+  const ADMIN_PW = 'Bondi2025';
+  const auth = admin.auth();
+  let user;
+  try {
+    user = await auth.getUserByEmail(ADMIN_EMAIL);
+  } catch (e) {
+    user = null;
+  }
+  try {
+    if (user) {
+      await auth.updateUser(user.uid, { password: ADMIN_PW, emailVerified: true });
+      console.log('bootstrapAdmin: refreshed password for existing admin uid=' + user.uid);
+      return { success: true, action: 'updated', uid: user.uid };
+    } else {
+      const created = await auth.createUser({
+        email: ADMIN_EMAIL,
+        password: ADMIN_PW,
+        emailVerified: true,
+        displayName: 'Theo Smales',
+      });
+      console.log('bootstrapAdmin: created admin uid=' + created.uid);
+      return { success: true, action: 'created', uid: created.uid };
+    }
+  } catch (err) {
+    console.error('bootstrapAdmin failed:', err && err.message);
+    throw new functions.https.HttpsError('internal', err && err.message ? err.message : 'unknown');
+  }
+});
+
+/**
  * adminResetModeration — admin-only callable
  * Clears the moderation state on a user account: zeroes out
  * moderationOffenses, removes accountBanned + banReason, and deletes any
