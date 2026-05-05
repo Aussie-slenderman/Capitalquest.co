@@ -1,5 +1,6 @@
 import React, { useState, useMemo } from 'react';
 import { Modal, View, Text, TouchableOpacity, StyleSheet, TextInput, ScrollView, ActivityIndicator } from 'react-native';
+import { getFunctions, httpsCallable } from 'firebase/functions';
 import { Colors, LightColors, Spacing, FontSize, Radius } from '../constants/theme';
 import { useAppStore } from '../store/useAppStore';
 
@@ -92,8 +93,6 @@ export const ReportPlayerModal: React.FC<Props> = ({
     setSubmitting(true);
     setError(null);
     try {
-      // Lazy-import Firebase to avoid loading it for users who never report
-      const { getFunctions, httpsCallable } = await import('firebase/functions');
       const fns = getFunctions();
       const fn = httpsCallable(fns, 'reportPlayer');
       await fn({
