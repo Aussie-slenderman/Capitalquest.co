@@ -944,6 +944,12 @@ exports.moderateNewUsername = functions.firestore
     const uid = context.params.userId;
     if (!username) return null;
     const violation = detectUsernameViolation(username);
+    // ALWAYS log so we can see in Cloud Logging exactly which usernames
+    // are being created and whether the moderator caught them.
+    console.log(
+      `moderateNewUsername: uid=${uid} username="${username}" `
+      + `violation=${violation ? `${violation.category}/${violation.matched}` : 'none'}`
+    );
     if (!violation) return null;
 
     console.warn(
