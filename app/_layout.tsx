@@ -12,6 +12,7 @@ import { Colors } from '../src/constants/theme';
 import AchievementOverlay from '../src/components/AchievementOverlay';
 import ModerationWarningModal, { ModerationWarning } from '../src/components/ModerationWarningModal';
 import { signOut } from '../src/services/auth';
+import { listenToUser } from '../src/services/firebase';
 
 // ─── Error Boundary ───────────────────────────────────────────────────────────
 interface EBState { hasError: boolean; error: Error | null }
@@ -258,18 +259,23 @@ function ModerationGate() {
   React.useEffect(() => { setDismissed(false); }, [user?.id]);
 
   // Live subscription to the user doc — fires whenever moderation updates
-  // it server-side.
+  // it server-side. NOTE: must use a static import for `listenToUser` —
+  // a dynamic import here gets code-split into a separate chunk file that
+  // may not be deployed alongside the entry bundle, causing the listener
+  // to silently never attach (which is exactly what was masking warnings).
   React.useEffect(() => {
     if (!user?.id) { setWarning(null); return; }
     let cancelled = false;
     let unsub: undefined | (() => void);
-    (async () => {
-      try {
-        const { listenToUser } = await import('../src/services/firebase');
-        unsub = listenToUser(user.id, async (raw) => {
+    try {
+      // eslint-disable-next-line no-console
+      console.log('[Moderation] Attaching live listener for uid=' + user.id);
+      unsub = listenToUser(user.id, async (raw) => {
           if (cancelled) return;
           const data = raw as Record<string, unknown> | null;
           if (!data) return;
+          // eslint-disable-next-line no-console
+          console.log('[Moderation] User doc snapshot — banned:', !!data.accountBanned, 'hasWarning:', !!data.pendingModerationWarning);
 
           // 1. Hard ban — sign the player out immediately.
           if (data.accountBanned) {
@@ -298,12 +304,11 @@ function ModerationGate() {
             setWarning(null);
           }
         });
-      } catch (e) {
-        // Non-fatal — moderation just won't be live in this session.
-        // eslint-disable-next-line no-console
-        console.warn('Moderation listener failed to attach:', e);
-      }
-    })();
+    } catch (e) {
+      // Non-fatal — moderation just won't be live in this session.
+      // eslint-disable-next-line no-console
+      console.warn('Moderation listener failed to attach:', e);
+    }
     return () => {
       cancelled = true;
       try { if (unsub) unsub(); } catch { /* non-fatal */ }
