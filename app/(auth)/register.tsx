@@ -8,6 +8,7 @@ import { LinearGradient } from 'expo-linear-gradient';
 import { router } from 'expo-router';
 import { registerUser } from '../../src/services/auth';
 import { setRegistrationInProgress } from '../_layout';
+import { getFunctions, httpsCallable } from 'firebase/functions';
 import { Colors, FontSize, FontWeight, Spacing, Radius } from '../../src/constants/theme';
 
 const ROOKIE_MARKETS_LOGO = require('../../assets/rookie-markets-logo.png');
@@ -74,10 +75,33 @@ export default function RegisterScreen() {
 
     setLoading(true);
     try {
-      // Prevent auth listener from navigating during registration flow
-      setRegistrationInProgress(true);
       const username = form.username.trim().toLowerCase();
       const email = form.email.trim().toLowerCase();
+
+      // Server-side username moderation — same wordlist + theme detector
+      // used for chat moderation. Refuse to even create the account if
+      // the username trips the filter.
+      try {
+        const fn = httpsCallable(getFunctions(), 'validateUsername');
+        const res = await fn({ username });
+        const r = (res.data || {}) as { ok?: boolean; categoryLabel?: string; matched?: string };
+        if (r.ok === false) {
+          setError(
+            `Username not allowed (${r.categoryLabel || 'community guidelines'}). Please choose another.`
+          );
+          setLoading(false);
+          return;
+        }
+      } catch (e: unknown) {
+        // If the validator itself fails, refuse the registration rather
+        // than silently letting a forbidden username through.
+        setError('Could not validate username. Please try again in a moment.');
+        setLoading(false);
+        return;
+      }
+
+      // Prevent auth listener from navigating during registration flow
+      setRegistrationInProgress(true);
       await registerUser(
         username,
         form.password,
@@ -135,6 +159,21 @@ export default function RegisterScreen() {
           <Field label="Username" value={form.username}
             onChangeText={v => update('username', v.toLowerCase().replace(/\s/g, ''))}
             placeholder="johnathansmith" autoCapitalize="none" />
+
+          {/* Username community-guideline notice — same categories as
+              automated chat moderation. The validateUsername Cloud
+              Function refuses any username that contains these. */}
+          <View style={styles.usernameRules}>
+            <Text style={styles.usernameRulesTitle}>Usernames must NOT contain:</Text>
+            <Text style={styles.usernameRulesItem}>• Sexual or anatomical language</Text>
+            <Text style={styles.usernameRulesItem}>• Profanity or swear words</Text>
+            <Text style={styles.usernameRulesItem}>• Slurs or hateful language</Text>
+            <Text style={styles.usernameRulesItem}>• Bullying terms (e.g. “loser”, “kys”)</Text>
+            <Text style={styles.usernameRulesItem}>• Self-harm or suicide references</Text>
+            <Text style={styles.usernameRulesFooter}>
+              Accounts that break these rules are blocked at sign-up and can&apos;t be used.
+            </Text>
+          </View>
 
           <Field label="Email" value={form.email}
             onChangeText={v => update('email', v)}
@@ -312,6 +351,35 @@ const styles = StyleSheet.create({
     fontSize: FontSize.sm, fontWeight: FontWeight.medium,
   },
   form: { gap: Spacing.md, marginBottom: Spacing.xl },
+  usernameRules: {
+    backgroundColor: Colors.bg.tertiary,
+    borderLeftWidth: 3,
+    borderLeftColor: Colors.brand.primary,
+    borderRadius: Radius.md,
+    padding: Spacing.md,
+    gap: 4,
+    marginTop: -Spacing.xs,
+  },
+  usernameRulesTitle: {
+    color: Colors.text.primary,
+    fontSize: FontSize.xs,
+    fontWeight: FontWeight.bold,
+    marginBottom: 4,
+    textTransform: 'uppercase',
+    letterSpacing: 0.5,
+  },
+  usernameRulesItem: {
+    color: Colors.text.secondary,
+    fontSize: FontSize.xs,
+    lineHeight: 18,
+  },
+  usernameRulesFooter: {
+    color: Colors.text.tertiary,
+    fontSize: FontSize.xs,
+    fontStyle: 'italic',
+    marginTop: 6,
+    lineHeight: 16,
+  },
   fieldContainer: { gap: 6 },
   label: { fontSize: FontSize.sm, fontWeight: FontWeight.medium, color: Colors.text.secondary },
   input: {

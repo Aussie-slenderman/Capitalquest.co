@@ -853,6 +853,34 @@ function detectModerationViolation(rawText) {
   return null;
 }
 
+/**
+ * validateUsername — public callable
+ * Runs the same moderation detector against a proposed username so the
+ * registration flow can refuse names containing slurs, profanity,
+ * sexual content, anatomy, bullying, or self-harm language. Returns
+ * { ok: true } or { ok: false, category, categoryLabel, matched }.
+ */
+exports.validateUsername = functions.https.onCall(async (data, context) => {
+  const username = data && typeof data.username === 'string' ? data.username.trim() : '';
+  if (!username) {
+    throw new functions.https.HttpsError('invalid-argument', 'username is required.');
+  }
+  // Run the username through the chat moderator — also check the username
+  // with separators stripped so things like "fuck_face" or "kill-yourself"
+  // don't sneak past whole-word matching.
+  const v1 = detectModerationViolation(username);
+  const v2 = !v1 ? detectModerationViolation(username.replace(/[_\-.]+/g, ' ')) : null;
+  const v3 = !v1 && !v2 ? detectModerationViolation(username.replace(/[_\-.]+/g, '')) : null;
+  const violation = v1 || v2 || v3;
+  if (!violation) return { ok: true };
+  return {
+    ok: false,
+    category: violation.category,
+    categoryLabel: CATEGORY_LABELS[violation.category] || violation.category,
+    matched: violation.matched,
+  };
+});
+
 exports.moderateChatMessage = functions.firestore
   .document('chatRooms/{roomId}/messages/{messageId}')
   .onCreate(async (snap, context) => {
