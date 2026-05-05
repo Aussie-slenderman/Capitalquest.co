@@ -905,6 +905,77 @@ exports.validateUsername = functions.https.onCall(async (data, context) => {
   return { ok: true };
 });
 
+/**
+ * detectUsernameViolation — same strict username check used by
+ * validateUsername (substring match across the entire wordlist) so the
+ * server-side moderateNewUsername trigger and the client-callable
+ * validateUsername stay in sync.
+ */
+function detectUsernameViolation(name) {
+  if (!name || typeof name !== 'string') return null;
+  const stripped = normalizeForModeration(name).replace(/\s+/g, '');
+  if (!stripped) return null;
+  for (const [category, words] of Object.entries(MODERATION_WORDLISTS)) {
+    for (const w of words) {
+      if (stripped.includes(w)) return { category, matched: w, kind: 'word' };
+    }
+  }
+  for (const [category, phrases] of Object.entries(MODERATION_PHRASES)) {
+    for (const p of phrases) {
+      if (stripped.includes(p.replace(/\s+/g, ''))) return { category, matched: p, kind: 'phrase' };
+    }
+  }
+  return null;
+}
+
+/**
+ * moderateNewUsername — Firestore trigger on users/{userId}
+ * Catches forbidden usernames that slipped past the client-side
+ * validateUsername check (cached old bundle, modified client, direct
+ * API call). Runs the same strict username detector and, on match,
+ * deletes the Firestore user doc + Firebase Auth account so the
+ * username can never actually be used.
+ */
+exports.moderateNewUsername = functions.firestore
+  .document('users/{userId}')
+  .onCreate(async (snap, context) => {
+    const data = snap.data() || {};
+    const username = String(data.username || '');
+    const uid = context.params.userId;
+    if (!username) return null;
+    const violation = detectUsernameViolation(username);
+    if (!violation) return null;
+
+    console.warn(
+      `moderateNewUsername: NUKING uid=${uid} username="${username}" — `
+      + `${violation.category} / matched "${violation.matched}"`
+    );
+
+    // 1. Delete the Firebase Auth account so the email can be re-used.
+    try { await admin.auth().deleteUser(uid); } catch (e) {
+      console.warn('moderateNewUsername: auth delete failed:', e && e.message);
+    }
+    // 2. Delete the user doc + portfolio + leaderboard entry so the
+    //    username is freed.
+    const db = admin.firestore();
+    try { await snap.ref.delete(); } catch (e) {
+      console.warn('moderateNewUsername: user doc delete failed:', e && e.message);
+    }
+    try { await db.collection('portfolios').doc(uid).delete(); } catch (e) { /* non-fatal */ }
+    try { await db.collection('leaderboard').doc(uid).delete(); } catch (e) { /* non-fatal */ }
+    // 3. Audit log
+    try {
+      await db.collection('moderationLog').add({
+        autoAction: 'username_blocked_at_creation',
+        senderId: uid,
+        senderUsername: username,
+        violation,
+        createdAt: admin.firestore.FieldValue.serverTimestamp(),
+      });
+    } catch (e) { /* non-fatal */ }
+    return null;
+  });
+
 exports.moderateChatMessage = functions.firestore
   .document('chatRooms/{roomId}/messages/{messageId}')
   .onCreate(async (snap, context) => {
