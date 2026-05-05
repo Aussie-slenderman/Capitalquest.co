@@ -34,7 +34,15 @@ tr:hover td{background:#0A0E1A66}
 .btn-reset{background:#F5C51822;color:#F5C518;border:1px solid #F5C51844}
 .btn-rename{background:#A855F722;color:#A855F7;border:1px solid #A855F744}
 .btn-mod{background:#00B3E622;color:#00B3E6;border:1px solid #00B3E644}
+.btn-warn{background:#F5C51822;color:#F5C518;border:1px solid #F5C51866}
+.btn-ban{background:#FF3D5722;color:#FF3D57;border:1px solid #FF3D5766;font-weight:800}
 .btn-delete{background:#FF3D5722;color:#FF3D57;border:1px solid #FF3D5744}
+.warn-reason-row{display:flex;align-items:center;gap:10px;padding:10px 12px;background:#0A0E1A;border:1px solid #1A2235;border-radius:10px;margin-bottom:8px;cursor:pointer;transition:border-color .15s}
+.warn-reason-row:hover{border-color:#00B3E6}
+.warn-reason-row.selected{border-color:#F5C518;background:#F5C51811}
+.warn-reason-icon{font-size:18px;width:24px;text-align:center}
+.warn-reason-label{flex:1;font-size:13px;font-weight:700;color:#F1F5F9}
+.warn-reason-blurb{font-size:11px;color:#64748B;margin-top:2px}
 .btn-view{background:#00B3E622;color:#00B3E6;border:1px solid #00B3E644}
 .spinner-full{display:flex;align-items:center;justify-content:center;height:200px;gap:12px;color:#475569}
 .spin{width:28px;height:28px;border:3px solid #1A2235;border-top-color:#00B3E6;border-radius:50%;animation:spin .8s linear infinite}
@@ -116,6 +124,33 @@ tr:hover td{background:#0A0E1A66}
     <div class="modal-btns">
       <button class="modal-btn-cancel" onclick="closeModal('delete-modal')">Cancel</button>
       <button class="modal-btn-confirm" style="background:#FF3D57;color:#fff" onclick="confirmDelete()">Delete Account</button>
+    </div>
+  </div>
+</div>
+
+<!-- Warn Player Modal -->
+<div class="modal-overlay" id="warn-modal">
+  <div class="modal" style="max-width:460px;">
+    <h2>⚠️ Warn Player</h2>
+    <p id="warn-desc" style="margin-bottom:14px;">Send a warning to this player. They'll see it the next time they open the app, and their offence count will be incremented (so the next chat-detected violation will ban them).</p>
+    <div id="warn-reasons"></div>
+    <textarea id="warn-details" placeholder="Optional details (shown to the player)…" style="width:100%;background:#0A0E1A;border:1.5px solid #1A2235;border-radius:10px;color:#F1F5F9;padding:10px 12px;font-size:13px;font-family:inherit;outline:none;resize:vertical;min-height:60px;margin-bottom:8px;"></textarea>
+    <div class="modal-btns">
+      <button class="modal-btn-cancel" onclick="closeModal('warn-modal')">Cancel</button>
+      <button class="modal-btn-confirm" style="background:linear-gradient(90deg,#F5C518,#E5B000);color:#0A0E1A" onclick="confirmWarn()">Send Warning</button>
+    </div>
+  </div>
+</div>
+
+<!-- Ban Player Modal -->
+<div class="modal-overlay" id="ban-modal">
+  <div class="modal">
+    <h2>🚫 Ban Player</h2>
+    <p id="ban-desc" style="margin-bottom:14px;">This blocks the player from signing in. Their account data is preserved (you can unban from this dashboard at any time).</p>
+    <input id="ban-reason" type="text" placeholder="Reason (visible to player)…" style="width:100%;background:#0A0E1A;border:1.5px solid #1A2235;border-radius:10px;color:#F1F5F9;padding:10px 12px;font-size:14px;outline:none;margin-bottom:14px;" />
+    <div class="modal-btns">
+      <button class="modal-btn-cancel" onclick="closeModal('ban-modal')">Cancel</button>
+      <button class="modal-btn-confirm" style="background:#FF3D57;color:#fff" onclick="confirmBan()">Ban Player</button>
     </div>
   </div>
 </div>
@@ -208,6 +243,9 @@ async function loadUsers(){
         country:u.country||'',
         onboardingComplete:u.onboardingComplete||false,
         accountDeleted:u.accountDeleted||false,
+        accountBanned:u.accountBanned||false,
+        moderationOffenses:u.moderationOffenses||0,
+        banReason:u.banReason||'',
         createdAt:u.createdAt||0,
         avatarConfig:u.avatarConfig||null,
         portfolioValue:p.totalValue||0,
@@ -248,7 +286,7 @@ function renderTable(users){
     const gain=u.gainLoss;
     const gainStr=(gain>=0?'+':'')+fmt(gain);
     const gainCls=gain>=0?'gain-pos':'gain-neg';
-    const status=u.accountDeleted?'<span style="color:#FF3D57;font-size:12px">Deleted</span>':u.onboardingComplete?'<span style="color:#00C853;font-size:12px">Active</span>':'<span style="color:#F5C518;font-size:12px">Pending</span>';
+    const status=u.accountDeleted?'<span style="color:#FF3D57;font-size:12px">Deleted</span>':u.accountBanned?'<span style="background:#FF3D57;color:#fff;font-size:11px;font-weight:800;padding:2px 8px;border-radius:6px;letter-spacing:.04em;">🚫 BANNED</span>':u.onboardingComplete?'<span style="color:#00C853;font-size:12px">Active</span>':'<span style="color:#F5C518;font-size:12px">Pending</span>';
     html+=`<tr>
       <td><span class="avatar">${av}</span>${esc(u.displayName)}</td>
       <td style="color:#94A3B8">@${esc(u.username)}</td>
@@ -261,7 +299,7 @@ function renderTable(users){
         <button class="action-btn btn-view" onclick="viewInfo('${u.uid}')">View</button>
         <button class="action-btn btn-reset" onclick="openReset('${u.uid}','${esc(u.username)}')">Reset PW</button>
         <button class="action-btn btn-rename" onclick="openRename('${u.uid}','${esc(u.username)}')">Reset User</button>
-        <button class="action-btn btn-mod" onclick="resetModeration('${u.uid}','${esc(u.username)}')">Reset Mod</button>
+        ${u.accountBanned?`<button class="action-btn btn-mod" onclick="resetModeration('${u.uid}','${esc(u.username)}')">Unban</button>`:`<button class="action-btn btn-warn" onclick="openWarn('${u.uid}','${esc(u.username)}')">Warn</button><button class="action-btn btn-ban" onclick="openBan('${u.uid}','${esc(u.username)}')">Ban</button>`}
         ${!u.accountDeleted?`<button class="action-btn btn-delete" onclick="openDelete('${u.uid}','${esc(u.username)}')">Delete</button>`:''}
       </td>
     </tr>`;
@@ -369,6 +407,64 @@ async function resetModeration(uid,username){
     showToast('✅ Moderation reset for @'+username);
     loadUsers();
   }catch(e){showToast('⚠️ Error: '+(e.message||'unknown'));}
+}
+
+// ── Warn / Ban handlers ──────────────────────────────────────────────────
+const WARN_REASONS = [
+  { id:'sexual_hateful', icon:'🚫', label:'Sexual or hateful comment', blurb:'Slurs, threats, sexual content, or hateful language.' },
+  { id:'scamming',       icon:'💰', label:'Scamming',                  blurb:'Tricked or attempted to trick another player.' },
+  { id:'harassment',     icon:'😡', label:'Harassment / bullying',     blurb:'Targeted insults, repeated targeting, or threats.' },
+  { id:'spam',           icon:'📨', label:'Spam / unwanted messages',  blurb:'Unsolicited / off-topic / repeated messages.' },
+  { id:'other',          icon:'⚠️',  label:'Other',                     blurb:'Anything else that breaks community guidelines.' },
+];
+let _warnSelected=null;
+function openWarn(uid,username){
+  targetUid=uid; targetUsername=username; _warnSelected=null;
+  document.getElementById('warn-desc').textContent='Send a warning to @'+username+'. They\'ll see it the next time they open the app, and their offence count will be incremented (so the next chat-detected violation will ban them).';
+  document.getElementById('warn-details').value='';
+  // Render reason rows
+  const wrap=document.getElementById('warn-reasons');
+  wrap.innerHTML=WARN_REASONS.map(r=>`<div class="warn-reason-row" data-id="${r.id}" onclick="selectWarnReason('${r.id}')"><span class="warn-reason-icon">${r.icon}</span><div style="flex:1"><div class="warn-reason-label">${r.label}</div><div class="warn-reason-blurb">${r.blurb}</div></div></div>`).join('');
+  document.getElementById('warn-modal').classList.add('show');
+}
+function selectWarnReason(id){
+  _warnSelected=id;
+  document.querySelectorAll('#warn-reasons .warn-reason-row').forEach(el=>{
+    el.classList.toggle('selected', el.getAttribute('data-id')===id);
+  });
+}
+async function confirmWarn(){
+  if(!_warnSelected){showToast('⚠️ Pick a reason first');return;}
+  const details=document.getElementById('warn-details').value.trim();
+  const btn=document.querySelector('#warn-modal .modal-btn-confirm');
+  btn.disabled=true; const orig=btn.textContent; btn.textContent='Sending…';
+  try{
+    const fn=fns.httpsCallable('adminWarnPlayer');
+    const res=await fn({uid:targetUid,reason:_warnSelected,details});
+    closeModal('warn-modal');
+    showToast(`✅ Warning sent to @${targetUsername} (now at offence #${res?.data?.offences ?? '?'})`);
+    loadUsers();
+  }catch(e){showToast('⚠️ Error: '+(e.message||'unknown'));}
+  finally{btn.disabled=false; btn.textContent=orig;}
+}
+function openBan(uid,username){
+  targetUid=uid; targetUsername=username;
+  document.getElementById('ban-desc').textContent='Ban @'+username+'? They will not be able to sign in until you unban them. Their data is preserved.';
+  document.getElementById('ban-reason').value='Banned by moderator';
+  document.getElementById('ban-modal').classList.add('show');
+}
+async function confirmBan(){
+  const reason=document.getElementById('ban-reason').value.trim()||'Banned by moderator';
+  const btn=document.querySelector('#ban-modal .modal-btn-confirm');
+  btn.disabled=true; const orig=btn.textContent; btn.textContent='Banning…';
+  try{
+    const fn=fns.httpsCallable('adminBanPlayer');
+    await fn({uid:targetUid,reason});
+    closeModal('ban-modal');
+    showToast('🚫 @'+targetUsername+' has been banned');
+    loadUsers();
+  }catch(e){showToast('⚠️ Error: '+(e.message||'unknown'));}
+  finally{btn.disabled=false; btn.textContent=orig;}
 }
 
 // Purge all accounts that were soft-deleted (accountDeleted:true) in the old system

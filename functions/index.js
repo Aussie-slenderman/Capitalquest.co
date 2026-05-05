@@ -602,6 +602,133 @@ exports.adminResetModeration = functions.https.onCall(async (data, context) => {
   return { success: true };
 });
 
+/**
+ * adminWarnPlayer — admin-only callable
+ * Manually issues a moderation warning to a player from the admin
+ * dashboard. Uses the same reason vocabulary as the player-report flow,
+ * sets pendingModerationWarning so the next-login modal shows it, and
+ * increments moderationOffenses (so the next chat-detected violation
+ * tips them straight to a ban).
+ *
+ * Called with: { uid, reason, details? }
+ * reason ∈ { sexual_hateful | scamming | harassment | spam | other }
+ */
+const ADMIN_WARN_REASON_LABELS = {
+  sexual_hateful: 'Sexual or hateful comment',
+  scamming:       'Scamming',
+  harassment:     'Harassment / bullying',
+  spam:           'Spam / unwanted messages',
+  other:          'Other',
+};
+exports.adminWarnPlayer = functions.https.onCall(async (data, context) => {
+  if (!context.auth) {
+    throw new functions.https.HttpsError('unauthenticated', 'You must be signed in.');
+  }
+  const callerEmail = (context.auth.token.email || '').toLowerCase();
+  if (!ADMIN_EMAILS.includes(callerEmail)) {
+    throw new functions.https.HttpsError('permission-denied', 'Not authorised.');
+  }
+  const uid = data && data.uid;
+  const reason = data && data.reason;
+  const details = (data && typeof data.details === 'string') ? data.details.trim().slice(0, 1000) : '';
+  if (!uid || typeof uid !== 'string') {
+    throw new functions.https.HttpsError('invalid-argument', 'uid is required.');
+  }
+  if (!reason || !ADMIN_WARN_REASON_LABELS[reason]) {
+    throw new functions.https.HttpsError('invalid-argument', 'Valid reason is required.');
+  }
+  const db = admin.firestore();
+  const userRef = db.collection('users').doc(uid);
+  const result = await db.runTransaction(async (tx) => {
+    const snap = await tx.get(userRef);
+    if (!snap.exists) throw new functions.https.HttpsError('not-found', 'User not found.');
+    const prior = Number((snap.data() || {}).moderationOffenses || 0);
+    const newCount = prior + 1;
+    const payload = {
+      category: reason,
+      categoryLabel: ADMIN_WARN_REASON_LABELS[reason],
+      matched: '(issued by moderator)',
+      messageExcerpt: details || `Issued manually from the admin dashboard by ${callerEmail}.`,
+      detectedAt: Date.now(),
+      offenseNumber: newCount,
+      issuedBy: callerEmail,
+    };
+    tx.update(userRef, {
+      moderationOffenses: newCount,
+      pendingModerationWarning: payload,
+      lastModerationAt: admin.firestore.FieldValue.serverTimestamp(),
+    });
+    return { offences: newCount, payload };
+  });
+  try {
+    await db.collection('moderationLog').add({
+      senderId: uid,
+      adminAction: 'warn',
+      reason,
+      reasonLabel: ADMIN_WARN_REASON_LABELS[reason],
+      details,
+      issuedBy: callerEmail,
+      offences: result.offences,
+      createdAt: admin.firestore.FieldValue.serverTimestamp(),
+    });
+  } catch (e) { /* non-fatal */ }
+  console.log(`adminWarnPlayer: ${reason} for uid=${uid} by ${callerEmail} (offence #${result.offences})`);
+  return { success: true, offences: result.offences };
+});
+
+/**
+ * adminBanPlayer — admin-only callable
+ * Manually bans a player from the admin dashboard. Sets accountBanned,
+ * banReason, bannedAt, and a final pendingModerationWarning so the
+ * client surfaces a ban notice the next time they try to use the app.
+ *
+ * Called with: { uid, reason? }
+ */
+exports.adminBanPlayer = functions.https.onCall(async (data, context) => {
+  if (!context.auth) {
+    throw new functions.https.HttpsError('unauthenticated', 'You must be signed in.');
+  }
+  const callerEmail = (context.auth.token.email || '').toLowerCase();
+  if (!ADMIN_EMAILS.includes(callerEmail)) {
+    throw new functions.https.HttpsError('permission-denied', 'Not authorised.');
+  }
+  const uid = data && data.uid;
+  const reason = (data && typeof data.reason === 'string') ? data.reason.trim().slice(0, 200) : 'Banned by moderator';
+  if (!uid || typeof uid !== 'string') {
+    throw new functions.https.HttpsError('invalid-argument', 'uid is required.');
+  }
+  const db = admin.firestore();
+  const userRef = db.collection('users').doc(uid);
+  await userRef.update({
+    accountBanned: true,
+    banReason: reason,
+    bannedAt: admin.firestore.FieldValue.serverTimestamp(),
+    pendingModerationWarning: {
+      category: 'admin_ban',
+      categoryLabel: 'Banned by moderator',
+      matched: '(issued by moderator)',
+      messageExcerpt: reason,
+      detectedAt: Date.now(),
+      offenseNumber: 99,
+      banned: true,
+      issuedBy: callerEmail,
+    },
+    moderationOffenses: admin.firestore.FieldValue.increment(1),
+    lastModerationAt: admin.firestore.FieldValue.serverTimestamp(),
+  });
+  try {
+    await db.collection('moderationLog').add({
+      senderId: uid,
+      adminAction: 'ban',
+      reason,
+      issuedBy: callerEmail,
+      createdAt: admin.firestore.FieldValue.serverTimestamp(),
+    });
+  } catch (e) { /* non-fatal */ }
+  console.log(`adminBanPlayer: banned uid=${uid} by ${callerEmail}`);
+  return { success: true };
+});
+
 /* ════════════════════════════════════════════════════════════════════════════
  *  AUTOMATED CHAT MODERATION
  * ════════════════════════════════════════════════════════════════════════════
