@@ -855,30 +855,54 @@ function detectModerationViolation(rawText) {
 
 /**
  * validateUsername — public callable
- * Runs the same moderation detector against a proposed username so the
- * registration flow can refuse names containing slurs, profanity,
- * sexual content, anatomy, bullying, or self-harm language. Returns
- * { ok: true } or { ok: false, category, categoryLabel, matched }.
+ * Stricter than the chat detector. Usernames are a tiny constrained
+ * namespace where false positives don't matter (player can pick another
+ * name) but false negatives DO matter (a slur baked into a handle stays
+ * visible across every leaderboard, club, and DM forever). So we
+ * substring-match the entire wordlist regardless of length.
  */
 exports.validateUsername = functions.https.onCall(async (data, context) => {
   const username = data && typeof data.username === 'string' ? data.username.trim() : '';
   if (!username) {
     throw new functions.https.HttpsError('invalid-argument', 'username is required.');
   }
-  // Run the username through the chat moderator — also check the username
-  // with separators stripped so things like "fuck_face" or "kill-yourself"
-  // don't sneak past whole-word matching.
-  const v1 = detectModerationViolation(username);
-  const v2 = !v1 ? detectModerationViolation(username.replace(/[_\-.]+/g, ' ')) : null;
-  const v3 = !v1 && !v2 ? detectModerationViolation(username.replace(/[_\-.]+/g, '')) : null;
-  const violation = v1 || v2 || v3;
-  if (!violation) return { ok: true };
-  return {
-    ok: false,
-    category: violation.category,
-    categoryLabel: CATEGORY_LABELS[violation.category] || violation.category,
-    matched: violation.matched,
-  };
+
+  // Strictest comparable form: lowercased, leet-substituted, every
+  // non-letter (digits, separators, punctuation) stripped.
+  const stripped = normalizeForModeration(username).replace(/\s+/g, '');
+
+  // Wordlist substring pass — no length threshold. Catches things like
+  // "fuckface", "bigtits92", "killyourself" that the chat detector
+  // intentionally skips to avoid false positives like "anal" inside
+  // "analyst". Usernames don't have that problem.
+  for (const [category, words] of Object.entries(MODERATION_WORDLISTS)) {
+    for (const w of words) {
+      if (stripped.includes(w)) {
+        return {
+          ok: false,
+          category,
+          categoryLabel: CATEGORY_LABELS[category] || category,
+          matched: w,
+        };
+      }
+    }
+  }
+  // Phrase pass — usernames don't normally contain spaced phrases, but
+  // check the de-spaced phrases (e.g. "killyourself") just in case.
+  for (const [category, phrases] of Object.entries(MODERATION_PHRASES)) {
+    for (const p of phrases) {
+      const collapsedPhrase = p.replace(/\s+/g, '');
+      if (stripped.includes(collapsedPhrase)) {
+        return {
+          ok: false,
+          category,
+          categoryLabel: CATEGORY_LABELS[category] || category,
+          matched: p,
+        };
+      }
+    }
+  }
+  return { ok: true };
 });
 
 exports.moderateChatMessage = functions.firestore
