@@ -40,6 +40,40 @@ const COUNTRIES = [
   'Zambia','Zimbabwe',
 ];
 
+// ── Client-side instant moderation wordlist ─────────────────────────────────
+// Mirrors the server-side wordlist for immediate feedback as the user types.
+// The server-side validateUsername Cloud Function is the authoritative check;
+// this list just catches the obvious cases instantly so the user can't even
+// click Continue with a bad name.
+const FORBIDDEN_USERNAME_SUBSTRINGS = [
+  // sexual / anatomy
+  'sex','porn','nude','horny','orgasm','cum','jizz','blowjob','handjob','anal',
+  'rape','rapist','molest','pedo','paedo',
+  'penis','dick','cock','vagina','pussy','boobs','tits','titties','nipples',
+  'butthole','asshole','arsehole','cunt','twat','clit','minge','wank',
+  // profanity
+  'fuck','fuk','fcking','shit','bitch','bastard','crap','piss','damn',
+  'bollocks','wanker','tosser','fag','faggot',
+  // hate / slurs
+  'nigger','nigga','niggah','niggas','kike','spic','chink','gook','wetback',
+  'beaner','paki','raghead','tranny','dyke','retard','retarded','spaz',
+  'hitler','nazi','kkk','swastika',
+  // bullying / mental health
+  'kys','killyou','killmyself','suicide','suicidal','selfharm',
+];
+function detectClientUsernameViolation(raw: string): string | null {
+  if (!raw) return null;
+  // Lower + leet-speak un-substitution + strip non-letters
+  let s = raw.toLowerCase()
+    .replace(/[@4]/g, 'a').replace(/3/g, 'e').replace(/[1|]/g, 'i')
+    .replace(/0/g, 'o').replace(/[5$]/g, 's').replace(/7/g, 't')
+    .replace(/[^a-z]+/g, '');
+  for (const w of FORBIDDEN_USERNAME_SUBSTRINGS) {
+    if (s.includes(w)) return w;
+  }
+  return null;
+}
+
 export default function RegisterScreen() {
   const [form, setForm] = useState({
     username: '', email: '', password: '', confirmPassword: '',
@@ -49,6 +83,13 @@ export default function RegisterScreen() {
   const [showCountryPicker, setShowCountryPicker] = useState(false);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
+
+  // Live username check — runs against the embedded wordlist as the user
+  // types. Empty string when clean, the matched word otherwise.
+  const usernameViolation = useMemo(
+    () => detectClientUsernameViolation(form.username.trim().toLowerCase()),
+    [form.username]
+  );
 
   const filteredCountries = useMemo(() => {
     if (!countrySearch.trim()) return COUNTRIES;
@@ -171,6 +212,16 @@ export default function RegisterScreen() {
             onChangeText={v => update('username', v.toLowerCase().replace(/\s/g, ''))}
             placeholder="johnathansmith" autoCapitalize="none" />
 
+          {/* Live inline username warning — fires the moment the user
+              types something forbidden, before they can even hit submit. */}
+          {!!usernameViolation && (
+            <View style={styles.usernameLiveError}>
+              <Text style={styles.usernameLiveErrorText}>
+                ⚠️  This username contains the word &ldquo;{usernameViolation}&rdquo;, which isn&apos;t allowed. Please choose another.
+              </Text>
+            </View>
+          )}
+
           {/* Username community-guideline notice — same categories as
               automated chat moderation. The validateUsername Cloud
               Function refuses any username that contains these. */}
@@ -214,20 +265,20 @@ export default function RegisterScreen() {
         </View>
 
         <TouchableOpacity
-          style={[styles.registerButton, loading && styles.disabled]}
+          style={[styles.registerButton, (loading || !!usernameViolation) && styles.disabled]}
           onPress={handleRegister}
-          disabled={loading}
+          disabled={loading || !!usernameViolation}
           activeOpacity={0.85}
         >
           <LinearGradient
-            colors={loading
+            colors={(loading || !!usernameViolation)
               ? [Colors.bg.tertiary, Colors.bg.tertiary]
               : [Colors.brand.primary, '#0096C7']}
             style={styles.gradient}
             start={{ x: 0, y: 0 }} end={{ x: 1, y: 0 }}
           >
-            <Text style={[styles.registerText, loading && styles.loadingText]}>
-              {loading ? 'Creating Account...' : 'Create Account'}
+            <Text style={[styles.registerText, (loading || !!usernameViolation) && styles.loadingText]}>
+              {loading ? 'Creating Account...' : usernameViolation ? 'Username Not Allowed' : 'Create Account'}
             </Text>
           </LinearGradient>
         </TouchableOpacity>
@@ -362,6 +413,20 @@ const styles = StyleSheet.create({
     fontSize: FontSize.sm, fontWeight: FontWeight.medium,
   },
   form: { gap: Spacing.md, marginBottom: Spacing.xl },
+  usernameLiveError: {
+    backgroundColor: `${Colors.market.loss}22`,
+    borderLeftWidth: 3,
+    borderLeftColor: Colors.market.loss,
+    borderRadius: Radius.md,
+    padding: Spacing.sm,
+    marginTop: -Spacing.xs,
+  },
+  usernameLiveErrorText: {
+    color: Colors.market.loss,
+    fontSize: FontSize.sm,
+    fontWeight: FontWeight.semibold,
+    lineHeight: 20,
+  },
   usernameRules: {
     backgroundColor: Colors.bg.tertiary,
     borderLeftWidth: 3,
