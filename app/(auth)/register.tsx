@@ -162,10 +162,12 @@ export default function RegisterScreen() {
         email,
       );
       setLoading(false);
-      // Send the player to the Terms of Service screen first; once they
-      // tick the acceptance box and tap Continue, they'll be moved on
-      // to /(auth)/setup to choose their starting balance.
-      router.replace('/(auth)/terms' as any);
+      // Sign-up flow:
+      //   register → avatar → terms → setup → dashboard
+      // Pick the avatar first so the chosen animal shows everywhere
+      // the player appears (header, profile, friend cards, leaderboard)
+      // from the very first screen onwards.
+      router.replace('/(auth)/avatar' as any);
     } catch (e: unknown) {
       const msg = (e as { message?: string }).message || 'Registration failed. Please try again.';
       setError(msg);
