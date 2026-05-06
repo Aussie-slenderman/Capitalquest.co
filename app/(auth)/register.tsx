@@ -223,20 +223,11 @@ export default function RegisterScreen() {
             </View>
           )}
 
-          {/* Username community-guideline notice — same categories as
-              automated chat moderation. The validateUsername Cloud
-              Function refuses any username that contains these. */}
-          <View style={styles.usernameRules}>
-            <Text style={styles.usernameRulesTitle}>Usernames must NOT contain:</Text>
-            <Text style={styles.usernameRulesItem}>• Sexual or anatomical language</Text>
-            <Text style={styles.usernameRulesItem}>• Profanity or swear words</Text>
-            <Text style={styles.usernameRulesItem}>• Slurs or hateful language</Text>
-            <Text style={styles.usernameRulesItem}>• Bullying terms (e.g. “loser”, “kys”)</Text>
-            <Text style={styles.usernameRulesItem}>• Self-harm or suicide references</Text>
-            <Text style={styles.usernameRulesFooter}>
-              Accounts that break these rules are blocked at sign-up and can&apos;t be used.
-            </Text>
-          </View>
+          {/* Gentle reminder — keeps the friendly tone but still nudges
+              players toward names that won't trip the moderation filter. */}
+          <Text style={styles.usernameReminder}>
+            Pick a name you&apos;d be happy showing on the leaderboard. Keep it kind.
+          </Text>
 
           <Field label="Email" value={form.email}
             onChangeText={v => update('email', v)}
@@ -430,34 +421,13 @@ const styles = StyleSheet.create({
     fontWeight: FontWeight.semibold,
     lineHeight: 20,
   },
-  usernameRules: {
-    backgroundColor: Colors.bg.tertiary,
-    borderLeftWidth: 3,
-    borderLeftColor: Colors.brand.primary,
-    borderRadius: Radius.md,
-    padding: Spacing.md,
-    gap: 4,
-    marginTop: -Spacing.xs,
-  },
-  usernameRulesTitle: {
-    color: Colors.text.primary,
-    fontSize: FontSize.xs,
-    fontWeight: FontWeight.bold,
-    marginBottom: 4,
-    textTransform: 'uppercase',
-    letterSpacing: 0.5,
-  },
-  usernameRulesItem: {
-    color: Colors.text.secondary,
-    fontSize: FontSize.xs,
-    lineHeight: 18,
-  },
-  usernameRulesFooter: {
+  usernameReminder: {
     color: Colors.text.tertiary,
     fontSize: FontSize.xs,
     fontStyle: 'italic',
-    marginTop: 6,
-    lineHeight: 16,
+    lineHeight: 18,
+    marginTop: -Spacing.xs,
+    paddingHorizontal: 4,
   },
   fieldContainer: { gap: 6 },
   label: { fontSize: FontSize.sm, fontWeight: FontWeight.medium, color: Colors.text.secondary },
